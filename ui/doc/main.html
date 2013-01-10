@@ -1,0 +1,34 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+
+
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"><title>Main Window</title></head><body style="font-size: 12pt; font-family: helvetica;">
+<h1>Main Window</h1>
+<p>This is the main window for using doshlogger.&nbsp;</p>Once you have imported your bank statements, the main window will present all the transactions<br><br><img source=":images/main.png" alt=""> <br><br><p>The
+first colum Check indicates if the record has been validated (checked).
+The second indicates if the record has been tagged - indicated by&nbsp;a <img alt="" source=":icons/tag_yellow.png"> icon. The other columns are the fields from the statements. Credit (money in) is shown in green, debits as red.</p><p>The
+bottom line just gives you information about the database connection,
+total money in and out, and number of records shown / number of records
+in total.</p><p>There are a few buttons that are hopefully intuitive</p><img source=":icons/date.png" style="width: 16px; height: 16px;" alt=""> select most recent month only<br><img source=":icons/accept.png" style="width: 16px; height: 16px;" alt=""> toggles the checked flag for selected records<br><img source=":icons/arrow_refresh.png" style="width: 16px; height: 16px;" alt=""> reload all data and reset filters<br><img source=":icons/tag_yellow.png" style="width: 16px; height: 16px;" alt=""> tag selected records. See <a href="#Tags">tags</a> for more info on tags<br><br><h2><a name="Filtering_Records"></a>Filtering Records</h2><p>Filtering can be done in a few ways, according to what you choose in the top three boxes.</p><h3><a name="Date_Filter"></a>Date<br>
+</h3><p>The
+date filters can specify a date range or click the checkbox to just
+show records from the start date field, eg just show Jan 2010. The <img style="width: 16px; height: 16px;" alt="" source=":icons/date.png"> button will just select the most recent month.<br></p><h3><a name="Type_Filter"></a>Filter Filter</h3><p>The second box has three dropdowns, the&nbsp;<span style="font-style: italic;">show</span> dropdown selects to show unchecked records only, checked only or all. The <span style="font-style: italic;">account</span> dropdown will filter records for a particular account. The <span style="font-style: italic;">type</span> dropdown filters on the transaction type from the 4th column.<br></p><h3><a name="Text_Filter"></a>Search<br>
+</h3><p>This
+is probably the most used filter. Type something into the description
+box and only records that contain this word or phrase are displayed.
+The filtering will occur for each character entered (case is
+insensitive).<br></p><p>The amount field filters on the amount colum -
+this is probaby the easiest way to fins a transaction, especially when
+the filter is set to view only checked records.<br>
+</p><p>Basic maths operators can be supplied to the amount field: &gt; &lt; &gt;= &lt;=. <br>
+For example, to search for all transactions over £100 (or $100...), enter <span style="font-weight: bold;">"&gt;100"</span><br>
+</p>
+<p>The <a href="#Tags">Tag</a> field are discussed in the next section.</p>
+<h2><a name="Tags"></a>Tags</h2><p>Somtimes
+it is useful to assign arbritrary labels or tags to transactions. For
+example if you want to tag a bunch of records that are all to do with
+utililty bills, then you assign a tag called utility by selecting the
+relevant record (or records) and pressing the <img style="width: 16px; height: 16px;" alt="" source=":icons/tag_yellow.png">&nbsp;button. This example uses the NPOWER GAS record.</p><p>This will present a window that initially will have no tags. Press the <img style="width: 16px; height: 16px;" alt="" source=":icons/add.png"> button and enter "utility" in the prompt window. This will create a new tag. Now assign this tag by clicking&nbsp;the checkbox,</p><img alt="" source=":doc/images/tagadd.png"><br><br>Press Save, and then you'll see that&nbsp;a tag has appeared next to the NPOWER GAS record.<br><br><img style="width: 623px; height: 68px;" alt="" source=":doc/images/tag_zoom1.png"><br><br>To
+use the tags in a filter, just enter the tag you wish to find in the
+tag box. The box will auto-complete when you write to try and find your
+tags correctly. <br><br>Does this sound difficult? It shouldn't - it's really easy, honest.<br><br></body></html>

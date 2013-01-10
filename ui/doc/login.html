@@ -1,0 +1,47 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"><title>Login</title>
+
+</head>
+    <body style="font-size: 12pt; font-family: helvetica;">
+<h1>Login</h1>
+<p>This section describes how to <a href="#Logging_into_doshlogger">login</a> doshlogger
+and how to <a href="#Creating_a_new_database">create</a>
+a new database.</p>
+<h2><a name="Logging_into_doshlogger"></a>
+Logging into doshlogger </h2>
+<p> Doshlogger needs a database in order to store your bank
+transactions. </p>
+<p> There are three options: MySql, Postgres or Sqlite. MySql and
+Postgres are full fat databases for which you will need admin access to
+configure. Sqlite is just a special file that requires no additional
+software or configuration. </p>
+<p> If you choose sqlite, then just the filename is required. </p>
+<p> If you choose MySql or Postgres you'll need to supply the
+correct connection details. The default ports to use are 3306 for
+MySql, and 5432 for postgres. For these two, you will need to <a href="#Creating_a_new_database">create an empty database</a>.</p>
+<h2><a name="Creating_a_new_database"></a>Creating
+a new database </h2>
+<h3> <a name="MySql"></a>MySql </h3>
+<p> Easiest way is to use the mysqladmin tool that ships with
+mysql </p>
+<pre>mysqladmin --host localhost --user bob create doshlogger</pre>
+<p> You can call the database anything you like. You (bob) will
+need <i>create</i>&nbsp;privilege in order to do
+this.&nbsp;</p>
+<p>See <a href="http://dev.mysql.com/doc/refman/5.1/en/mysqladmin.html" target="_blank">here</a> for more details.</p>
+<h3> <a name="Postgres"></a>Postgres </h3>
+<p> The admin tool command for postgres is.</p>
+<pre>createdb --host localhost --username bob doshlogger</pre>
+See <a href="http://www.postgresql.org/docs/8.3/static/sql-createdatabase.html" target="_blank">here</a> for more details.
+<h3><a name="Sqlite"></a>Sqlite</h3>
+No initialisation is requird for sqlite -&nbsp;just a filename is
+required. The usual file extension for sqlite is ".db" but this is not
+enforced.
+<h3>Initialising the database</h3>
+<p> doshlogger will detect an database is empty and initialise it
+for you. Press the Connect button and it will ask you if you want to
+initialise it. This assumes that the database has already been created!
+</p>
+<p> </p>
+</body></html>
