@@ -63,32 +63,30 @@ class SqlTableModel(QtSql.QSqlTableModel):
 					return 'some tags'
 			elif item.column() == enum.kRecordColumn_Checked:
 				if super(SqlTableModel, self).data(self.index(item.row(), enum.kRecordColumn_Checked)).toBool():
-					return "Checked: " + super(SqlTableModel, self).data(self.index(item.row(), enum.kRecordColumn_CheckDate)).toDateTime().toString("dd/MM/yy hh:mm")
+					return "Checked: " + super(SqlTableModel, self).data(
+							self.index(item.row(), enum.kRecordColumn_CheckDate)).toDateTime().toString("dd/MM/yy hh:mm")
 
 			elif item.column() == enum.kRecordColumn_Date:
-				return "Imported: " + super(SqlTableModel, self).data(self.index(item.row(), enum.kRecordColumn_InsertDate)).toDateTime().toString("dd/MM/yy hh:mm")
-		"""
+				return "Imported: " + super(SqlTableModel, self).data(
+							self.index(item.row(), enum.kRecordColumn_InsertDate)).toDateTime().toString("dd/MM/yy hh:mm")
 
-				case kRecordColumn_Description:
-					return QSqlTableModel::data(item).toString();
+			elif item.column() == enum.kRecordColumn_Description:
+				return super(SqlTableModel, self).data(item).toString()
+
+		# Return the number of tags
+		if role == QtCore.Qt.UserRole and item.column() == enum.kRecordColumn_Tags:
+			return super(SqlTableModel, self).data(item).toInt()
+
+		if role == QtCore.Qt.BackgroundColorRole:
+			if self.record(item.row()).value(enum.kRecordColumn_Amount).toDouble() > 0.0:
+				return QtGui.QColor("#b6ffac")
+			else:
+				return QtGui.QColor("#ffd3cf")
+
+		
+		"""
 	
-				default:
-					break;
-			}
-			return QVariant();
-		}
 	
-		// Return the number of tags
-		if (role == Qt::UserRole && item.column() == kRecordColumn_Tags) {
-			return QSqlTableModel::data(item).toInt();
-		}
-	
-		if (role == Qt::BackgroundColorRole) {
-			if (record(item.row()).value(kRecordColumn_Amount).toDouble() > 0.0)
-				return QColor("#b6ffac");
-			else
-				return QColor("#ffd3cf");
-		}
 	
 		if (role == Qt::DecorationRole) {
 			if (item.column() == kRecordColumn_Tags && QSqlTableModel::data(item).toInt() >0) {
