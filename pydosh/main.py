@@ -4,7 +4,9 @@ from models import SqlTableModel, SortProxyModel
 from database import db
 from Ui_pydosh import Ui_pydosh
 import enum
-
+import pdb
+QtCore.pyqtRemoveInputHook()
+import pydosh_rc
 import pdb
 
 """
@@ -372,52 +374,6 @@ MainWindow::populateCodes()
 	}
 }
 
-void
-MainWindow::populateAccounts()
-{
-	ui.accountCombo->clear();
-	ui.accountCombo->addItem("all");
-
-	// Only pull in account types used by this user
-	QSqlQuery query(QString(
-			"SELECT DISTINCT at.accountname, at.accounttypeid "
-			"FROM accounttypes at "
-			"INNER JOIN records r ON r.accounttypeid=at.accounttypeid "
-			"WHERE r.userid=%1 "
-			"ORDER BY at.accountname").arg(Database::Instance().userId()));
-
-	while (query.next()) {
-		// Store the accounttypeid in the userData field
-		ui.accountCombo->addItem(query.value(0).toString(), query.value(1).toInt());
-	}
-}
-
-void MainWindow::populateDates()
-{
-//	ui.startDateCombo->clear();
-//	ui.endDateCombo->clear();
-
-	QSqlQuery query( QString(
-			"SELECT MIN(date), MAX(date) "
-			"FROM records "
-			"WHERE userid=%1").arg(Database::Instance().userId()));
-
-	if (query.next()) {
-		QDate startDate = query.value(0).toDate();
-		QDate endDate = query.value(1).toDate();
-
-		ui.startDateEdit->setDateRange(startDate, endDate);
-		ui.endDateEdit->setDateRange(startDate, endDate);
-
-		qDebug() << startDate << endDate;
-
-		ui.endDateEdit->setDate(ui.startDateEdit->maximumDate());
-		ui.startDateEdit->setDate(ui.endDateEdit->date().addYears(-1));
-
-		qDebug() << "set as" <<  ui.startDateEdit->date() << ui.endDateEdit->date();
-	}
-}
-
 """
 
 class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
@@ -428,8 +384,14 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
-		self.checkedCombo.addItems(['all', 'checked', 'unchecked'])
-		self.inoutCombo.addItems(['all', 'money in', 'money out'])
+		self.checkedCombo.addItem('all', enum.kCheckedStatus_All)
+		self.checkedCombo.addItem('checked', enum.kCheckedStatus_Checked)
+		self.checkedCombo.addItem('unchecked', enum.kCheckedStatus_UnChecked)
+
+		self.inoutCombo.addItem('all', enum.kInOutStatus_All)
+		self.inoutCombo.addItem('in', enum.kInOutStatus_In)
+		self.inoutCombo.addItem('out', enum.kInOutStatus_Out)
+
 		self.tagEditButton.setEnabled(False)
 		self.toggleCheckButton.setEnabled(False)
 
@@ -471,23 +433,22 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	@showWaitCursor
 	def loadData(self):
 
-#	if (!Database::Instance().isConnected())
-#		return;
+		if not db.isConnected:
+			return
 
-
-		#pdb.set_trace()
 		self.blockAllSignals(True);
 
-		#self.model = None
-		self.model = SqlTableModel(db.userId, self)
+		self.model = None
+		model = SqlTableModel(db.userId, self)
 
-		self.model.setTable("records")
-		self.model.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
-		self.model.select()
+		model.setTable("records")
+		model.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
+		model.select()
 
 		proxyModel = SortProxyModel(self)
-		proxyModel.setSourceModel(self.model)
+		proxyModel.setSourceModel(model)
 		proxyModel.setFilterKeyColumn(-1)
+
 		self.tableView.setEditTriggers(QtGui.QAbstractItemView.DoubleClicked | QtGui.QAbstractItemView.SelectedClicked)
 		self.tableView.setModel(proxyModel)
 		self.tableView.verticalHeader().hide()
@@ -505,7 +466,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.tableView.horizontalHeader().setStretchLastSection(True)
 		self.tableView.selectionModel().selectionChanged.connect(self.activateButtons)
 
-#		self.model = model
+		self.model = model
 		self.reset()
 
 		self.blockAllSignals(False)
@@ -536,7 +497,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def toggleChecked(self, recordids):
 		if recordids.size() == 0:
 			return
-		
+
 	"""
 	QSqlQuery query(QString (
 			"UPDATE records SET checked=abs(checked -1),checkdate='%1' "
@@ -545,7 +506,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			.arg(recordids.join(",")));
 
 	query.next();
-	
+
 	if (query.lastError().isValid()) {
 		QMessageBox::critical( this, tr("DB Error"), query.lastError().text(), QMessageBox::Ok);
 		return;
@@ -588,95 +549,111 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.endDateEdit.blockSignals(block)
 
 
+	def populateAccounts(self):
+		""" Extract account names from database and populate account combo
+		"""
+		self.accountCombo.clear()
+		self.accountCombo.addItem('all')
+
+		# Only pull in account types used by this user
+		query = QtSql.QSqlQuery()
+		query.prepare("""
+			SELECT DISTINCT at.accountname, at.accounttypeid
+			FROM accounttypes at
+			INNER JOIN records r ON r.accounttypeid=at.accounttypeid
+			WHERE r.userid=?
+			ORDER BY at.accountname
+		""")
+
+		query.addBindValue(db.userId)
+		query.exec_()
+
+		while query.next():
+			# Store the accounttypeid in the userData field
+			self.accountCombo.addItem(query.value(0).toString(), query.value(1).toInt())
+
+	def populateDates(self):
+
+		query = QtSql.QSqlQuery()
+		query.prepare("""
+			SELECT MIN(date), MAX(date)
+			FROM records
+			WHERE userid=?
+		""")
+
+		query.addBindValue(db.userId)
+		query.exec_()
+
+		if query.next():
+			startDate = query.value(0).toDate()
+			endDate = query.value(1).toDate()
+
+			self.startDateEdit.setDateRange(startDate, endDate)
+			self.endDateEdit.setDateRange(startDate, endDate)
+
+			self.endDateEdit.setDate(self.startDateEdit.maximumDate())
+			self.startDateEdit.setDate(self.endDateEdit.date().addYears(-1))
+
 
 	def toggleSelected(self):
 		self.toggleChecked (self.getSelectedRecordIds())
 
 
 	def reset(self):
-	#if (!Database::Instance().isConnected() || !m_model)
-	#	return;
 
-		"""
-		selfl.blockAllSignals(True)
-	populateAccounts();
-	populateDates();
-	populateCodes();
-	loadTags();
+		if self.model is None or not db.isConnected:
+			return
 
-	ui.checkedCombo->setCurrentIndex(0);
-	ui.typeCombo->setCurrentIndex(0);
-	ui.accountCombo->setCurrentIndex(0);
+		self.blockAllSignals(True)
+		self.populateAccounts()
+		self.populateDates()
+#		self.populateCodes()
+	#	loadTags();
+		self.checkedCombo.setCurrentIndex(0)
+		self.typeCombo.setCurrentIndex(0)
+		self.accountCombo.setCurrentIndex(0)
 
-	ui.inoutCombo->setCurrentIndex(0);
-	ui.amountEdit->clear();
-	ui.descEdit->clear();
-	ui.tagEdit->clear();
-	ui.dateRangeCheckbox->setCheckState(Qt::Checked);
-	ui.endDateEdit->setEnabled(true);
-	ui.tableView->sortByColumn(kRecordColumn_Date, Qt::DescendingOrder);
+		self.inoutCombo.setCurrentIndex(0)
+		self.amountEdit.clear()
+		self.descEdit.clear()
+		self.tagEdit.clear()
+		self.dateRangeCheckbox.setCheckState(QtCore.Qt.Checked)
+		self.endDateEdit.setEnabled(True)
+		self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.DescendingOrder)
 
-	blockAllSignals(false);
+		self.blockAllSignals(False)
 
-	setFilters();
-}
-
-		"""
 		self.setFilter()
+
 
 	def setFilter(self):
 
-		if self.model is None:
+		if self.model is None or not db.isConnected:
 			return
-		self.model.setFilter('')
-		print self.model.query().lastQuery().replace('\n', '')
 
-		#qDebug() << self.m_model->query().lastQuery();
-#	if (!m_model || !Database::Instance().isConnected())
-#		return;
 
-		"""
-	/*
-	 * User filter
-	 */
-	QString filter = QString("records.userid=%1").arg(Database::Instance().userId());
+		queryFilter = QtCore.QString()
 
-	/*
-	 * Account filter
-	 */
-	QVariant accountNo = ui.accountCombo->itemData(ui.accountCombo->currentIndex(), Qt::UserRole);
+		# Account filter
+		accountNo = self.accountCombo.itemData(self.accountCombo.currentIndex(), QtCore.Qt.UserRole)
+		if accountNo.isValid():
+			queryFilter += QtCore.QString(' AND r.accounttypeid=%1').arg(accountNo.toInt())
 
-	if (accountNo.isValid()) {
-		filter += QString(" AND records.accounttypeid=%1").arg(accountNo.toInt());
-	}
 
-	/*
-	 * filter on dates
-	 */
-	QDate startDate = ui.startDateEdit->date();
-	QDate endDate = ui.endDateEdit->date();
+		# Date filter
+		startDate = self.startDateEdit.date()
+		if self.dateRangeCheckbox.checkState() == QtCore.Qt.Unchecked:
+			endDate = self.endDateEdit.date()
+		else:
+			endDate = startDate
 
-	if (ui.dateRangeCheckbox->checkState() == Qt::Unchecked) {
-		endDate = startDate;
-	}
+		if startDate.isValid() and endDate.isValid():
+			queryFilter += QtCore.QString(" AND date >= '%1' AND date < '%2' ")\
+				.arg(startDate.toString(QtCore.Qt.ISODate))\
+				.arg(endDate.addMonths(1).toString(QtCore.Qt.ISODate))
 
-	if (startDate.isValid() && endDate.isValid()) {
-		filter += QString(
-				" AND date >= '%1' AND date < '%2' ")
-				.arg(startDate.toString(Qt::ISODate))
-				.arg(endDate.addMonths(1).toString(Qt::ISODate));
-	}
-
-	/*
-	 * filter on code
-	 */
-	if (ui.typeCombo->currentIndex()) {
-		filter += QString(" AND codes.description ='%1'").arg(ui.typeCombo->currentText());
-	}
-
-	/*
-	 * filter on checked status
-	 */
+		# checked state filter
+		state ui.checkedCombo->itemData(ui.checkedCombo->currentIndex(), Qt::UserRole).toInt())
 	switch (static_cast<eCheckedState>(ui.checkedCombo->itemData(ui.checkedCombo->currentIndex(), Qt::UserRole).toInt())) {
 		case kCheckedStatus_Checked:
 			filter += QString(" AND checked=1");
@@ -687,7 +664,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		default:
 			break;
 	}
-
+		"""
 	// Filter on money coming in or going out
 	switch (static_cast<eCheckedState>(ui.inoutCombo->itemData(ui.inoutCombo->currentIndex(), Qt::UserRole).toInt())) {
 		case kInOutStatus_In:
@@ -760,3 +737,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	QApplication::restoreOverrideCursor();
 }
 		"""
+
+		self.model.setFilter(queryFilter)
+		print self.model.query().lastQuery().replace('\n', '')

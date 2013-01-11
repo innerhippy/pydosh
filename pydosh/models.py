@@ -1,4 +1,7 @@
 from PyQt4 import QtCore, QtGui, QtSql
+import math
+import pydosh_rc
+import pdb
 import enum
 
 class SqlTableModel(QtSql.QSqlTableModel):
@@ -38,15 +41,16 @@ class SqlTableModel(QtSql.QSqlTableModel):
 			%s
 		""" % (self.__userId, self.filter())
 
-		
+
 #		if not self.filter().isEmpty():
 #			query.append(QLatin1String(" WHERE ")).append(filter());
 
 		query +=  'ORDER BY r.date, r.description'
 		return query
-			
-	def data(self, item, role):
 
+	def data(self, item, role=QtCore.Qt.DisplayRole):
+		""" Return data from the model, formatted for viewing
+		"""
 		if not item.isValid():
 			return QtCore.QVariant()
 
@@ -58,11 +62,13 @@ class SqlTableModel(QtSql.QSqlTableModel):
 
 		if role == QtCore.Qt.ToolTipRole:
 			if item.column() == enum.kRecordColumn_Tags:
-				if super(SqlTableModel, self).data(item).toInt() > 0:
+				val, ok = super(SqlTableModel, self).data(item).toInt()
+				if ok and val > 0:
 					# return getTagList(QSqlTableModel::data(index(item.row(), kRecordColumn_RecordId)).toInt())
 					return 'some tags'
 			elif item.column() == enum.kRecordColumn_Checked:
-				if super(SqlTableModel, self).data(self.index(item.row(), enum.kRecordColumn_Checked)).toBool():
+				val, ok = super(SqlTableModel, self).data(self.index(item.row(), enum.kRecordColumn_Checked)).toBool()
+				if ok and val:
 					return "Checked: " + super(SqlTableModel, self).data(
 							self.index(item.row(), enum.kRecordColumn_CheckDate)).toDateTime().toString("dd/MM/yy hh:mm")
 
@@ -73,68 +79,55 @@ class SqlTableModel(QtSql.QSqlTableModel):
 			elif item.column() == enum.kRecordColumn_Description:
 				return super(SqlTableModel, self).data(item).toString()
 
-		# Return the number of tags
 		if role == QtCore.Qt.UserRole and item.column() == enum.kRecordColumn_Tags:
-			return super(SqlTableModel, self).data(item).toInt()
+			# Return the number of tags
+			val, ok = super(SqlTableModel, self).data(item).toInt()
+			if ok:
+				return val
 
 		if role == QtCore.Qt.BackgroundColorRole:
-			if self.record(item.row()).value(enum.kRecordColumn_Amount).toDouble() > 0.0:
-				return QtGui.QColor("#b6ffac")
-			else:
-				return QtGui.QColor("#ffd3cf")
+			# Indicate credit/debit with row colour
+			val, ok = self.record(item.row()).value(enum.kRecordColumn_Amount).toDouble()
+			if ok:
+				return QtGui.QColor("#b6ffac") if val > 0.0 else QtGui.QColor("#ffd3cf")
 
-		
-		"""
-	
-	
-	
-		if (role == Qt::DecorationRole) {
-			if (item.column() == kRecordColumn_Tags && QSqlTableModel::data(item).toInt() >0) {
-				return QIcon(QString::fromUtf8(":/icons/tag_yellow.png"));
-			}
-		}
-	
-		if (role == Qt::DisplayRole) {
-	
-			switch (item.column()) {
-				case kRecordColumn_Checked:
-				case kRecordColumn_Tags:
-					break;
-	
-				case kRecordColumn_Amount:
-					// Display absolute currency values. credit/debit is indicated by background colour
-					return QString::number(fabs(QSqlTableModel::data(item).toDouble()), 'f', 2);
-	
-				case kRecordColumn_Balance:
-					return QString::number(QSqlTableModel::data(item).toDouble(), 'f', 2);
-	
-				case kRecordColumn_Description:
-					// Truncate the description field to 30 chars
-					return QSqlTableModel::data(item).toString().left(30);
-	
-				case kRecordColumn_Date:
-					return QSqlTableModel::data(item).toDate();
-	
-				case kRecordColumn_AccountType:
-				case kRecordColumn_Type:
-					return QSqlTableModel::data(item);
-	
-				case kRecordColumn_Txdate:
-					if (QSqlTableModel::data(item).toDateTime().time().toString() == "00:00:00")
-						return QSqlTableModel::data(item).toDate();
-					else 
-						return QSqlTableModel::data(item).toDateTime();
-	
-				default:
-					break;
-			}
-			return QVariant();
-		}
-		"""
+		if role == QtCore.Qt.DecorationRole:
+			if item.column() == enum.kRecordColumn_Tags:
+				# Show tag icon if we have any
+				val, ok = super(SqlTableModel, self).data(item).toInt()
+				if ok and val > 0:
+					return QtGui.QIcon(':/icons/tag_yellow.png')
+
+
+		if role == QtCore.Qt.DisplayRole:
+			if item.column() in (enum.kRecordColumn_Checked, enum.kRecordColumn_Tags):
+				# Don't display anything for these fields
+				return QtCore.QVariant()
+
+			elif item.column() == enum.kRecordColumn_Amount:
+				# Display absolute currency values. credit/debit is indicated by background colour
+				val, ok = super(SqlTableModel, self).data(item).toDouble()
+				if ok:
+					return QtCore.QString.number(math.fabs(val), 'f', 2)
+
+			elif item.column() == enum.kRecordColumn_Description:
+				# Truncate the description field to 30 chars
+				return super(SqlTableModel, self).data(item).toString().left(30)
+
+			elif item.column() == enum.kRecordColumn_Date:
+				return super(SqlTableModel, self).data(item).toDate()
+
+			elif item.column() == enum.kRecordColumn_Txdate:
+				if super(SqlTableModel, self).data(item).toDateTime().time().toString() == "00:00:00":
+					return super(SqlTableModel, self).data(item).toDate()
+				else:
+					return super(SqlTableModel, self).data(item).toDateTime()
+
 		return super(SqlTableModel, self).data(item, role)
 
-	def headerData (self, section, orientation, role):
-
+	def headerData (self, section, orientation, role=QtCore.Qt.DisplayRole):
+		""" Set the header labels for the view
+		"""
 		if role == QtCore.Qt.DisplayRole:
 			if section == enum.kRecordColumn_Checked:
 				return "Check"
@@ -158,31 +151,23 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 	def __init__(self, parent=None):
 		super(SortProxyModel, self).__init__(parent=parent)
 
-	def lessThanXXXXXXX(self, left, right):
+	def lessThan(self, left, right):
+		""" Define the comparison to ensure column data is sorted correctly
 		"""
 		leftData = self.sourceModel().data(left)
-		rightData = sourceModel().data(right)
+		rightData = self.sourceModel().data(right)
 
-		if left.column() == 1:
-			return self.sourceModel().date(left, QtCore.Qt.UserRole)
-		elif leftColumn() == 2:
-			return self.sourceModel().date(left, QtCore.Qt.UserRole)
+		if left.column() == enum.kRecordColumn_Tags:
+			return self.sourceModel().data(left, QtCore.Qt.UserRole) < self.sourceModel().data(right, QtCore.Qt.UserRole)
 
-	switch (left.column()) {
-		case kRecordColumn_Tags:
-			return sourceModel()->data(left, Qt::UserRole).toInt() < sourceModel()->data(right, Qt::UserR
-ole).toInt();
-		case kRecordColumn_Checked:
-			return sourceModel()->data(left, Qt::CheckStateRole).toInt() < sourceModel()->data(right, Qt:
-:CheckStateRole).toInt();
-		case kRecordColumn_Amount:
-		case kRecordColumn_Balance:
-			return sourceModel()->data(left).toDouble() < sourceModel()->data(right).toDouble();
-		default:
-			break;
-	}
+		elif left.column() == enum.kRecordColumn_Checked:
+			return self.sourceModel().data(left, QtCore.Qt.CheckStateRole) < self.sourceModel().data(right, QtCore.Qt.CheckStateRole)
 
-	return QSortFilterProxyModel::lessThan(left, right);
-class 
-		"""
+		elif left.column() == enum.kRecordColumn_Amount:
+			leftVal, leftOk = self.sourceModel().data(left).toDouble()
+			rightVal, rightOk = self.sourceModel().data(right).toDouble()
+			if leftOk and rightOk:
+				return leftVal < rightVal
+
+		return super(SortProxyModel, self).lessThan(left, right)
 
