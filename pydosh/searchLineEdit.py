@@ -1,7 +1,9 @@
 from PyQt4 import QtGui, QtCore
 
-class SearchLineEdit(QtGui.QWidget) :
-	def __init__(parent=None):
+class SearchLineEdit(QtGui.QLineEdit):
+	controlKeyPressed = QtCore.pyqtSignal(int)
+
+	def __init__(self, parent=None):
 		super(SearchLineEdit, self).__init__(parent=parent)
 		
 		clearButton = QtGui.QToolButton(self)

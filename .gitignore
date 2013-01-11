@@ -5,3 +5,5 @@
 *.swp
 *.*~
 .settings
+pydosh/Ui_pydosh.py
+pydosh/pydosh_rc.py

@@ -1,62 +1,17 @@
-from PyQt4 import QtGui, QtCore
+from PyQt4 import QtGui, QtCore, QtSql
+from utils import showWaitCursor
+from models import SqlTableModel, SortProxyModel
+from database import db
+from Ui_pydosh import Ui_pydosh
+import enum
 
-from Ui_pydosh import Ui_pyDosh
+import pdb
 
 """
 MainWindow::MainWindow(QWidget *parent, Qt::WFlags flags) :
 	QMainWindow(parent, flags),
 	m_model(0)
 {
-	setAttribute(Qt::WA_DeleteOnClose);
-	ui.setupUi(this);
-
-	ui.checkedCombo->addItem("all", kCheckedStatus_All);
-	ui.checkedCombo->addItem("checked", kCheckedStatus_Checked);
-	ui.checkedCombo->addItem("unchecked", kCheckedStatus_UnChecked);
-
-	ui.inoutCombo->addItem("all", kInOutStatus_All);
-	ui.inoutCombo->addItem("money in", kInOutStatus_In);
-	ui.inoutCombo->addItem("money out", kInOutStatus_Out);
-
-//	ui.startDateCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-//	ui.endDateCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-
-	ui.tagEditButton->setEnabled(false);
-	ui.toggleCheckButton->setEnabled(false);
-
-	connect (ui.checkedCombo, SIGNAL(currentIndexChanged (int)), this, SLOT(setFilters()));
-	connect (ui.inoutCombo, SIGNAL(currentIndexChanged (int)), this, SLOT(setFilters()));
-	connect (ui.typeCombo, SIGNAL(currentIndexChanged (int)), this, SLOT(setFilters()));
-	connect (ui.accountCombo, SIGNAL(currentIndexChanged (int)), this, SLOT(setFilters()));
-	connect (ui.descEdit, SIGNAL(textChanged(const QString&)), this, SLOT(setFilters()));
-	connect (ui.amountEdit, SIGNAL(textChanged(const QString&)), this, SLOT(setFilters()));
-	connect (ui.amountEdit, SIGNAL(controlKeyPressed(int)), this, SLOT(controlKeyPressed(int)));
-	connect (ui.tagEdit, SIGNAL(editingFinished()), this, SLOT(setFilters()));
-	connect (ui.startDateEdit, SIGNAL(dateChanged(const QDate&)), this, SLOT(setFilters()));
-	connect (ui.endDateEdit, SIGNAL(dateChanged(const QDate&)), this, SLOT(setFilters()));
-	connect (ui.toggleCheckButton, SIGNAL(clicked()), this, SLOT(toggleSelected()));
-	connect (ui.dateRangeCheckbox, SIGNAL(stateChanged(int)), this, SLOT(setEndDate(int)));
-	connect (ui.reloadButton, SIGNAL(clicked()), this, SLOT(reset()));
-	connect (ui.tableView, SIGNAL(clicked(const QModelIndex&)), this, SLOT(itemChecked(const QModelIndex&)));
-	connect (ui.tagEditButton, SIGNAL(pressed()), this, SLOT(addTagButtonPressed()));
-
-	connect (&Database::Instance(), SIGNAL(connected(bool, const QString&)), this, SLOT(setConnectionStatus(bool, const QString&)));
-
-	QValidator *amountValidator = new QRegExpValidator(QRegExp("[<>=0-9.]*"), this);
-	ui.amountEdit->setValidator(amountValidator);
-
-	ui.startDateEdit->setCalendarPopup(true);
-	ui.endDateEdit->setCalendarPopup(true);
-
-	addActions();
-
-	ui.inTotalLabel->setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
-	ui.outTotalLabel->setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
-	ui.recordCountLabel->setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
-
-	setConnectionStatus(Database::Instance().isConnected(), Database::Instance().connectionDetails());
-
-	loadData();
 }
 
 
@@ -207,50 +162,6 @@ MainWindow::displayRecordCount()
 	ui.recordCountLabel->setText(QString("%L1 / %L2 ").arg(numRecords).arg(totalRecords));
 }
 
-void
-MainWindow::loadData()
-{
-	if (!Database::Instance().isConnected())
-		return;
-
-	QApplication::setOverrideCursor(Qt::WaitCursor);
-
-	blockAllSignals(true);
-
-	delete m_model;
-	m_model = new SqlTableModel(this);
-	m_model->setTable("records");
-	m_model->setEditStrategy(QSqlTableModel::OnFieldChange);
-	m_model->select();
-
-	SortProxyModel* proxy = new SortProxyModel(this);
-	proxy->setSourceModel(m_model);
-	proxy->setFilterKeyColumn(-1);
-
-	ui.tableView->setEditTriggers(QAbstractItemView::DoubleClicked| QAbstractItemView::SelectedClicked);
-
-	ui.tableView->setModel(proxy);
-	ui.tableView->verticalHeader()->hide();
-	ui.tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
-	ui.tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
-	ui.tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-	ui.tableView->setColumnHidden(kRecordColumn_RecordId, true);
-	ui.tableView->setColumnHidden(kRecordColumn_CheckDate, true);
-	ui.tableView->setColumnHidden(kRecordColumn_RawData, true);
-	ui.tableView->setColumnHidden(kRecordColumn_User, true);
-	ui.tableView->setColumnHidden(kRecordColumn_InsertDate, true);
-	ui.tableView->setSortingEnabled(true);
-	ui.tableView->sortByColumn(kRecordColumn_Date, Qt::DescendingOrder);
- 	ui.tableView->horizontalHeader()->setStretchLastSection(true);
-	connect(ui.tableView->selectionModel(), SIGNAL(selectionChanged(const QItemSelection&, const QItemSelection&)),
-			this, SLOT(activateButtons()));
-
-	reset();
-
-	QApplication::restoreOverrideCursor();
-	blockAllSignals(false);
-}
-
 void MainWindow::loadTags()
 {
 	QStringList tagList;
@@ -271,73 +182,10 @@ void MainWindow::loadTags()
 }
 
 void 
-MainWindow::blockAllSignals(bool block)
-{
-	ui.accountCombo->blockSignals(block);
-	ui.typeCombo->blockSignals(block);
-	ui.dateRangeCheckbox->blockSignals(block);
-	ui.descEdit->blockSignals(block);
-	ui.amountEdit->blockSignals(block);
-	ui.startDateEdit->blockSignals(block);
-	ui.endDateEdit->blockSignals(block);
-}
-
-void 
 MainWindow::setEndDate(int state)
 {
 	ui.endDateEdit->setEnabled( state == Qt::Checked );
 	setFilters();
-}
-
-void
-MainWindow::toggleSelected()
-{
-	toggleChecked (getSelectedRecordIds());
-}
-
-void MainWindow::toggleChecked(const QStringList& recordids)
-{
-	if (!recordids.size())
-		return;
-		
-	QSqlQuery query(QString (
-			"UPDATE records SET checked=abs(checked -1),checkdate='%1' "
-			"WHERE recordid IN (%2)")
-			.arg(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"))
-			.arg(recordids.join(",")));
-
-	query.next();
-	
-	if (query.lastError().isValid()) {
-		QMessageBox::critical( this, tr("DB Error"), query.lastError().text(), QMessageBox::Ok);
-		return;
-	}
-
-	saveTableState();
-	m_model->select();
-	restoreTableState();
-
-	if (m_model->rowCount() == 0) {
-		// Smart focus - if we have no records showing then reset the last
-		// search filter and set focus
-		QString descFilter = ui.descEdit->text();
-		QString amountFilter = ui.amountEdit->text();
-		QString tagFilter = ui.tagEdit->text();
-
-		if (!descFilter.isEmpty() && amountFilter.isEmpty() && tagFilter.isEmpty() ) {
-			ui.descEdit->clear();
-			ui.descEdit->setFocus(Qt::OtherFocusReason);
-		}
-		else if (!amountFilter.isEmpty() && descFilter.isEmpty() && tagFilter.isEmpty()) {
-			ui.amountEdit->clear();
-			ui.amountEdit->setFocus(Qt::OtherFocusReason);
-		}
-		else if (!tagFilter.isEmpty() && descFilter.isEmpty() && amountFilter.isEmpty()) {
-			ui.amountEdit->clear();
-			ui.amountEdit->setFocus(Qt::OtherFocusReason);
-		}
-	}
-	displayRecordCount();
 }
 
 void
@@ -353,21 +201,6 @@ MainWindow::itemChecked(const QModelIndex& index)
 	Q_ASSERT(proxyModel);
 
 	toggleChecked (QStringList() << m_model->record(proxyModel->mapToSource(index).row()).value(kRecordColumn_RecordId).toString());
-}
-
-void
-MainWindow::activateButtons()
-{
-	QItemSelectionModel* model = ui.tableView->selectionModel();
-	bool enable=false;
-
-	if (model) {
-		enable = model->selectedRows().size() > 0;
-	}
-	
-	ui.tagEditButton->setEnabled(enable);
-	ui.toggleCheckButton->setEnabled(enable);
-	
 }
 
 QStringList MainWindow::getSelectedRecordIds() const
@@ -585,12 +418,187 @@ void MainWindow::populateDates()
 	}
 }
 
-void MainWindow::reset()
-{
-	if (!Database::Instance().isConnected() || !m_model)
-		return;
+"""
 
-	blockAllSignals(true);
+class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
+	def __init__(self, parent=None):
+		super(PydoshWindow, self).__init__(parent=parent)
+		self.setupUi(self)
+		self.model = None
+
+		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+
+		self.checkedCombo.addItems(['all', 'checked', 'unchecked'])
+		self.inoutCombo.addItems(['all', 'money in', 'money out'])
+		self.tagEditButton.setEnabled(False)
+		self.toggleCheckButton.setEnabled(False)
+
+		self.checkedCombo.currentIndexChanged.connect(self.setFilter)
+		self.inoutCombo.currentIndexChanged.connect(self.setFilter)
+		self.typeCombo.currentIndexChanged.connect(self.setFilter)
+		self.accountCombo.currentIndexChanged.connect(self.setFilter)
+		self.descEdit.textChanged.connect(self.setFilter)
+		self.amountEdit.textChanged.connect(self.setFilter)
+		self.amountEdit.controlKeyPressed.connect(self.controlKeyPressed)
+		self.tagEdit.editingFinished.connect(self.setFilter)
+		self.startDateEdit.dateChanged.connect(self.setFilter)
+		self.endDateEdit.dateChanged.connect(self.setFilter)
+		self.toggleCheckButton.clicked.connect(self.toggleSelected)
+#		self.dateRangeCheckbox.stateChanged.connect(self.setEndDate)
+#		self.reloadButton.clicked.connect(self.reset)
+#		self.tableView.clicked.connect(self.itemChecked)
+#		self.tagEditButton.pressed.connect(self.addTagButtonPressed)
+
+		#connect (&Database::Instance(), SIGNAL(connected(bool, const QString&)), this, SLOT(setConnectionStatus(bool, const QString&)));
+
+		amountValidator = QtGui.QRegExpValidator(QtCore.QRegExp("[<>=0-9.]*"), self)
+		self.amountEdit.setValidator(amountValidator)
+
+		self.startDateEdit.setCalendarPopup(True)
+		self.endDateEdit.setCalendarPopup(True)
+
+	#	addActions();
+
+		self.inTotalLabel.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Sunken)
+		self.outTotalLabel.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Sunken)
+		self.recordCountLabel.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Sunken)
+
+#		self.setConnectionStatus(Database::Instance().isConnected(), Database::Instance().connectionDetails());
+
+		self.loadData()
+
+
+	@showWaitCursor
+	def loadData(self):
+
+#	if (!Database::Instance().isConnected())
+#		return;
+
+
+		#pdb.set_trace()
+		self.blockAllSignals(True);
+
+		#self.model = None
+		self.model = SqlTableModel(db.userId, self)
+
+		self.model.setTable("records")
+		self.model.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
+		self.model.select()
+
+		proxyModel = SortProxyModel(self)
+		proxyModel.setSourceModel(self.model)
+		proxyModel.setFilterKeyColumn(-1)
+		self.tableView.setEditTriggers(QtGui.QAbstractItemView.DoubleClicked | QtGui.QAbstractItemView.SelectedClicked)
+		self.tableView.setModel(proxyModel)
+		self.tableView.verticalHeader().hide()
+		self.tableView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+		self.tableView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+		self.tableView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+
+		self.tableView.setColumnHidden(enum.kRecordColumn_RecordId, True)
+		self.tableView.setColumnHidden(enum.kRecordColumn_CheckDate, True)
+		self.tableView.setColumnHidden(enum.kRecordColumn_RawData, True)
+		self.tableView.setColumnHidden(enum.kRecordColumn_User, True)
+		self.tableView.setColumnHidden(enum.kRecordColumn_InsertDate, True)
+		self.tableView.setSortingEnabled(True)
+		self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.DescendingOrder)
+		self.tableView.horizontalHeader().setStretchLastSection(True)
+		self.tableView.selectionModel().selectionChanged.connect(self.activateButtons)
+
+#		self.model = model
+		self.reset()
+
+		self.blockAllSignals(False)
+
+	def activateButtons(self):
+		"""
+	QItemSelectionModel* model = ui.tableView->selectionModel();
+	bool enable=false;
+
+	if (model) {
+		enable = model->selectedRows().size() > 0;
+	}
+	
+	ui.tagEditButton->setEnabled(enable);
+	ui.toggleCheckButton->setEnabled(enable);
+	
+		"""
+
+
+	def controlKeyPressed(self, key):
+		""" control key has been pressed - if we have a single row displayed, then toggle the status
+		"""
+		if self.model and self.model.rowCount() == 1:
+			if key == QtCore.Qt.Key_Space:
+				pass
+#				self.toggleChecked(QtCore.QStringList(self.model->record(0).value(kRecordColumn_RecordId).toString()))
+
+	def toggleChecked(self, recordids):
+		if recordids.size() == 0:
+			return
+		
+	"""
+	QSqlQuery query(QString (
+			"UPDATE records SET checked=abs(checked -1),checkdate='%1' "
+			"WHERE recordid IN (%2)")
+			.arg(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"))
+			.arg(recordids.join(",")));
+
+	query.next();
+	
+	if (query.lastError().isValid()) {
+		QMessageBox::critical( this, tr("DB Error"), query.lastError().text(), QMessageBox::Ok);
+		return;
+	}
+
+	saveTableState();
+	m_model->select();
+	restoreTableState();
+
+	if (m_model->rowCount() == 0) {
+		// Smart focus - if we have no records showing then reset the last
+		// search filter and set focus
+		QString descFilter = ui.descEdit->text();
+		QString amountFilter = ui.amountEdit->text();
+		QString tagFilter = ui.tagEdit->text();
+
+		if (!descFilter.isEmpty() && amountFilter.isEmpty() && tagFilter.isEmpty() ) {
+			ui.descEdit->clear();
+			ui.descEdit->setFocus(Qt::OtherFocusReason);
+		}
+		else if (!amountFilter.isEmpty() && descFilter.isEmpty() && tagFilter.isEmpty()) {
+			ui.amountEdit->clear();
+			ui.amountEdit->setFocus(Qt::OtherFocusReason);
+		}
+		else if (!tagFilter.isEmpty() && descFilter.isEmpty() && amountFilter.isEmpty()) {
+			ui.amountEdit->clear();
+			ui.amountEdit->setFocus(Qt::OtherFocusReason);
+		}
+	}
+	displayRecordCount();
+	"""
+
+	def blockAllSignals(self, block):
+		self.accountCombo.blockSignals(block)
+		self.typeCombo.blockSignals(block)
+		self.dateRangeCheckbox.blockSignals(block)
+		self.descEdit.blockSignals(block)
+		self.amountEdit.blockSignals(block)
+		self.startDateEdit.blockSignals(block)
+		self.endDateEdit.blockSignals(block)
+
+
+
+	def toggleSelected(self):
+		self.toggleChecked (self.getSelectedRecordIds())
+
+
+	def reset(self):
+	#if (!Database::Instance().isConnected() || !m_model)
+	#	return;
+
+		"""
+		selfl.blockAllSignals(True)
 	populateAccounts();
 	populateDates();
 	populateCodes();
@@ -613,21 +621,21 @@ void MainWindow::reset()
 	setFilters();
 }
 
-void MainWindow::controlKeyPressed(int key) {
-	// control key has been pressed - if we have a single row displayed, then toggle the status
-	if (m_model && m_model->rowCount() == 1) {
-		if (key == Qt::Key_Space) {
-			toggleChecked(QStringList(m_model->record(0).value(kRecordColumn_RecordId).toString()));
-		}
-	}
-}
+		"""
+		self.setFilter()
 
-void MainWindow::setFilters()
-{
-	if (!m_model || !Database::Instance().isConnected())
-		return;
+	def setFilter(self):
 
-	qDebug() << "SETFILTER" << sender();
+		if self.model is None:
+			return
+		self.model.setFilter('')
+		print self.model.query().lastQuery().replace('\n', '')
+
+		#qDebug() << self.m_model->query().lastQuery();
+#	if (!m_model || !Database::Instance().isConnected())
+#		return;
+
+		"""
 	/*
 	 * User filter
 	 */
@@ -751,11 +759,4 @@ void MainWindow::setFilters()
 
 	QApplication::restoreOverrideCursor();
 }
-"""
-
-class PyDoshDialog(Ui_pyDosh, QtGui.QDialog):
-	def __init__(self, parent=None):
-		super(PyDoshDialog, self).__init__(parent=parent)
-
-		import pdb
-		pdb.set_trace()
+		"""

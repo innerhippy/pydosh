@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>pyDosh</class>
- <widget class="QMainWindow" name="pyDosh">
+ <class>pydosh</class>
+ <widget class="QMainWindow" name="pydosh">
   <property name="geometry">
    <rect>
     <x>0</x>
