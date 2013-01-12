@@ -651,7 +651,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			queryFilter += QtCore.QString(" AND date >= '%1' AND date < '%2' ")\
 				.arg(startDate.toString(QtCore.Qt.ISODate))\
 				.arg(endDate.addMonths(1).toString(QtCore.Qt.ISODate))
-
+		"""
 		# checked state filter
 		state ui.checkedCombo->itemData(ui.checkedCombo->currentIndex(), Qt::UserRole).toInt())
 	switch (static_cast<eCheckedState>(ui.checkedCombo->itemData(ui.checkedCombo->currentIndex(), Qt::UserRole).toInt())) {
@@ -664,7 +664,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		default:
 			break;
 	}
-		"""
+		
 	// Filter on money coming in or going out
 	switch (static_cast<eCheckedState>(ui.inoutCombo->itemData(ui.inoutCombo->currentIndex(), Qt::UserRole).toInt())) {
 		case kInOutStatus_In:

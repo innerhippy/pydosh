@@ -12,3 +12,11 @@ kRecordColumn_Amount = 9
 #kRecordColumn_Balance = 10
 kRecordColumn_InsertDate = 10
 kRecordColumn_RawData = 11
+
+kCheckedStatus_All =0
+kCheckedStatus_Checked = 1
+kCheckedStatus_UnChecked = 2
+
+kInOutStatus_All = 0
+kInOutStatus_In = 1
+kInOutStatus_Out = 2

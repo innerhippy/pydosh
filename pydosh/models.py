@@ -8,6 +8,7 @@ class SqlTableModel(QtSql.QSqlTableModel):
 	def __init__(self, userId, parent=None):
 		super(SqlTableModel, self).__init__(parent=parent)
 		self.__userId = userId
+		self.__parameters = {}
 
 	def select(self):
 		status = super(SqlTableModel, self).select()
@@ -37,15 +38,16 @@ class SqlTableModel(QtSql.QSqlTableModel):
 			FROM records r
 			INNER JOIN accounttypes ON accounttypes.accounttypeid=r.accounttypeid 
 			INNER JOIN users ON users.userid=r.userid
-			WHERE r.userid=%d
-			%s
-		""" % (self.__userId, self.filter())
+			WHERE r.userid=%(userid)s
+			%(filter)s
+		""" % {'userid': self.__userId, 'filter': self.filter()}
 
 
 #		if not self.filter().isEmpty():
 #			query.append(QLatin1String(" WHERE ")).append(filter());
 
 		query +=  'ORDER BY r.date, r.description'
+		print 'QUERY', query
 		return query
 
 	def data(self, item, role=QtCore.Qt.DisplayRole):
