@@ -21,6 +21,9 @@ class SqlTableModel(QtSql.QSqlTableModel):
 		if self.tableName().isEmpty():
 			return QtCore.QString()
 
+		queryFilter = self.filter()
+		queryFilter = 'AND ' + queryFilter if queryFilter else ''
+
 		query = """
 			SELECT 
 				r.recordid, 
@@ -40,14 +43,9 @@ class SqlTableModel(QtSql.QSqlTableModel):
 			INNER JOIN users ON users.userid=r.userid
 			WHERE r.userid=%(userid)s
 			%(filter)s
-		""" % {'userid': self.__userId, 'filter': self.filter()}
+			ORDER BY r.date, r.description
+		""" % {'userid': self.__userId, 'filter': queryFilter}
 
-
-#		if not self.filter().isEmpty():
-#			query.append(QLatin1String(" WHERE ")).append(filter());
-
-		query +=  'ORDER BY r.date, r.description'
-		print 'QUERY', query
 		return query
 
 	def data(self, item, role=QtCore.Qt.DisplayRole):
@@ -69,8 +67,7 @@ class SqlTableModel(QtSql.QSqlTableModel):
 					# return getTagList(QSqlTableModel::data(index(item.row(), kRecordColumn_RecordId)).toInt())
 					return 'some tags'
 			elif item.column() == enum.kRecordColumn_Checked:
-				val, ok = super(SqlTableModel, self).data(self.index(item.row(), enum.kRecordColumn_Checked)).toBool()
-				if ok and val:
+				if super(SqlTableModel, self).data(self.index(item.row(), enum.kRecordColumn_Checked)).toBool():
 					return "Checked: " + super(SqlTableModel, self).data(
 							self.index(item.row(), enum.kRecordColumn_CheckDate)).toDateTime().toString("dd/MM/yy hh:mm")
 

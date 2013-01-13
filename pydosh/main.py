@@ -1,3 +1,5 @@
+import math
+from contextlib  import contextmanager
 from PyQt4 import QtGui, QtCore, QtSql
 from utils import showWaitCursor
 from models import SqlTableModel, SortProxyModel
@@ -32,61 +34,6 @@ void MainWindow::show() {
 	ui.tableView->resizeColumnsToContents();
 }
 
-void MainWindow::addActions()
-{
-	QAction* quitAction = new QAction(tr("&Quit"),this);
-	quitAction->setShortcut(tr("Alt+q"));
-	quitAction->setStatusTip(tr("Exit the program"));
-	quitAction->setIcon(QIcon(":/icons/exit.png"));
-	connect(quitAction, SIGNAL(triggered()),this, SLOT(close()));
-
-	QAction* settingsAction = new QAction(tr("&Settings"),this);
-	settingsAction->setShortcut(tr("Alt+s"));
-	settingsAction->setStatusTip(tr("Change the settings"));
-	settingsAction->setIcon(QIcon(":/icons/wrench.png"));
-	connect(settingsAction, SIGNAL(triggered()),this, SLOT(settingsDialog()));
-
-	QAction* loginAction = new QAction(tr("&Login"),this);
-	loginAction->setShortcut(tr("Alt+l"));
-	loginAction->setStatusTip(tr("Login"));
-	loginAction->setIcon(QIcon(":/icons/disconnect.png"));
-	connect(loginAction, SIGNAL(triggered()),this, SLOT(loginDialog()));
-
-	QAction* importAction = new QAction(tr("&Import"),this);
-	importAction->setShortcut(tr("Alt+i"));
-	importAction->setStatusTip(tr("Import Bank statements"));
-	importAction->setIcon(QIcon(":/icons/import.png"));
-	connect(importAction, SIGNAL(triggered()),this, SLOT(importDialog()));
-
-	QAction* aboutAction = new QAction(tr("&About"),this);
-	aboutAction->setStatusTip(tr("About"));
-	aboutAction->setIcon(QIcon(":/icons/help.png"));
-	connect(aboutAction, SIGNAL(triggered()),this, SLOT(showAbout()));
-	
-	QAction* helpAction = new QAction(tr("&Help"),this);
-	helpAction->setStatusTip(tr("Help"));
-	helpAction->setIcon(QIcon(":/icons/help.png"));
-	connect(helpAction, SIGNAL(triggered()),this, SLOT(showHelp()));
-
-	addAction(settingsAction);
-	addAction(importAction);
-	addAction(quitAction);
-	addAction(aboutAction);
-	addAction(helpAction);
-	addAction(loginAction);
-
-	// File menu
-	QMenu *fileMenu = menuBar()->addMenu(tr("&Tools"));
-	fileMenu->addAction(loginAction);
-	fileMenu->addAction(settingsAction);
-	fileMenu->addAction(importAction);
-	fileMenu->addAction(quitAction);
-
-	// Help menu
-	QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
-	helpMenu->addAction(aboutAction);
-	helpMenu->addAction(helpAction);
-}
 
 void MainWindow::showHelp()
 {
@@ -134,54 +81,9 @@ void MainWindow::setConnectionStatus(bool isConnected, const QString& status)
 	}
 }
 
-void
-MainWindow::displayRecordCount()
-{
-	int numRecords=0;
-	int totalRecords=0;
-	double inTotal=0.0;
-	double outTotal=0.0;
 
-	if (m_model) {
-		numRecords = m_model->rowCount();
-
-		QSqlQuery query(QString(
-					"SELECT COUNT(*) FROM records WHERE userid=%1")
-					.arg(Database::Instance().userId()));
-
-		query.next();
-		totalRecords = query.value(0).toInt();
-		for (int i=0; i<m_model->rowCount(); i++) {
-			double amount = m_model->record(i).value(kRecordColumn_Amount).toDouble();
-			if (amount > 0.0)
-				inTotal += amount;
-			else
-				outTotal += fabs(amount);
-		}
-	}
-	ui.inTotalLabel->setText(QString("%L1").arg(inTotal, 0, 'f', 2));
-	ui.outTotalLabel->setText(QString("%L1").arg(outTotal, 0, 'f', 2));
-	ui.recordCountLabel->setText(QString("%L1 / %L2 ").arg(numRecords).arg(totalRecords));
 }
 
-void MainWindow::loadTags()
-{
-	QStringList tagList;
-	QSqlQuery query(QString(
-			"SELECT tagname FROM tags WHERE userid=%1")
-			.arg(Database::Instance().userId()));
-
-	while (query.next()) {
-		tagList << query.value(0).toString();
-	}
-
-	QCompleter* completer = new QCompleter(tagList, ui.tagEdit);
-	ui.tagEdit->setCompleter(completer);
-	ui.tagEdit->completer()->setCaseSensitivity(Qt::CaseInsensitive);
-	ui.tagEdit->completer()->setCompletionMode(QCompleter::PopupCompletion);
-	
-	connect (completer, SIGNAL(activated(const QString&)), this, SLOT(setFilters()));
-}
 
 void 
 MainWindow::setEndDate(int state)
@@ -237,21 +139,10 @@ MainWindow::addTagButtonPressed()
 	}
 }
 
-void
-MainWindow::saveTableState()
-{
-	m_visibleRow = ui.tableView->indexAt(QPoint(5,5));
-}
 
 
-void
-MainWindow::restoreTableState()
-{
-	// Restore view position
-	if(m_visibleRow.isValid()) {
-		ui.tableView->scrollTo(m_visibleRow, QAbstractItemView::PositionAtTop);
-	}
-}
+
+
 
 
 
@@ -419,14 +310,22 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.startDateEdit.setCalendarPopup(True)
 		self.endDateEdit.setCalendarPopup(True)
 
-	#	addActions();
+		self.addActions()
 
 		self.inTotalLabel.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Sunken)
 		self.outTotalLabel.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Sunken)
 		self.recordCountLabel.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Sunken)
 
 #		self.setConnectionStatus(Database::Instance().isConnected(), Database::Instance().connectionDetails());
-
+		self.__signalsToBlock = (
+				self.accountCombo,
+				self.typeCombo,
+				self.dateRangeCheckbox,
+				self.descEdit,
+				self.amountEdit,
+				self.startDateEdit,
+				self.endDateEdit,
+		)
 		self.loadData()
 
 
@@ -436,54 +335,49 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		if not db.isConnected:
 			return
 
-		self.blockAllSignals(True);
+		with self.blockAllSignals():
 
-		self.model = None
-		model = SqlTableModel(db.userId, self)
+			self.model = None
+			model = SqlTableModel(db.userId, self)
 
-		model.setTable("records")
-		model.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
-		model.select()
+			model.setTable("records")
+			model.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
+			model.select()
 
-		proxyModel = SortProxyModel(self)
-		proxyModel.setSourceModel(model)
-		proxyModel.setFilterKeyColumn(-1)
+			proxyModel = SortProxyModel(self)
+			proxyModel.setSourceModel(model)
+			proxyModel.setFilterKeyColumn(-1)
 
-		self.tableView.setEditTriggers(QtGui.QAbstractItemView.DoubleClicked | QtGui.QAbstractItemView.SelectedClicked)
-		self.tableView.setModel(proxyModel)
-		self.tableView.verticalHeader().hide()
-		self.tableView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
-		self.tableView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
-		self.tableView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+			self.tableView.setEditTriggers(QtGui.QAbstractItemView.DoubleClicked | QtGui.QAbstractItemView.SelectedClicked)
+			self.tableView.setModel(proxyModel)
+			self.tableView.verticalHeader().hide()
+			self.tableView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+			self.tableView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+			self.tableView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
 
-		self.tableView.setColumnHidden(enum.kRecordColumn_RecordId, True)
-		self.tableView.setColumnHidden(enum.kRecordColumn_CheckDate, True)
-		self.tableView.setColumnHidden(enum.kRecordColumn_RawData, True)
-		self.tableView.setColumnHidden(enum.kRecordColumn_User, True)
-		self.tableView.setColumnHidden(enum.kRecordColumn_InsertDate, True)
-		self.tableView.setSortingEnabled(True)
-		self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.DescendingOrder)
-		self.tableView.horizontalHeader().setStretchLastSection(True)
-		self.tableView.selectionModel().selectionChanged.connect(self.activateButtons)
+			self.tableView.setColumnHidden(enum.kRecordColumn_RecordId, True)
+			self.tableView.setColumnHidden(enum.kRecordColumn_CheckDate, True)
+			self.tableView.setColumnHidden(enum.kRecordColumn_RawData, True)
+			self.tableView.setColumnHidden(enum.kRecordColumn_User, True)
+			self.tableView.setColumnHidden(enum.kRecordColumn_InsertDate, True)
+			self.tableView.setSortingEnabled(True)
+			self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.DescendingOrder)
+			self.tableView.horizontalHeader().setStretchLastSection(True)
+			self.tableView.selectionModel().selectionChanged.connect(self.activateButtons)
 
-		self.model = model
-		self.reset()
-
-		self.blockAllSignals(False)
+			self.model = model
+			self.reset()
 
 	def activateButtons(self):
-		"""
-	QItemSelectionModel* model = ui.tableView->selectionModel();
-	bool enable=false;
 
-	if (model) {
-		enable = model->selectedRows().size() > 0;
-	}
+		model = self.tableView.selectionModel()
+		enable = False
 	
-	ui.tagEditButton->setEnabled(enable);
-	ui.toggleCheckButton->setEnabled(enable);
-	
-		"""
+		if model:
+			enable = model.selectedRows().size() > 0
+		
+		self.tagEditButton.setEnabled(enable)
+		self.toggleCheckButton.setEnabled(enable)
 
 
 	def controlKeyPressed(self, key):
@@ -491,63 +385,64 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		"""
 		if self.model and self.model.rowCount() == 1:
 			if key == QtCore.Qt.Key_Space:
-				pass
-#				self.toggleChecked(QtCore.QStringList(self.model->record(0).value(kRecordColumn_RecordId).toString()))
+				pdb.set_trace()
+				self.toggleChecked(QtCore.QStringList(self.model.record(0).value(enum.kRecordColumn_RecordId).toString()))
 
-	def toggleChecked(self, recordids):
-		if recordids.size() == 0:
+	def toggleChecked(self, recordIds):
+		if len(recordIds) == 0:
 			return
 
-	"""
-	QSqlQuery query(QString (
-			"UPDATE records SET checked=abs(checked -1),checkdate='%1' "
-			"WHERE recordid IN (%2)")
-			.arg(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"))
-			.arg(recordids.join(",")));
+		query = QtSql.QSqlQuery("""
+			UPDATE records SET checked=abs(checked -1),checkdate='%(checkdate)s'
+			WHERE recordid IN (%(recordids)s)
+			""" % {
+			'checkdate': QtCore.QDateTime.currentDateTime().toString("yyyy-MM-dd hh:mm:ss"),
+			'recordids': ','.join(recordIds)
+		})
 
-	query.next();
+		query.next()
 
-	if (query.lastError().isValid()) {
-		QMessageBox::critical( this, tr("DB Error"), query.lastError().text(), QMessageBox::Ok);
-		return;
-	}
+		if query.lastError().isValid():
+			QtGui.QMessageBox.critical(self, 'DB Error', query.lastError().text(), QtGui.QMessageBox.Ok)
+			return
 
-	saveTableState();
-	m_model->select();
-	restoreTableState();
+		visibleRow = self.tableView.indexAt(QtCore.QPoint(5,5))
 
-	if (m_model->rowCount() == 0) {
-		// Smart focus - if we have no records showing then reset the last
-		// search filter and set focus
-		QString descFilter = ui.descEdit->text();
-		QString amountFilter = ui.amountEdit->text();
-		QString tagFilter = ui.tagEdit->text();
+		self.model.select()
 
-		if (!descFilter.isEmpty() && amountFilter.isEmpty() && tagFilter.isEmpty() ) {
-			ui.descEdit->clear();
-			ui.descEdit->setFocus(Qt::OtherFocusReason);
-		}
-		else if (!amountFilter.isEmpty() && descFilter.isEmpty() && tagFilter.isEmpty()) {
-			ui.amountEdit->clear();
-			ui.amountEdit->setFocus(Qt::OtherFocusReason);
-		}
-		else if (!tagFilter.isEmpty() && descFilter.isEmpty() && amountFilter.isEmpty()) {
-			ui.amountEdit->clear();
-			ui.amountEdit->setFocus(Qt::OtherFocusReason);
-		}
-	}
-	displayRecordCount();
-	"""
+		# Restore view position
+		if visibleRow.isValid():
+			self.tableView.scrollTo(visibleRow, QtGui.QAbstractItemView.PositionAtTop)
 
-	def blockAllSignals(self, block):
-		self.accountCombo.blockSignals(block)
-		self.typeCombo.blockSignals(block)
-		self.dateRangeCheckbox.blockSignals(block)
-		self.descEdit.blockSignals(block)
-		self.amountEdit.blockSignals(block)
-		self.startDateEdit.blockSignals(block)
-		self.endDateEdit.blockSignals(block)
+		if self.model.rowCount() == 0:
+			# Smart focus - if we have no records showing then reset the last
+			# search filter and set focus
+			descFilter = self.descEdit.text()
+			amountFilter = self.amountEdit.text()
+			tagFilter = self.tagEdit.text()
+	
+			if descFilter and not amountFilter and not tagFilter:
+				self.descEdit.clear()
+				self.descEdit.setFocus(QtCore.Qt.OtherFocusReason)
+			elif amountFilter and not descFilter and not tagFilter:
+				self.amountEdit.clear()
+				self.amountEdit.setFocus(QtCore.Qt.OtherFocusReason)
+			elif tagFilter and not descFilter and not amountFilter:
+				self.tagEdit.clear()
+				self.tagEdit.setFocus(QtCore.Qt.OtherFocusReason)
 
+		self.displayRecordCount()
+
+	@contextmanager
+	def blockAllSignals(self):
+		try:
+			for widget in self.__signalsToBlock:
+				widget.blockSignals(True)
+			yield
+		finally:
+			for widget in self.__signalsToBlock:
+				widget.blockSignals(False)
+		
 
 	def populateAccounts(self):
 		""" Extract account names from database and populate account combo
@@ -594,51 +489,139 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.endDateEdit.setDate(self.startDateEdit.maximumDate())
 			self.startDateEdit.setDate(self.endDateEdit.date().addYears(-1))
 
+	def loadTags(self):
+		tagList = []
+		query = QtSql.QSqlQuery(
+				"SELECT tagname FROM tags WHERE userid=%d" % db.userId
+		)
+	
+		while query.next():
+			tagList.append(query.value(0).toString())
+	
+		completer = QtGui.QCompleter(tagList, self.tagEdit)
+		self.tagEdit.setCompleter(completer)
+		self.tagEdit.completer().setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+		self.tagEdit.completer().setCompletionMode(QtGui.QCompleter.PopupCompletion)
+		
+		completer.activated.connect(self.setFilter)
 
 	def toggleSelected(self):
 		self.toggleChecked (self.getSelectedRecordIds())
-
 
 	def reset(self):
 
 		if self.model is None or not db.isConnected:
 			return
 
-		self.blockAllSignals(True)
-		self.populateAccounts()
-		self.populateDates()
-#		self.populateCodes()
-	#	loadTags();
-		self.checkedCombo.setCurrentIndex(0)
-		self.typeCombo.setCurrentIndex(0)
-		self.accountCombo.setCurrentIndex(0)
-
-		self.inoutCombo.setCurrentIndex(0)
-		self.amountEdit.clear()
-		self.descEdit.clear()
-		self.tagEdit.clear()
-		self.dateRangeCheckbox.setCheckState(QtCore.Qt.Checked)
-		self.endDateEdit.setEnabled(True)
-		self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.DescendingOrder)
-
-		self.blockAllSignals(False)
+		with self.blockAllSignals():
+			self.populateAccounts()
+			self.populateDates()
+	#		self.populateCodes()
+			self.loadTags()
+			self.checkedCombo.setCurrentIndex(0)
+			self.typeCombo.setCurrentIndex(0)
+			self.accountCombo.setCurrentIndex(0)
+	
+			self.inoutCombo.setCurrentIndex(0)
+			self.amountEdit.clear()
+			self.descEdit.clear()
+			self.tagEdit.clear()
+			self.dateRangeCheckbox.setCheckState(QtCore.Qt.Checked)
+			self.endDateEdit.setEnabled(True)
+			self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.DescendingOrder)
 
 		self.setFilter()
 
+	def addActions(self):
+		quitAction = QtGui.QAction('&Quit', self)
+		quitAction.setShortcut('Alt+q')
+		quitAction.setStatusTip('Exit the program')
+		quitAction.setIcon(QtGui.QIcon(':/icons/exit.png'))
+		quitAction.tiggered.connect(self.close)
+	
+		settingsAction = QtGui.QAction('&Settings', self)
+		settingsAction.setShortcut('Alt+s')
+		settingsAction.setStatusTip('Change the settings')
+		settingsAction.setIcon(QtGui.QIcon(':/icons/wrench.png'))
+		settingsAction.tiggered.connect(self.settingsDialog)
+	
+		loginAction = QtGui.QAction('&Login', self)
+		loginAction.setShortcut('Alt+l')
+		loginAction.setStatusTip('Login')
+		loginAction.setIcon(QtGui.QIcon(':/icons/disconnect.png'))
+		loginAction.triggered.connect(self.loginDialog)
+	
+		importAction = QtGui.QAction('&Import', self)
+		importAction.setShortcut('Alt+i')
+		importAction.setStatusTip('Import Bank statements')
+		importAction.setIcon(QtGui.QIcon(':/icons/import.png'))
+		importAction.triggered.connect(self.importDialog)
+	
+		aboutAction = QtGui.QAction('&About', self)
+		aboutAction.setStatusTip('About')
+		aboutAction.setIcon(QtGui.QIcon(':/icons/help.png'))
+		aboutAction.triggered.connect(self.showAbout)
+		
+		helpAction = QtGui.QAction('&Help', self)
+		helpAction.setStatusTip('Help')
+		helpAction.setIcon(QtGui.QIcon(':/icons/help.png'))
+		helpAction.triggered.connect(self.showHelp)
+	
+		self.addAction(settingsAction)
+		self.addAction(importAction)
+		self.addAction(quitAction)
+		self.addAction(aboutAction)
+		self.addAction(helpAction)
+		self.addAction(loginAction)
+	
+		# File menu
+		fileMenu = self.menuBar().addMenu('&Tools')
+		fileMenu.addAction(loginAction)
+		fileMenu.addAction(settingsAction)
+		fileMenu.addAction(importAction)
+		fileMenu.addAction(quitAction)
+	
+		# Help menu
+		helpMenu = self.menuBar().addMenu('&Help')
+		helpMenu.addAction(aboutAction)
+		helpMenu.addAction(helpAction)
 
-	def setFilter(self):
 
+	def displayRecordCount(self):
+		numRecords = 0
+		totalRecords = 0
+		inTotal = 0.0
+		outTotal = 0.0
+	
+		if self.model is not None:
+			numRecords = self.model.rowCount()
+	
+			query = QtSql.QSqlQuery('SELECT COUNT(*) FROM records WHERE userid=%d' % db.userId)
+			query.next()
+			totalRecords, _ = query.value(0).toInt()
+
+			for i in xrange(numRecords):
+				amount, _ = self.model.record(i).value(enum.kRecordColumn_Amount).toDouble()
+				if amount > 0.0:
+					inTotal += amount
+				else:
+					outTotal += math.fabs(amount)
+
+		self.inTotalLabel.setText(QtCore.QString("%L1").arg(inTotal, 0, 'f', 2))
+		self.outTotalLabel.setText(QtCore.QString("%L1").arg(outTotal, 0, 'f', 2))
+		self.recordCountLabel.setText('%d / %d' % (numRecords, totalRecords))
+
+	@showWaitCursor
+	def setFilter(self, *args):
 		if self.model is None or not db.isConnected:
 			return
 
-
-		queryFilter = QtCore.QString()
+		queryFilter = []
 
 		# Account filter
 		accountNo = self.accountCombo.itemData(self.accountCombo.currentIndex(), QtCore.Qt.UserRole)
 		if accountNo.isValid():
-			queryFilter += QtCore.QString(' AND r.accounttypeid=%1').arg(accountNo.toInt())
-
+			queryFilter.append('r.accounttypeid=%d' % accountNo.toInt())
 
 		# Date filter
 		startDate = self.startDateEdit.date()
@@ -648,95 +631,62 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			endDate = startDate
 
 		if startDate.isValid() and endDate.isValid():
-			queryFilter += QtCore.QString(" AND date >= '%1' AND date < '%2' ")\
-				.arg(startDate.toString(QtCore.Qt.ISODate))\
-				.arg(endDate.addMonths(1).toString(QtCore.Qt.ISODate))
-		"""
+			queryFilter.append("date >= '%s'" % startDate.toString(QtCore.Qt.ISODate))
+			queryFilter.append("date < '%s'" % endDate.addMonths(1).toString(QtCore.Qt.ISODate))
+
 		# checked state filter
-		state ui.checkedCombo->itemData(ui.checkedCombo->currentIndex(), Qt::UserRole).toInt())
-	switch (static_cast<eCheckedState>(ui.checkedCombo->itemData(ui.checkedCombo->currentIndex(), Qt::UserRole).toInt())) {
-		case kCheckedStatus_Checked:
-			filter += QString(" AND checked=1");
-			break;
-		case kCheckedStatus_UnChecked:
-			filter += QString(" AND checked=0");
-			break;
-		default:
-			break;
-	}
+		state, ok = self.checkedCombo.itemData(self.checkedCombo.currentIndex(), QtCore.Qt.UserRole).toInt()
+		if ok:
+			if state == enum.kCheckedStatus_Checked:
+				queryFilter.append('checked=1')
+			elif state == enum.kCheckedStatus_UnChecked:
+				queryFilter.append('checked=0')
 		
-	// Filter on money coming in or going out
-	switch (static_cast<eCheckedState>(ui.inoutCombo->itemData(ui.inoutCombo->currentIndex(), Qt::UserRole).toInt())) {
-		case kInOutStatus_In:
-			filter += QString(" AND amount > 0");
-			break;
-		case kInOutStatus_Out:
-			filter += QString(" AND amount < 0");
-			break;
-		default:
-			break;
-	}
+		# money in/out filter
+		state, ok = self.inoutCombo.itemData(self.inoutCombo.currentIndex(), QtCore.Qt.UserRole).toInt()
+		if ok:
+			if state == enum.kInOutStatus_In:
+				queryFilter.append('amount > 0')
+			elif state == enum.kInOutStatus_Out:
+				queryFilter.append('amount < 0')
 
-	/*
-	 * filter on description
-	 */
-	QString descFilter = ui.descEdit->text();
-	if (!descFilter.isEmpty()) {
-		filter += QString(" AND lower(records.description) LIKE lower('%%1%')").arg(descFilter);
-	}
+		# description filter
+		if self.descEdit.text():
+			queryFilter.append("lower(r.description) LIKE '%%%s%%'" % self.descEdit.text().toLower())
 
-	/*
-	 * filter on amount. May contain operators < > <= or >=
-	 */
-	QString amountFilter = ui.amountEdit->text();
-	if (!amountFilter.isEmpty()) {
-		// looks like we have operators!
-		if (amountFilter.contains(QRegExp("[<>=]+"))) {
+		# amount filter. May contain operators < > <= or >=
+		amountFilter = self.amountEdit.text()
+		if amountFilter:
+			if amountFilter.contains(QtCore.QRegExp('[<>=]+')):
+				# looks like we have operators, test validity and amount
+#				pdb.set_trace()
 
-			// Test for valid operator and amount
-			QRegExp rx("^(=|>|<|>=|<=)([\\.\\d+]+)");
-			if (amountFilter.contains(rx)) {
-				filter += QString(" AND abs(amount) %1 %2").arg(rx.cap(1), rx.cap(2));
-			}
-			else {
-				// Input not complete yet.
-				return;
-			}
-		}
-		else {
-			// No operator supplied - treat amount as a string
-			filter += QString(" AND (CAST(amount AS char(10)) LIKE '%1%' OR CAST(amount AS char(10)) LIKE '-%1%')").arg(amountFilter);
-		}
-	}
+				rx = QtCore.QRegExp('^(=|>|<|>=|<=)([\\.\\d+]+)')
+				if rx.indexIn(amountFilter) != -1:
+					queryFilter.append('abs(amount) %s %s' % (rx.cap(1), rx.cap(2)))
+				else:
+					# Input not complete yet.
+					return
+			else:
+				# No operator supplied - treat amount as a string
+				queryFilter.append(
+					"CAST(r.amount AS char(10)) LIKE '%s%%' OR CAST(r.amount AS char(10)) LIKE '-%s%%'" % 
+					(amountFilter, amountFilter))
 
-	/*
-	 * filter on tags
-	 */
-	QString tag = ui.tagEdit->text();
+		# tag filter
+		if self.tagEdit.text():
+			queryFilter.append("""
+				r.recordid IN 
+				(SELECT recordid from recordtags rt 
+					JOIN tags t ON t.tagid=rt.tagid 
+					WHERE t.tagname ='%s'
+				)
+			""" % self.tagEdit.text())
 
-	if (!tag.isEmpty()) {
-		filter += QString(" AND records.recordid IN "
-				"(SELECT recordid from recordtags rt "
-				"JOIN tags t ON t.tagid=rt.tagid "
-				"WHERE t.tagname ='%1')").arg(tag);
-	}
+		self.model.setFilter('\nAND '.join(queryFilter))
 
-	/*
-	 * Apply the filter with a pretty daisy wheel!
-	 */
-	QApplication::setOverrideCursor(Qt::WaitCursor);
+		print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
 
-	m_model->setFilter(filter);
+		self.tableView.resizeColumnsToContents()
+		self.displayRecordCount()
 
-	qDebug() << m_model->query().lastQuery();
-
-	displayRecordCount();
-
-	ui.tableView->resizeColumnsToContents();
-
-	QApplication::restoreOverrideCursor();
-}
-		"""
-
-		self.model.setFilter(queryFilter)
-		print self.model.query().lastQuery().replace('\n', '')
