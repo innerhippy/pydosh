@@ -1,11 +1,14 @@
-ALL_TARGETS = pydosh/Ui_pydosh.py pydosh/pydosh_rc.py 
+ALL_TARGETS = pydosh/ui_pydosh.py pydosh/pydosh_rc.py pydosh/ui_settings.py
 
 all: $(ALL_TARGETS) 
 
 pydosh/pydosh_rc.py: ui/pydosh.qrc
 	pyrcc4 $? -o $@
 
-pydosh/Ui_pydosh.py: ui/pydosh.ui
+pydosh/ui_pydosh.py: ui/pydosh.ui
+	pyuic4 $? -o $@
+
+pydosh/ui_settings.py: ui/settings.ui
 	pyuic4 $? -o $@
 
 clean:

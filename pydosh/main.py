@@ -4,7 +4,8 @@ from PyQt4 import QtGui, QtCore, QtSql
 from utils import showWaitCursor
 from models import SqlTableModel, SortProxyModel
 from database import db
-from Ui_pydosh import Ui_pydosh
+from ui_pydosh import Ui_pydosh
+from dialogs import SettingsDialog
 import enum
 import pdb
 QtCore.pyqtRemoveInputHook()
@@ -146,108 +147,6 @@ MainWindow::addTagButtonPressed()
 
 
 
-void
-MainWindow::settingsDialog()
-{
-	SettingsDialog* dialog = new SettingsDialog(this);
-	dialog->exec();
-	setFilters();
-}
-
-void
-MainWindow::loginDialog()
-{
-	LoginDialog* dialog = new LoginDialog(this);
-
-	if (dialog->exec()) {
-		loadData();
-	}
-}
-
-void
-MainWindow::importDialog()
-{
-	if (!Database::Instance().isConnected())
-		return;
-
-	QComboBox* combo = new QComboBox;
-	combo->addItem("None");
-
-	QSqlQuery query(
-			"SELECT accountname, accounttypeid "
-			"FROM accounttypes "
-			"ORDER BY accountname");
-
-	while (query.next()) {
-		// Store the accounttypeid in the userData field
-		combo->addItem(query.value(0).toString(), query.value(1).toInt());
-	}
-
-	// find the previous accounttype that was used (if any)
-	QSettings settings;
-	QString accounttype = settings.value("options/importaccounttype").toString();
-
-	int index = combo->findText(accounttype);
-
-	if (index != -1)
-		combo->setCurrentIndex(index);
-	else
-		combo->setCurrentIndex(0);
-
-	QLabel* label = new QLabel("Account type:");
-	QString importDir = settings.value("options/importdirectory").toString();
-
-	if (importDir.isEmpty()) {
-		importDir = QDir::homePath();
-	}
-
-	QFileDialog* fd = new QFileDialog(this, tr("Open File"), importDir, "*.csv");
-	fd->setFileMode(QFileDialog::ExistingFiles);
-	fd->setOption(QFileDialog::DontUseNativeDialog);
-
-	QLayout* layout = fd->layout();
-	QGridLayout* gridbox = qobject_cast<QGridLayout*>(layout);
-
-	if (gridbox) {
-		gridbox->addWidget(label);
-		gridbox->addWidget(combo);
-	}
-
-	if (!fd->exec())
-		return;
-
-	QVariant accountTypeId = combo->itemData(combo->currentIndex(), Qt::UserRole);
-	QString accountName = combo->itemData(combo->currentIndex(), Qt::DisplayRole).toString();
-
-	// Save the settings for next time
-	settings.setValue("options/importaccounttype", accountName);
-	settings.setValue("options/importdirectory", fd->directory().absolutePath());
-
-	if (!accountTypeId.isValid()) {
-		QMessageBox::critical( this, tr("Import Error"), tr("No Account Type given!"), QMessageBox::Ok);
-		return;
-	}
-
-	CSVDecoder decoder(accountName, fd->selectedFiles());
-
-	if (!decoder.isValid()) {
-		QMessageBox::critical( this, tr("Import Error"), decoder.error(), QMessageBox::Ok);
-		return;
-	}
-
-	ImportDialog* dialog = new ImportDialog(decoder.records(), accountTypeId.toInt(), this);
-
-	QStringList fileNames;
-	for (int i=0; i < fd->selectedFiles().size(); i++) {
-		fileNames << QFileInfo(fd->selectedFiles().at(i)).fileName();
-	}
-
-	dialog->setWindowTitle(fileNames.join(", "));
-
-	if (dialog->exec()) {
-		reset();
-	}
-}
 
 void
 MainWindow::populateCodes()
@@ -266,6 +165,8 @@ MainWindow::populateCodes()
 }
 
 """
+
+
 
 class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def __init__(self, parent=None):
@@ -366,6 +267,94 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.selectionModel().selectionChanged.connect(self.activateButtons)
 
 			self.model = model
+			self.reset()
+
+	def settingsDialog(self):
+		dialog = SettingsDialog(self)
+		dialog.exec_()
+		self.setFilter()
+
+#	def loginDialog(self):
+#		dialog = LoginDialog(self)
+#
+#		if dialog.exec_()
+#			self.loadData()
+
+	def importDialog(self):
+	
+		if not db.isConnected():
+			return
+
+		combo =  QtGui.QComboBox(self)
+		combo.addItem('None')
+
+		query = QtSql.QSqlQuery("""
+			SELECT accountname, accounttypeid
+			FROM accounttypes
+			ORDER BY accountname
+		""")
+
+		while query.next():
+			# Store the accounttypeid in the userData field
+			combo.addItem(query.value(0).toString(), query.value(1).toInt())
+
+		# find the previous accounttype that was used (if any)
+		settings = QtCore.QSettings()
+		accounttype = settings.value("options/importaccounttype").toString()
+
+		index = combo.findText(accounttype)
+
+		if index != -1:
+			combo.setCurrentIndex(index)
+		else:
+			combo.setCurrentIndex(0)
+
+		label = QtGui.QLabel('Account type:')
+		importDir = settings.value("options/importdirectory").toString()
+	
+		if importDir.isEmpty():
+			importDir = QtCore.QDir.homePath()
+
+		dialog = QtGui.QFileDialog(self, 'Open File', importDir, "*.csv")
+		dialog.setFileMode(QtGui.QFileDialog.ExistingFiles)
+		dialog.setOption(QtGui.QFileDialog.DontUseNativeDialog)
+	
+		layout = dialog.layout()
+	
+		if gridbox:
+			gridbox.addWidget(label)
+			gridbox.addWidget(combo)
+	
+		if not dialog.exec_():
+			return
+	
+		accountTypeId = combo.itemData(combo.currentIndex(), QtGui.Qt.UserRole)
+		accountName = combo.itemData(combo.currentIndex(), QtCore.Qt.DisplayRole).toString()
+	
+		# Save the settings for next time
+		settings.setValue('options/importaccounttype', accountName)
+		settings.setValue('options/importdirectory', fd.directory().absolutePath())
+	
+		if accountTypeId.isValid():
+			QtGui.QMessageBox.critical(self, 'Import Error', 'No Account Type given!', QtGui.QMessageBox.Ok)
+			return
+	
+		decoder = CSVDecoder(accountName, fd.selectedFiles())
+	
+		if decoder:
+			QtGui.QMessageBox.critical(self, 'Import Error', decoder.error(), QtGui.QMessageBox.Ok)
+			return
+	
+		dialog = ImportDialog(decoder.records(), accountTypeId.toInt(), self)
+	
+		fileNames = []
+		for f in dialog.selectedFiles:
+			fileNames.append(QtGui.QFileInfo(file.fileName))
+	
+		dialog.setWindowTitle(', '.join(fileNames)
+	
+		dialog.
+		if dialog.exec_():
 			self.reset()
 
 	def activateButtons(self):
@@ -537,13 +526,13 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		quitAction.setShortcut('Alt+q')
 		quitAction.setStatusTip('Exit the program')
 		quitAction.setIcon(QtGui.QIcon(':/icons/exit.png'))
-		quitAction.tiggered.connect(self.close)
+		quitAction.triggered.connect(self.close)
 	
 		settingsAction = QtGui.QAction('&Settings', self)
 		settingsAction.setShortcut('Alt+s')
 		settingsAction.setStatusTip('Change the settings')
 		settingsAction.setIcon(QtGui.QIcon(':/icons/wrench.png'))
-		settingsAction.tiggered.connect(self.settingsDialog)
+		settingsAction.triggered.connect(self.settingsDialog)
 	
 		loginAction = QtGui.QAction('&Login', self)
 		loginAction.setShortcut('Alt+l')
