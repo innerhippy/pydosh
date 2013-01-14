@@ -9,6 +9,8 @@ from database import db
 from delegates import AccountDelegate
 from models import AccountTableModel
 
+import pdb
+
 class SettingsDialog(Ui_Settings, QtGui.QDialog):
 	def __init__(self, userId, parent=None):
 		super(SettingsDialog, self).__init__(parent=parent)
@@ -167,19 +169,25 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 		self.deleteTagButton.setEnabled(False)
 	
 		query = QtSql.QSqlQuery("""
-					SELECT tagname, tagid, (SELECT COUNT(*)
-					FROM recordtags
-					WHERE tagid=tags.tagid
-					AND recordid in (%s))
+					SELECT tagname, tagid, (
+						SELECT COUNT(*)
+						FROM recordtags
+						WHERE tagid=tags.tagid
+						AND recordid in (%s)
+						)
 					FROM tags
-					WHERE userid=%d ORDER BY tagname")
+					WHERE userid=%d ORDER BY tagname
 				""" % ( recordids.join(','), db.userId))
 	
+		if query.lastError().isValid():
+			QtGui.QMessageBox.critical( self, 'Tag Error', query.lastError().text(), QtGui.QMessageBox.Ok)
+			print query.lastQuery().replace('\n', ' ')
+
 		while query.next():
-	
+			
 			item = QtGui.QListWidgetItem(query.value(0).toString())
 			item.setData(QtCore.Qt.UserRole, query.value(1).toInt())
-	
+
 			if query.value(2).toInt() == len(recordids):
 				item.setCheckState(QtCore.Qt.Checked)
 			elif query.value(2).toInt() == 0:
@@ -189,7 +197,7 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 			self.tagListWidget.addItem(item)
 
 		#self.accepted.connect(self.saveTags)
-		self.addTagButton.pressed.connect(self.addTags)
+		self.addTagButton.pressed.connect(self.addTag)
 		self.deleteTagButton.pressed.connect(self.setDeleteTags)
 		self.tagListWidget.selectionModel().selectionChanged.connect(self.activateDeleteTagButton)
 	
@@ -205,52 +213,42 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 
 	def addTag(self):
 
-		tagname = QtGui.QInputDialog.getText(self, 'Create New Tag', 'Tag', QtGui.QLineEdit.Normal)
-#
-#     if (ok && !tagname.isEmpty()) {
-#     
-#	 	QSqlQuery query;
-#		query.prepare("INSERT INTO tags (tagname, userid) VALUES (?, ?)");
-#		query.addBindValue(tagname);
-#		query.addBindValue(Database::Instance().userId());
-#		query.exec();
-#
-#     	if (query.lastError().isValid()) {
-#     		QMessageBox::critical( this, tr("Tag Error"), query.lastError().text(), QMessageBox::Ok);
-#     		return;
-#     	}
-#     	
-#     	// lastInsertId does not seem to work with psql - do it the hard way.
-#     	query.prepare("SELECT tagid from tags WHERE tagname=? AND userid=?");
-#		query.addBindValue(tagname);
-#		query.addBindValue(Database::Instance().userId());
-#		query.exec();
-#     	query.next();
-#     	
-#		QListWidgetItem *item = new QListWidgetItem(tagname);
-#		item->setData(Qt::UserRole, query.value(0).toInt());
-#		item->setCheckState(Qt::Checked);
-#		self.tagListWidget->addItem(item);
-#     }
-#}
+		tagname, ok = QtGui.QInputDialog.getText(self, 'Create New Tag', 'Tag', QtGui.QLineEdit.Normal)
+		if ok and tagname:
+			query = QtSql.QSqlQuery()
+			query.prepare('INSERT INTO tags (tagname, userid) VALUES (?, ?)')
+			query.addBindValue(tagname)
+			query.addBindValue(db.userId)
+			query.exec_()
 
+			if query.lastError().isValid():
+				QtGui.QMessageBox.critical( self, 'Tag Error', query.lastError().text(), QtGui.QMessageBox.Ok)
+				return
+
+			#  lastInsertId does not seem to work with psql - do it the hard way.
+			query.prepare('SELECT tagid from tags WHERE tagname=? AND userid=?')
+			query.addBindValue(tagname)
+			query.addBindValue(db.userId)
+			query.exec_()
+			query.next()
+
+			item = QtGui.QListWidgetItem(tagname)
+			item.setData(QtCore.Qt.UserRole, query.value(0).toInt())
+			item.setCheckState(QtCore.Qt.Checked)
+			self.tagListWidget.addItem(item)
+			
+	def setDeleteTags(self):
+
+		for item in self.tagListWidget.selectedItems():
+			font = QtGui.QFont(item.font())
+			font.setStrikeOut(True)
+			item.setFont(font)
+
+	def deleteTags(self):
+	#QStringList tagsToDelete;
+		
+		pdb.set_trace()
 """
-void TagDialog::setDeleteTags()
-{
-	QList<QListWidgetItem*> items = self.tagListWidget->selectedItems();
-
-	for (int i=0; i< items.size(); i++) {
-		QFont font = items.at(i)->font();
-		font.setStrikeOut(true);
-		items.at(i)->setFont(font);
-	}
-}
-
-
-void TagDialog::deleteTags()
-{
-	QStringList tagsToDelete;
-	
 	for (int i=0; i< self.tagListWidget->count(); i++) {
 		QListWidgetItem* item = self.tagListWidget->item(i);
 		if (item->font().strikeOut()) {
