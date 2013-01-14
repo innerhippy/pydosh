@@ -2,6 +2,8 @@ from PyQt4 import QtCore, QtGui, QtSql
 from helpBrowser import HelpBrowser
 from ui_settings import Ui_Settings
 from ui_login import Ui_Login
+from ui_tags import Ui_Tags
+from utils import showWaitCursor
 import enum
 from database import db
 from delegates import AccountDelegate
@@ -151,3 +153,175 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 	def showHelp(self):
 		browser = HelpBrowser(self)
 		browser.showPage('login.html')
+		
+		
+
+class TagDialog(Ui_Tags, QtGui.QDialog):
+	def __init__(self, recordids, parent=None):
+		super(TagDialog, self).__init__(parent=parent)
+		
+		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+		self.setupUi(self)
+	
+		self.tagListWidget.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+		self.deleteTagButton.setEnabled(False)
+	
+		query = QtSql.QSqlQuery("""
+					SELECT tagname, tagid, (SELECT COUNT(*)
+					FROM recordtags
+					WHERE tagid=tags.tagid
+					AND recordid in (%1))
+					FROM tags
+					WHERE userid=%2 ORDER BY tagname")
+				""" % ( recordids.join(','), db.userId))
+	
+		while query.next():
+	
+			item = QtGui.QListWidgetItem(query.value(0).toString())
+			item.setData(QtCore.Qt.UserRole, query.value(1).toInt())
+	
+			if query.value(2).toInt() == len(recordids):
+				item.setCheckState(QtCore.Qt.Checked)
+			elif query.value(2).toInt() == 0:
+				item.setCheckState(QtCore.Qt.Unchecked)
+			else:
+				item.setCheckState(QtCore.Qt.PartiallyChecked)
+			self.tagListWidget.addItem(item)
+
+		self.accept.connect(self.saveTags)
+		self.addTagButton.pressed.connect(self.addTags)
+		self.deleteTagButton.pressed.connect(self.setDeleteTags)
+		self.tagListWidget.selectionModel().selectionChanged.connect(self.activateDeleteTagButton)
+	
+		self.helpButton.pressed.connect(self.showHelp)
+
+
+void TagDialog::showHelp()
+{
+	HelpBrowser::showPage("main.html#Tags");
+}
+
+void TagDialog::activateDeleteTagButton()
+{
+	self.deleteTagButton->setEnabled(self.tagListWidget->selectionModel()->selectedRows().size() > 0);
+}
+
+
+void TagDialog::addTag()
+{
+	 bool ok;
+     QString tagname = QInputDialog::getText(this, tr("Create New Tag"), 
+     				tr("Tag:"), QLineEdit::Normal, QString(), &ok);
+     				
+     if (ok && !tagname.isEmpty()) {
+     
+	 	QSqlQuery query;
+		query.prepare("INSERT INTO tags (tagname, userid) VALUES (?, ?)");
+		query.addBindValue(tagname);
+		query.addBindValue(Database::Instance().userId());
+		query.exec();
+
+     	if (query.lastError().isValid()) {
+     		QMessageBox::critical( this, tr("Tag Error"), query.lastError().text(), QMessageBox::Ok);
+     		return;
+     	}
+     	
+     	// lastInsertId does not seem to work with psql - do it the hard way.
+     	query.prepare("SELECT tagid from tags WHERE tagname=? AND userid=?");
+		query.addBindValue(tagname);
+		query.addBindValue(Database::Instance().userId());
+		query.exec();
+     	query.next();
+     	
+		QListWidgetItem *item = new QListWidgetItem(tagname);
+		item->setData(Qt::UserRole, query.value(0).toInt());
+		item->setCheckState(Qt::Checked);
+		self.tagListWidget->addItem(item);
+     }
+}
+
+
+void TagDialog::setDeleteTags()
+{
+	QList<QListWidgetItem*> items = self.tagListWidget->selectedItems();
+
+	for (int i=0; i< items.size(); i++) {
+		QFont font = items.at(i)->font();
+		font.setStrikeOut(true);
+		items.at(i)->setFont(font);
+	}
+}
+
+
+void TagDialog::deleteTags()
+{
+	QStringList tagsToDelete;
+	
+	for (int i=0; i< self.tagListWidget->count(); i++) {
+		QListWidgetItem* item = self.tagListWidget->item(i);
+		if (item->font().strikeOut()) {
+			tagsToDelete << item->data(Qt::UserRole).toString();
+		}
+	}
+	
+	if (tagsToDelete.size() > 0) {
+		QSqlQuery query(QString("DELETE FROM tags WHERE tagid IN (%1)").arg(tagsToDelete.join(",")));
+	} 
+}
+
+void TagDialog::saveTags()
+{
+	// This could take a long time...
+	QApplication::setOverrideCursor(Qt::WaitCursor);
+
+	deleteTags();
+	
+	for (int i=0; i< self.tagListWidget->count(); i++) {
+		QListWidgetItem* item = self.tagListWidget->item(i);
+		
+		if (item->font().strikeOut()) {
+			// No point, they've gone.
+			continue;
+		}
+		
+		int tagId = item->data(Qt::UserRole).toInt();
+
+		if (item->checkState() == Qt::Unchecked) {
+
+			QSqlQuery query(QString ("DELETE FROM recordtags where tagid=%1 and recordid in (%2)")
+					.arg(tagId)
+					.arg(m_recordids.join(",")));
+		}
+		else if (item->checkState() == Qt::Checked) {
+
+			QStringList existingRecs;
+			QSqlQuery query(QString("SELECT recordid from recordtags where tagid=%1").arg(tagId));
+
+			while (query.next()) {
+				existingRecs << query.value(0).toString();
+			}
+
+			for (int i=0; i< m_recordids.size(); i++) {
+
+				if (!existingRecs.contains(m_recordids.at(i))) {
+
+					QSqlQuery query (QString("INSERT INTO recordtags (recordid, tagid) VALUES (%1, %2)")
+							.arg(m_recordids.at(i))
+							.arg(tagId));
+
+					if (query.lastError().isValid()) {
+						QApplication::restoreOverrideCursor();
+						QMessageBox::critical( this, tr("Tag Error"), query.lastError().text(), QMessageBox::Ok);
+     					return;
+					}
+				}
+			}
+		}
+		else {
+			// partial check - do nothing as values have not changed!
+		}
+	}
+	QApplication::restoreOverrideCursor();
+}
+
+
