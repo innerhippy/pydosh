@@ -3,6 +3,7 @@ from contextlib  import contextmanager
 from PyQt4 import QtGui, QtCore, QtSql
 from utils import showWaitCursor
 from models import SqlTableModel, SortProxyModel
+from helpBrowser import HelpBrowser
 from database import db
 from ui_pydosh import Ui_pydosh
 from dialogs import SettingsDialog, LoginDialog
@@ -86,7 +87,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 
 	def showHelp(self):
-		HelpBrowser.showPage("main.html")
+		
+		browser = HelpBrowser(self)
+		browser.showPage("main.html")
 
 #	def showAbout(self):
 #
@@ -495,7 +498,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		helpAction = QtGui.QAction('&Help', self)
 		helpAction.setStatusTip('Help')
 		helpAction.setIcon(QtGui.QIcon(':/icons/help.png'))
-#		helpAction.triggered.connect(self.showHelp)
+		helpAction.triggered.connect(self.showHelp)
 	
 		self.addAction(settingsAction)
 		self.addAction(importAction)
@@ -590,8 +593,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		if amountFilter:
 			if amountFilter.contains(QtCore.QRegExp('[<>=]+')):
 				# looks like we have operators, test validity and amount
-#				pdb.set_trace()
-
 				rx = QtCore.QRegExp('^(=|>|<|>=|<=)([\\.\\d+]+)')
 				if rx.indexIn(amountFilter) != -1:
 					queryFilter.append('abs(amount) %s %s' % (rx.cap(1), rx.cap(2)))
@@ -616,7 +617,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.model.setFilter('\nAND '.join(queryFilter))
 
-		print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
+		#print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
 		self.tableView.resizeColumnsToContents()
 		self.displayRecordCount()
 

@@ -13,7 +13,7 @@
   <property name="windowTitle">
    <string>Options</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout">
+  <layout class="QGridLayout" name="gridLayout_2">
    <item row="0" column="1">
     <spacer name="verticalSpacer">
      <property name="orientation">
@@ -42,6 +42,21 @@ p, li { white-space: pre-wrap; }
       <iconset resource="pydosh.qrc">
        <normaloff>:/icons/add.png</normaloff>:/icons/add.png</iconset>
      </property>
+    </widget>
+   </item>
+   <item row="0" column="0" rowspan="4">
+    <widget class="QFrame" name="frame">
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="0" column="0">
+       <widget class="QTableView" name="view"/>
+      </item>
+     </layout>
     </widget>
    </item>
    <item row="2" column="1">
@@ -131,65 +146,13 @@ p, li { white-space: pre-wrap; }
      </layout>
     </widget>
    </item>
-   <item row="0" column="0" rowspan="4">
-    <widget class="QTabWidget" name="optionsTab">
-     <property name="currentIndex">
-      <number>0</number>
-     </property>
-     <widget class="QWidget" name="codesTab">
-      <attribute name="title">
-       <string>Bank codes</string>
-      </attribute>
-      <layout class="QGridLayout" name="gridLayout_2">
-       <item row="0" column="0" colspan="2">
-        <widget class="QTableView" name="codesView"/>
-       </item>
-       <item row="1" column="0">
-        <widget class="SearchLineEdit" name="searchEdit"/>
-       </item>
-       <item row="1" column="1">
-        <spacer name="horizontalSpacer">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>58</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-      </layout>
-     </widget>
-     <widget class="QWidget" name="tab">
-      <attribute name="title">
-       <string>Account Types</string>
-      </attribute>
-      <layout class="QGridLayout" name="gridLayout_3">
-       <item row="0" column="0" rowspan="2">
-        <widget class="QTableView" name="accountsView"/>
-       </item>
-      </layout>
-     </widget>
-    </widget>
-   </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>SearchLineEdit</class>
-   <extends>QLineEdit</extends>
-   <header>searchLineEdit.h</header>
-  </customwidget>
- </customwidgets>
  <tabstops>
-  <tabstop>optionsTab</tabstop>
   <tabstop>saveButton</tabstop>
   <tabstop>revertButton</tabstop>
   <tabstop>closeButton</tabstop>
   <tabstop>addButton</tabstop>
-  <tabstop>codesView</tabstop>
   <tabstop>deleteButton</tabstop>
  </tabstops>
  <resources>
