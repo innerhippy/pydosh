@@ -5,167 +5,11 @@ from utils import showWaitCursor
 from models import SqlTableModel, SortProxyModel
 from database import db
 from ui_pydosh import Ui_pydosh
-from dialogs import SettingsDialog
+from dialogs import SettingsDialog, LoginDialog
 import enum
-import pdb
 QtCore.pyqtRemoveInputHook()
 import pydosh_rc
 import pdb
-
-"""
-MainWindow::MainWindow(QWidget *parent, Qt::WFlags flags) :
-	QMainWindow(parent, flags),
-	m_model(0)
-{
-}
-
-
-MainWindow::~MainWindow()
-{
-}
-
-void MainWindow::show() {
-	/* I'm sure there's a better way of doing this..
-	 * need to call resizeColumnsToContents after show() so that the
-	 * viewport height can be used to determine which rows to consider.
-	 * Otherwise every row in the model will be used to calculate the
-	 * column width (it seems) which is ugly.
-	 */
-	QMainWindow::show();
-	ui.tableView->resizeColumnsToContents();
-}
-
-
-void MainWindow::showHelp()
-{
-	HelpBrowser::showPage("main.html");
-}
-
-void
-MainWindow::showAbout()
-{
-	QMessageBox::about(this,
-			tr("About doshLogger"),
-			tr(
-					"<html><p><h2>doshlogger</h2></p>"
-					"<p>version "
-					APPLICATION_VERSION
-					"</p>"
-					"<p>by Will Hall <a href=\"mailto:dev@innerhippy.com\">dev@innerhippy.com</a><br>"
-					"Copywrite (c) 2010. Will Hall </p>"
-					"<p>Written using Qt"
-					QT_VERSION_STR
-					"<br>"
-#if defined(__GNUC__)
-					"Compiled using GCC"
-					__VERSION__
-					"<p>"
-					"<a href=\"http://www.innerhippy.com\">www.innerhippy.com</a></p>"
-					"enjoy!</html>"
-#endif
-			));
-}
-
-void MainWindow::setConnectionStatus(bool isConnected, const QString& status)
-{
-	if (isConnected) {
-		ui.connectionStatusText->setText(QString("connected to %1").arg(status));
-		ui.connectionStatusIcon->setPixmap(QPixmap(QString::fromUtf8(":/icons/thumb_up.png")));
-	}
-	else {
-		ui.connectionStatusText->setText("not connected");
-		ui.connectionStatusIcon->setPixmap(QPixmap(QString::fromUtf8(":/icons/thumb_down.png")));
-		delete m_model;
-		m_model=0;
-		displayRecordCount();
-		ui.tableView->setModel(0);
-	}
-}
-
-
-}
-
-
-void 
-MainWindow::setEndDate(int state)
-{
-	ui.endDateEdit->setEnabled( state == Qt::Checked );
-	setFilters();
-}
-
-void
-MainWindow::itemChecked(const QModelIndex& index)
-{
-	if (!m_model)
-		return;
-
-	if (index.column() != kRecordColumn_Checked)
-		return;
-
-	const QSortFilterProxyModel* proxyModel = qobject_cast<const QSortFilterProxyModel*>(ui.tableView->model());
-	Q_ASSERT(proxyModel);
-
-	toggleChecked (QStringList() << m_model->record(proxyModel->mapToSource(index).row()).value(kRecordColumn_RecordId).toString());
-}
-
-QStringList MainWindow::getSelectedRecordIds() const
-{
-	// get recordids from all selected rows
-	QItemSelectionModel* selectionModel = ui.tableView->selectionModel();
-	Q_ASSERT(selectionModel);
-
-	const QSortFilterProxyModel* proxyModel = qobject_cast<const QSortFilterProxyModel*>(ui.tableView->model());
-	Q_ASSERT(proxyModel);
-
-	QStringList recordids;
-	QModelIndexList indexList = selectionModel->selectedRows();
-
-	for (int i=0; i<indexList.size(); i++) {
-		recordids << m_model->record(proxyModel->mapToSource(indexList.at(i)).row()).value(kRecordColumn_RecordId).toString();
-	}
-
-	return recordids;
-}
-
-void
-MainWindow::addTagButtonPressed()
-{
-	QStringList recordids = getSelectedRecordIds();
-
-	TagDialog* dialog = new TagDialog(recordids, this);
-
-	if (dialog->exec()) {
-		setFilters();
-		loadTags();
-	}
-}
-
-
-
-
-
-
-
-
-
-void
-MainWindow::populateCodes()
-{
-	ui.typeCombo->clear();
-	ui.typeCombo->addItem("all");
-
-	QSqlQuery query(
-			"SELECT DISTINCT description "
-			"FROM codes "
-			"ORDER BY description ASC");
-
-	while (query.next()) {
-		ui.typeCombo->addItem(query.value(0).toString());
-	}
-}
-
-"""
-
 
 
 class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
@@ -198,12 +42,12 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.startDateEdit.dateChanged.connect(self.setFilter)
 		self.endDateEdit.dateChanged.connect(self.setFilter)
 		self.toggleCheckButton.clicked.connect(self.toggleSelected)
-#		self.dateRangeCheckbox.stateChanged.connect(self.setEndDate)
-#		self.reloadButton.clicked.connect(self.reset)
-#		self.tableView.clicked.connect(self.itemChecked)
-#		self.tagEditButton.pressed.connect(self.addTagButtonPressed)
+		self.dateRangeCheckbox.stateChanged.connect(self.setEndDate)
+		self.reloadButton.clicked.connect(self.reset)
+		self.tableView.clicked.connect(self.itemChecked)
+		self.tagEditButton.pressed.connect(self.addTagButtonPressed)
 
-		#connect (&Database::Instance(), SIGNAL(connected(bool, const QString&)), this, SLOT(setConnectionStatus(bool, const QString&)));
+		db.connected.connect(self.setConnectionStatus)
 
 		amountValidator = QtGui.QRegExpValidator(QtCore.QRegExp("[<>=0-9.]*"), self)
 		self.amountEdit.setValidator(amountValidator)
@@ -217,7 +61,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.outTotalLabel.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Sunken)
 		self.recordCountLabel.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Sunken)
 
-#		self.setConnectionStatus(Database::Instance().isConnected(), Database::Instance().connectionDetails());
+		self.setConnectionStatus(db.isConnected)
+
 		self.__signalsToBlock = (
 				self.accountCombo,
 				self.typeCombo,
@@ -228,6 +73,43 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				self.endDateEdit,
 		)
 		self.loadData()
+
+	def show(self):
+		""" I'm sure there's a better way of doing this..
+		need to call resizeColumnsToContents after show() so that the
+		viewport height can be used to determine which rows to consider.
+		Otherwise every row in the model will be used to calculate the
+		column width (it seems) which is ugly.
+		"""
+		super(PydoshWindow, self).show()
+		self.tableView.resizeColumnsToContents()
+
+
+	def showHelp(self):
+		HelpBrowser.showPage("main.html")
+
+#	def showAbout(self):
+#
+#		QtGui.QMessageBox.about(self,
+#			'About doshLogger',
+#			"<html><p><h2>doshlogger</h2></p>"
+#			"<p>version "
+#			APPLICATION_VERSION
+#			"</p>"
+#			"<p>by Will Hall <a href=\"mailto:dev@innerhippy.com\">dev@innerhippy.com</a><br>"
+#			"Copywrite (c) 2010. Will Hall </p>"
+#			"<p>Written using Qt"
+#			QT_VERSION_STR
+#			"<br>"
+##if defined(__GNUC__)
+#			"Compiled using GCC"
+#			__VERSION__
+#			"<p>"
+#			"<a href=\"http://www.innerhippy.com\">www.innerhippy.com</a></p>"
+#			"enjoy!</html>"
+##endif
+#			));
+#}
 
 
 	@showWaitCursor
@@ -269,20 +151,49 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.model = model
 			self.reset()
 
+
+	def setConnectionStatus(self, isConnected):
+		if isConnected:
+			self.connectionStatusText.setText('connected to %s' % db.hostname)
+			self.connectionStatusIcon.setPixmap(QtGui.QPixmap(':/icons/thumb_up.png'))
+
+		else:
+			self.connectionStatusText.setText('not connected')
+			self.connectionStatusIcon.setPixmap(QtGui.QPixmap(':/icons/thumb_down.png'))
+			self.model = None
+
+			self.displayRecordCount()
+			self.tableView.setModel(None)
+
+
+	def setEndDate(self, state):
+		self.endDateEdit.setEnabled(state == QtCore.Qt.Checked)
+		self.setFilter()
+
 	def settingsDialog(self):
 		dialog = SettingsDialog(self)
 		dialog.exec_()
 		self.setFilter()
 
-#	def loginDialog(self):
-#		dialog = LoginDialog(self)
+	def loginDialog(self):
+		dialog = LoginDialog(self)
+		if dialog.exec_():
+			self.loadData()
+
+
+	def addTagButtonPressed(self):
+
+		recordids = self.getSelectedRecordIds()
+
+#	TagDialog* dialog = new TagDialog(recordids, this);
 #
-#		if dialog.exec_()
-#			self.loadData()
+#	if dialog->exec()):
+#		setFilters()
+#		loadTags()
 
 	def importDialog(self):
 	
-		if not db.isConnected():
+		if not db.isConnected:
 			return
 
 		combo =  QtGui.QComboBox(self)
@@ -319,7 +230,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		dialog.setFileMode(QtGui.QFileDialog.ExistingFiles)
 		dialog.setOption(QtGui.QFileDialog.DontUseNativeDialog)
 	
-		layout = dialog.layout()
+		gridbox = dialog.layout()
 	
 		if gridbox:
 			gridbox.addWidget(label)
@@ -328,34 +239,47 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		if not dialog.exec_():
 			return
 	
-		accountTypeId = combo.itemData(combo.currentIndex(), QtGui.Qt.UserRole)
+		accountTypeId = combo.itemData(combo.currentIndex(), QtCore.Qt.UserRole)
 		accountName = combo.itemData(combo.currentIndex(), QtCore.Qt.DisplayRole).toString()
 	
 		# Save the settings for next time
 		settings.setValue('options/importaccounttype', accountName)
-		settings.setValue('options/importdirectory', fd.directory().absolutePath())
+		settings.setValue('options/importdirectory', dialog.directory().absolutePath())
 	
 		if accountTypeId.isValid():
 			QtGui.QMessageBox.critical(self, 'Import Error', 'No Account Type given!', QtGui.QMessageBox.Ok)
 			return
 	
-		decoder = CSVDecoder(accountName, fd.selectedFiles())
-	
-		if decoder:
-			QtGui.QMessageBox.critical(self, 'Import Error', decoder.error(), QtGui.QMessageBox.Ok)
+#		decoder = CSVDecoder(accountName, fd.selectedFiles())
+#	
+#		if decoder:
+#			QtGui.QMessageBox.critical(self, 'Import Error', decoder.error(), QtGui.QMessageBox.Ok)
+#			return
+#	
+#		dialog = ImportDialog(decoder.records(), accountTypeId.toInt(), self)
+#	
+#		fileNames = []
+#		for f in dialog.selectedFiles:
+#			fileNames.append(QtGui.QFileInfo(file.fileName))
+#	
+#		dialog.setWindowTitle(', '.join(fileNames))
+#	
+##		dialog.
+#		if dialog.exec_():
+#			self.reset()
+
+
+	def itemChecked(self, index):
+
+		if self.model is None:
 			return
-	
-		dialog = ImportDialog(decoder.records(), accountTypeId.toInt(), self)
-	
-		fileNames = []
-		for f in dialog.selectedFiles:
-			fileNames.append(QtGui.QFileInfo(file.fileName))
-	
-		dialog.setWindowTitle(', '.join(fileNames)
-	
-		dialog.
-		if dialog.exec_():
-			self.reset()
+
+		if index.column() != enum.kRecordColumn_Checked:
+			return
+
+		proxyModel = self.tableView.model()
+		self.toggleChecked(QtCore.QStringList(
+			self.model.record(proxyModel.mapToSource(index).row()).value(enum.kRecordColumn_RecordId).toString()))
 
 	def activateButtons(self):
 
@@ -363,7 +287,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		enable = False
 	
 		if model:
-			enable = model.selectedRows().size() > 0
+			enable = len(model.selectedRows()) > 0
 		
 		self.tagEditButton.setEnabled(enable)
 		self.toggleCheckButton.setEnabled(enable)
@@ -374,10 +298,11 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		"""
 		if self.model and self.model.rowCount() == 1:
 			if key == QtCore.Qt.Key_Space:
-				pdb.set_trace()
 				self.toggleChecked(QtCore.QStringList(self.model.record(0).value(enum.kRecordColumn_RecordId).toString()))
 
 	def toggleChecked(self, recordIds):
+		""" QStringList of record IDs to toggle
+		"""
 		if len(recordIds) == 0:
 			return
 
@@ -386,7 +311,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			WHERE recordid IN (%(recordids)s)
 			""" % {
 			'checkdate': QtCore.QDateTime.currentDateTime().toString("yyyy-MM-dd hh:mm:ss"),
-			'recordids': ','.join(recordIds)
+			'recordids': recordIds.join(',')
 		})
 
 		query.next()
@@ -494,8 +419,24 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		
 		completer.activated.connect(self.setFilter)
 
+
+	def getSelectedRecordIds(self):
+
+		# Get recordids from all selected rows
+		selectionModel = self.tableView.selectionModel()
+		if selectionModel is None:
+			return []
+	
+		proxyModel = self.tableView.model()
+	
+		recordids = QtCore.QStringList()
+		for index in selectionModel.selectedRows():
+			recordids.append(self.model.record(proxyModel.mapToSource(index).row()).value(enum.kRecordColumn_RecordId).toString())
+		return recordids
+
+
 	def toggleSelected(self):
-		self.toggleChecked (self.getSelectedRecordIds())
+		self.toggleChecked(self.getSelectedRecordIds())
 
 	def reset(self):
 
@@ -549,12 +490,12 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		aboutAction = QtGui.QAction('&About', self)
 		aboutAction.setStatusTip('About')
 		aboutAction.setIcon(QtGui.QIcon(':/icons/help.png'))
-		aboutAction.triggered.connect(self.showAbout)
+#		aboutAction.triggered.connect(self.showAbout)
 		
 		helpAction = QtGui.QAction('&Help', self)
 		helpAction.setStatusTip('Help')
 		helpAction.setIcon(QtGui.QIcon(':/icons/help.png'))
-		helpAction.triggered.connect(self.showHelp)
+#		helpAction.triggered.connect(self.showHelp)
 	
 		self.addAction(settingsAction)
 		self.addAction(importAction)
@@ -602,6 +543,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	@showWaitCursor
 	def setFilter(self, *args):
+
 		if self.model is None or not db.isConnected:
 			return
 
@@ -675,7 +617,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.model.setFilter('\nAND '.join(queryFilter))
 
 		print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
-
 		self.tableView.resizeColumnsToContents()
 		self.displayRecordCount()
 

@@ -170,3 +170,52 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 
 		return super(SortProxyModel, self).lessThan(left, right)
 
+
+class AccountTableModel(QtSql.QSqlTableModel):
+	def __init__(self, parent=None):
+		super(AccountSettingsModel, self).__init__(parent=parent)
+
+	def data(self, item, role=QtCore.Qt.DisplayRole):
+
+		if not item.isValid():
+			return QtCore.QVariant()
+
+
+		if role == QtCore.Qt.BackgroundColorRole and self.isDirty(item):
+				return QtGui.QColor(255,156,126)
+
+		return super(AccountTableModel, self).data(item, role)
+
+	def setData(self, index, value, role):
+
+		if not index.isValid():
+			return QtCore.QVariant()
+
+		# Don't flag cell as changed when it hasn't
+		if role == QtCore.Qt.EditRole and self.data(index, role) == value:
+				return False
+
+		return super(AccountTableModel, self).setData(index, value, role)
+		
+
+	def headerData (self, section, orientation, role=QtCore.Qt.DisplayRole):
+
+		if role == QtCore.Qt.DisplayRole:
+			if section == enum.kAccountTypeColumn_AccountName:
+				return 'Account Name'
+			elif section == enum.kAccountTypeColumn_DateField:
+				return 'Date'
+			elif section == enum.kAccountTypeColumn_TypeField:
+				return 'Type'
+			elif section == enum.kAccountTypeColumn_DescriptionField:
+				return 'Desc'
+			elif section == enum.kAccountTypeColumn_CreditField:
+				return 'Credit'
+			elif section == enum.kAccountTypeColumn_DebitField:
+				return 'Debit'
+			elif section == enum.kAccountTypeColumn_CurrencySign:
+				return 'Currency sign'
+			elif section == enum.kAccountTypeColumn_DateFormat:
+				return 'Date formats'
+
+		return QtCore.QVariant()
