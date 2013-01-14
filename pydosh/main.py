@@ -6,7 +6,7 @@ from models import SqlTableModel, SortProxyModel
 from helpBrowser import HelpBrowser
 from database import db
 from ui_pydosh import Ui_pydosh
-from dialogs import SettingsDialog, LoginDialog
+from dialogs import SettingsDialog, LoginDialog, TagDialog
 import enum
 QtCore.pyqtRemoveInputHook()
 import pydosh_rc
@@ -187,12 +187,11 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def addTagButtonPressed(self):
 
 		recordids = self.getSelectedRecordIds()
-
-#	TagDialog* dialog = new TagDialog(recordids, this);
-#
-#	if dialog->exec()):
-#		setFilters()
-#		loadTags()
+#		pdb.set_trace()
+		dialog = TagDialog(recordids, self)
+		if dialog.exec_():
+			self.setFilter()
+			self.loadTags()
 
 	def importDialog(self):
 	

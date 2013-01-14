@@ -170,9 +170,9 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 					SELECT tagname, tagid, (SELECT COUNT(*)
 					FROM recordtags
 					WHERE tagid=tags.tagid
-					AND recordid in (%1))
+					AND recordid in (%s))
 					FROM tags
-					WHERE userid=%2 ORDER BY tagname")
+					WHERE userid=%d ORDER BY tagname")
 				""" % ( recordids.join(','), db.userId))
 	
 		while query.next():
@@ -188,7 +188,7 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 				item.setCheckState(QtCore.Qt.PartiallyChecked)
 			self.tagListWidget.addItem(item)
 
-		self.accept.connect(self.saveTags)
+		#self.accepted.connect(self.saveTags)
 		self.addTagButton.pressed.connect(self.addTags)
 		self.deleteTagButton.pressed.connect(self.setDeleteTags)
 		self.tagListWidget.selectionModel().selectionChanged.connect(self.activateDeleteTagButton)
@@ -196,51 +196,45 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 		self.helpButton.pressed.connect(self.showHelp)
 
 
-void TagDialog::showHelp()
-{
-	HelpBrowser::showPage("main.html#Tags");
-}
+	def showHelp(self):
+		browser = HelpBrowser(self)
+		browser.showPage('main.html#Tags')
 
-void TagDialog::activateDeleteTagButton()
-{
-	self.deleteTagButton->setEnabled(self.tagListWidget->selectionModel()->selectedRows().size() > 0);
-}
+	def activateDeleteTagButton(self):
+		self.deleteTagButton.setEnabled(len(self.tagListWidget.selectionModel().selectedRows()))
 
+	def addTag(self):
 
-void TagDialog::addTag()
-{
-	 bool ok;
-     QString tagname = QInputDialog::getText(this, tr("Create New Tag"), 
-     				tr("Tag:"), QLineEdit::Normal, QString(), &ok);
-     				
-     if (ok && !tagname.isEmpty()) {
-     
-	 	QSqlQuery query;
-		query.prepare("INSERT INTO tags (tagname, userid) VALUES (?, ?)");
-		query.addBindValue(tagname);
-		query.addBindValue(Database::Instance().userId());
-		query.exec();
+		tagname = QtGui.QInputDialog.getText(self, 'Create New Tag', 'Tag', QtGui.QLineEdit.Normal)
+#
+#     if (ok && !tagname.isEmpty()) {
+#     
+#	 	QSqlQuery query;
+#		query.prepare("INSERT INTO tags (tagname, userid) VALUES (?, ?)");
+#		query.addBindValue(tagname);
+#		query.addBindValue(Database::Instance().userId());
+#		query.exec();
+#
+#     	if (query.lastError().isValid()) {
+#     		QMessageBox::critical( this, tr("Tag Error"), query.lastError().text(), QMessageBox::Ok);
+#     		return;
+#     	}
+#     	
+#     	// lastInsertId does not seem to work with psql - do it the hard way.
+#     	query.prepare("SELECT tagid from tags WHERE tagname=? AND userid=?");
+#		query.addBindValue(tagname);
+#		query.addBindValue(Database::Instance().userId());
+#		query.exec();
+#     	query.next();
+#     	
+#		QListWidgetItem *item = new QListWidgetItem(tagname);
+#		item->setData(Qt::UserRole, query.value(0).toInt());
+#		item->setCheckState(Qt::Checked);
+#		self.tagListWidget->addItem(item);
+#     }
+#}
 
-     	if (query.lastError().isValid()) {
-     		QMessageBox::critical( this, tr("Tag Error"), query.lastError().text(), QMessageBox::Ok);
-     		return;
-     	}
-     	
-     	// lastInsertId does not seem to work with psql - do it the hard way.
-     	query.prepare("SELECT tagid from tags WHERE tagname=? AND userid=?");
-		query.addBindValue(tagname);
-		query.addBindValue(Database::Instance().userId());
-		query.exec();
-     	query.next();
-     	
-		QListWidgetItem *item = new QListWidgetItem(tagname);
-		item->setData(Qt::UserRole, query.value(0).toInt());
-		item->setCheckState(Qt::Checked);
-		self.tagListWidget->addItem(item);
-     }
-}
-
-
+"""
 void TagDialog::setDeleteTags()
 {
 	QList<QListWidgetItem*> items = self.tagListWidget->selectedItems();
@@ -323,5 +317,5 @@ void TagDialog::saveTags()
 	}
 	QApplication::restoreOverrideCursor();
 }
-
+"""
 
