@@ -21,4 +21,4 @@ pydosh/ui_tags.py: ui/tags.ui
 	pyuic4 $? -o $@
 
 clean:
-	@rm -f $(ALL_TARGETS)
+	@rm -f $(ALL_TARGETS) pydosh/*.pyc
