@@ -75,8 +75,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		)
 		self.loadData()
 		# TODO: remove!
-		self.addTagButtonPressed()
-		self.quit()
+		#self.addTagButtonPressed()
+		#self.quit()
 
 	def show(self):
 		""" I'm sure there's a better way of doing this..

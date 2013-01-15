@@ -13,8 +13,8 @@ def main():
 
 	loginDialog = LoginDialog()
 	# TODO: remove!
-	if True or loginDialog.exec_():
-	#if loginDialog.exec_():
+	#if True or loginDialog.exec_():
+	if loginDialog.exec_():
 		window = PydoshWindow()
 		window.show()
 		return app.exec_()

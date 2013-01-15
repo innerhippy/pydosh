@@ -134,7 +134,7 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 		self.portSpinBox.setValue(db.port)
 
 		#TODO: remove!
-		self.activateConnection()
+		#self.activateConnection()
 
 		self.setConnectionStatus()
 
@@ -173,8 +173,8 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 		#self.tagView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
 		self.deleteTagButton.setEnabled(False)
 		# TODO: remove!
-		model = TagModel([891, 1], self)
-		#model = TagModel(recordIds, self)
+		#model = TagModel([4000,5819], self)
+		model = TagModel(recordIds, self)
 		model.setTable('tags')
 		model.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
 		model.setFilter('userid=%d' % db.userId)

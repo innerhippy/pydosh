@@ -154,11 +154,9 @@ class TagModel(QtSql.QSqlTableModel):
 
 		model = QtSql.QSqlTableModel(self)
 		model.setTable('recordtags')
-		model.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
+		#model.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
 		model.select()
 		self.__recordTagModel = model
-
-		#self.__loadTags()
 
 	def __contains__(self, tagName):
 		for row in xrange(self.rowCount()):
@@ -166,41 +164,8 @@ class TagModel(QtSql.QSqlTableModel):
 				return True
 		return False
 
-	def __loadTags(self):
-		# Store all recordids for existing tags
-		self.__tagDict = {}
-
-		query = QtSql.QSqlQuery("""
-			SELECT tags.tagid, recordtags.recordid 
-			FROM tags 
-			INNER JOIN recordtags 
-				ON recordtags.tagid=tags.tagid 
-				AND tags.userid=%d
-			""" % db.userId)
-
-		if query.lastError().isValid():
-			QtGui.QMessageBox.critical(None, 'Tag Error', query.lastError().text(), QtGui.QMessageBox.Ok)
-			return
-
-		while query.next():
-			tagId, ok = query.value(0).toInt()
-			if not ok:
-				continue
-
-			recordId, ok = query.value(1).toInt()
-			if not ok:
-				continue
-
-			recordIds = self.__tagDict.setdefault(tagId, [])
-			recordIds.append(recordId)
-
 	def flags(self, index):
-		defaultFlags = super(TagModel, self).flags(index)
-
-		if index.isValid():
-			return defaultFlags | QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsTristate | QtCore.Qt.ItemIsSelectable
-
-		return defaultFlags
+		return super(TagModel, self).flags(index) | QtCore.Qt.ItemIsUserCheckable
 
 	def data(self, item, role=QtCore.Qt.DisplayRole):
 
@@ -212,37 +177,21 @@ class TagModel(QtSql.QSqlTableModel):
 			tagId, ok = super(TagModel, self).data(self.index(item.row(), enum.kTagsColumn_TagId)).toInt()
 			if ok:
 				recordIdsForTag = set(self.__getRecordIdsForTag(tagId))
-				print recordIdsForTag
 				if self.__recordIds.issubset(recordIdsForTag):
-					print 'checked'
 					return QtCore.Qt.Checked
 				elif self.__recordIds.intersection(recordIdsForTag):
-					print 'partial'
 					return QtCore.Qt.PartiallyChecked
 				else:
-					print 'unchecked'
 					return QtCore.Qt.Unchecked
-					
-#				if tagId in self.__tagDict:
-#					if set(self.__recordIds).issubset(set(self.__tagDict[tagId])):
-#						# All our selected records have this tag
-##						print 'returning checked'
-#						print 'checked'
-#						return QtCore.Qt.Checked
-#					elif set(self.__recordIds).intersection(set(self.__tagDict[tagId])):
-#						# Some of our records contain this tag
-#						print 'partial'
-#						return QtCore.Qt.PartiallyChecked
-#				# None of our records contain this tag
-#				print 'unchecked'
-#				return QtCore.Qt.Unchecked
 
 		return super(TagModel, self).data(item, role)
 
 	def __getRecordIdsForTag(self, tagId):
 		for row in xrange(self.__recordTagModel.rowCount()):
 			recordId, ok = self.__recordTagModel.index(row, enum.kRecordTagsColumn_RecordId).data().toInt()
-			if ok:
+			recordTagId, ok = self.__recordTagModel.index(row, enum.kRecordTagsColumn_TagId).data().toInt()
+
+			if ok and tagId == recordTagId:
 				yield recordId
 		
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
@@ -255,9 +204,7 @@ class TagModel(QtSql.QSqlTableModel):
 			tagId = self.index(index.row(), enum.kTagsColumn_TagId).data().toInt()[0]
 
 			if value.toInt()[0] == QtCore.Qt.Unchecked:
-				#print 'before', set(self.__getRecordIdsForTag(tagId)),
 				self.__removeTagsFromRecords(tagId)
-				#print 'after', set(self.__getRecordIdsForTag(tagId))
 			else:
 				self.__addTagsToRecords(tagId)
 
@@ -269,7 +216,7 @@ class TagModel(QtSql.QSqlTableModel):
 	def __removeTagsFromRecords(self, tagId):
 		""" Delete a tag from our records
 		"""
-		for row in xrange(self.__recordTagModel.rowCount()):
+		for row in reversed(xrange(self.__recordTagModel.rowCount())):
 			recordId, ok = self.__recordTagModel.index(row, enum.kRecordTagsColumn_RecordId).data().toInt()
 			if not ok or recordId not in self.__recordIds:
 				continue
@@ -279,20 +226,14 @@ class TagModel(QtSql.QSqlTableModel):
 				continue
 
 			self.__recordTagModel.removeRows(row, 1)
-
-		self.__recordTagModel.submitAll()
-
-#		self.__tagDict.pop(tagId)
+			self.__recordTagModel.submit()
 
 
 	def __addTagsToRecords(self, tagId):
 		""" Assign the tag to our records
 		"""
-		#currentIds = self.__tagDict.setdefault(tagId, [])
 		currentIds = set(self.__getRecordIdsForTag(tagId))
-		print 'add currentIds', currentIds
 		newRecordIds = self.__recordIds - currentIds
-#		allRecordIds = list(set(self.__recordIds + currentIds))
 
 		row = self.__recordTagModel.rowCount()
 		self.__recordTagModel.insertRows(row, 1)
@@ -303,9 +244,7 @@ class TagModel(QtSql.QSqlTableModel):
 			self.__recordTagModel.setData(self.__recordTagModel.index(row, enum.kRecordTagsColumn_RecordId), QtCore.QVariant(recordId))
 			self.__recordTagModel.setData(self.__recordTagModel.index(row, enum.kRecordTagsColumn_TagId), QtCore.QVariant(tagId))
 
-		self.__recordTagModel.submitAll()
-
-#		self.__tagDict[tagId] = allRecordIds
+			self.__recordTagModel.submit()
 
 
 	def addTag(self, tagName):
