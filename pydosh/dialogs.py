@@ -159,11 +159,12 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 		
 
 class TagDialog(Ui_Tags, QtGui.QDialog):
-	def __init__(self, recordids, parent=None):
+	def __init__(self, recordIds, parent=None):
 		super(TagDialog, self).__init__(parent=parent)
 		
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 		self.setupUi(self)
+		self.recordIds = recordIds
 	
 		self.tagListWidget.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 		self.deleteTagButton.setEnabled(False)
@@ -177,27 +178,33 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 						)
 					FROM tags
 					WHERE userid=%d ORDER BY tagname
-				""" % ( recordids.join(','), db.userId))
+				""" % ( self.recordIds.join(','), db.userId))
 	
 		if query.lastError().isValid():
 			QtGui.QMessageBox.critical( self, 'Tag Error', query.lastError().text(), QtGui.QMessageBox.Ok)
 			print query.lastQuery().replace('\n', ' ')
 
 		while query.next():
-			
-			item = QtGui.QListWidgetItem(query.value(0).toString())
-			val, ok = query.value(1).toInt()
+			tagName = query.value(0).toString()
+
+			tagId, ok = query.value(1).toInt()
 			if not ok:
 				continue
 
-			item.setData(QtCore.Qt.UserRole, val)
+			tagCount, ok = query.value(2).toInt()
+			if not ok:
+				continue
+	
+			item = QtGui.QListWidgetItem(tagName)
+			item.setData(QtCore.Qt.UserRole, tagId)
 
-			if query.value(2).toInt() == len(recordids):
+			if tagCount == len(self.recordIds):
 				item.setCheckState(QtCore.Qt.Checked)
-			elif query.value(2).toInt() == 0:
+			elif tagCount == 0:
 				item.setCheckState(QtCore.Qt.Unchecked)
 			else:
 				item.setCheckState(QtCore.Qt.PartiallyChecked)
+
 			self.tagListWidget.addItem(item)
 
 		self.accepted.connect(self.saveTags)
@@ -237,9 +244,11 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 			query.next()
 
 			item = QtGui.QListWidgetItem(tagname)
-			item.setData(QtCore.Qt.UserRole, query.value(0).toInt())
-			item.setCheckState(QtCore.Qt.Checked)
-			self.tagListWidget.addItem(item)
+			val, ok = query.value(0).toInt()
+			if ok:
+				item.setData(QtCore.Qt.UserRole, val)
+				item.setCheckState(QtCore.Qt.Checked)
+				self.tagListWidget.addItem(item)
 			
 	def setDeleteTags(self):
 		for item in self.tagListWidget.selectedItems():
@@ -261,55 +270,47 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 
 	@showWaitCursor
 	def saveTags(self):
-
-		self.deleteTags()
-
 		pdb.set_trace()
-#		for (int i=0; i< self.tagListWidget->count(); i++) {
-#			QListWidgetItem* item = self.tagListWidget->item(i);
-"""			
-			if (item->font().strikeOut()) {
-				// No point, they've gone.
-				continue;
-			}
+		self.deleteTags()
+		for i in xrange(self.tagListWidget.count()):
+			item = self.tagListWidget.item(i)
+			if item.font().strikeOut():
+				# No point, they've gone.
+				continue
 			
-			int tagId = item->data(Qt::UserRole).toInt();
-	
-			if (item->checkState() == Qt::Unchecked) {
-	
-				QSqlQuery query(QString ("DELETE FROM recordtags where tagid=%1 and recordid in (%2)")
-						.arg(tagId)
-						.arg(m_recordids.join(",")));
-			}
-			else if (item->checkState() == Qt::Checked) {
-	
-				QStringList existingRecs;
-				QSqlQuery query(QString("SELECT recordid from recordtags where tagid=%1").arg(tagId));
-	
-				while (query.next()) {
-					existingRecs << query.value(0).toString();
-				}
-	
-				for (int i=0; i< m_recordids.size(); i++) {
-	
-					if (!existingRecs.contains(m_recordids.at(i))) {
-	
-						QSqlQuery query (QString("INSERT INTO recordtags (recordid, tagid) VALUES (%1, %2)")
-								.arg(m_recordids.at(i))
-								.arg(tagId));
-	
-						if (query.lastError().isValid()) {
-							QApplication::restoreOverrideCursor();
-							QMessageBox::critical( this, tr("Tag Error"), query.lastError().text(), QMessageBox::Ok);
-	     					return;
-						}
-					}
-				}
-			}
-			else {
-				// partial check - do nothing as values have not changed!
-			}
-		}
-		QApplication::restoreOverrideCursor();
-"""
+			tagId, ok = item.data(QtCore.Qt.UserRole).toInt()
+			if not ok:
+				continue
 
+			if item.checkState() == QtCore.Qt.Unchecked:
+				query = QtSql.QSqlQuery(
+					"DELETE FROM recordtags where tagid=%d and recordid in (%s)" % 
+					(tagId, self.recordIds.join(',')))
+				print '1:', query.lastQuery()
+				# query.next() ????
+
+			elif item.checkState() == QtCore.Qt.Checked:
+				existingRecordIds = []
+				query = QtSql.QSqlQuery("SELECT recordid from recordtags where tagid=%d" % tagId)
+				print '2:', query.lastQuery()
+				while query.next():
+					val, ok = query.value(0).toInt()
+					if not ok:
+						continue
+					existingRecordIds.append(val)
+
+				for recordId in self.recordIds:
+					if recordId in existingRecordIds:
+						query = QtSql.QSqlQuery()
+						query.prepare('INSERT INTO recordtags (recordid, tagid) VALUES (?, ?)')
+						query.addBindValue(recordId)
+						query.addBindValue(tagId)
+						query.exec_()
+						print '3:', query.lastQuery()
+						
+						if query.lastError().isValid():
+							QtGui.QMessageBox.critical( self, 'Tag Error', query.lastError().text(), QtGui.QMessageBox.Ok)
+							return
+			else:
+				# partial check - do nothing as values have not changed!
+				pass
