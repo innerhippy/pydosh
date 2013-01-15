@@ -7,7 +7,7 @@ from utils import showWaitCursor
 import enum
 from database import db
 from delegates import AccountDelegate
-from models import AccountTableModel
+from models import AccountModel, TagModel
 
 import pdb
 
@@ -133,6 +133,9 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 		self.passwordEdit.setText(db.password)
 		self.portSpinBox.setValue(db.port)
 
+		#TODO: remove!
+		self.activateConnection()
+
 		self.setConnectionStatus()
 
 	def setConnectionStatus(self):
@@ -164,153 +167,55 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 		
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 		self.setupUi(self)
-		self.recordIds = recordIds
-	
-		self.tagListWidget.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+		QtSql.QSqlDatabase.database().transaction()
+		self.tagView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+		self.tagView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+		#self.tagView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
 		self.deleteTagButton.setEnabled(False)
-	
-		query = QtSql.QSqlQuery("""
-					SELECT tagname, tagid, (
-						SELECT COUNT(*)
-						FROM recordtags
-						WHERE tagid=tags.tagid
-						AND recordid in (%s)
-						)
-					FROM tags
-					WHERE userid=%d ORDER BY tagname
-				""" % ( self.recordIds.join(','), db.userId))
-	
-		if query.lastError().isValid():
-			QtGui.QMessageBox.critical( self, 'Tag Error', query.lastError().text(), QtGui.QMessageBox.Ok)
-			print query.lastQuery().replace('\n', ' ')
+		# TODO: remove!
+		model = TagModel([891, 1], self)
+		#model = TagModel(recordIds, self)
+		model.setTable('tags')
+		model.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
+		model.setFilter('userid=%d' % db.userId)
+		model.select()
+		
+		self.tagView.setModel(model)
+		self.tagView.setModelColumn(enum.kTagsColumn_TagName)
 
-		while query.next():
-			tagName = query.value(0).toString()
-
-			tagId, ok = query.value(1).toInt()
-			if not ok:
-				continue
-
-			tagCount, ok = query.value(2).toInt()
-			if not ok:
-				continue
-	
-			item = QtGui.QListWidgetItem(tagName)
-			item.setData(QtCore.Qt.UserRole, tagId)
-
-			if tagCount == len(self.recordIds):
-				item.setCheckState(QtCore.Qt.Checked)
-			elif tagCount == 0:
-				item.setCheckState(QtCore.Qt.Unchecked)
-			else:
-				item.setCheckState(QtCore.Qt.PartiallyChecked)
-
-			self.tagListWidget.addItem(item)
-
-		self.accepted.connect(self.saveTags)
+		self.accepted.connect(self.saveChanges)
 		self.addTagButton.pressed.connect(self.addTag)
-		self.deleteTagButton.pressed.connect(self.setDeleteTags)
-		self.tagListWidget.selectionModel().selectionChanged.connect(self.activateDeleteTagButton)
+		self.deleteTagButton.pressed.connect(self.deleteTags)
+		self.tagView.selectionModel().selectionChanged.connect(self.activateDeleteTagButton)
 	
 		self.helpButton.pressed.connect(self.showHelp)
+		self.model = model
 
 
 	def showHelp(self):
 		browser = HelpBrowser(self)
 		browser.showPage('main.html#Tags')
 
-	def activateDeleteTagButton(self):
-		self.deleteTagButton.setEnabled(len(self.tagListWidget.selectionModel().selectedRows()))
+	def activateDeleteTagButton(self, selected):
+		self.deleteTagButton.setEnabled(len(selected) > 0)
 
 	def addTag(self):
+		""" Add a new tag
+		"""
+		tagName, ok = QtGui.QInputDialog.getText(self, 'New Tag', 'Tag', QtGui.QLineEdit.Normal)
 
-		tagname, ok = QtGui.QInputDialog.getText(self, 'Create New Tag', 'Tag', QtGui.QLineEdit.Normal)
-		if ok and tagname:
-			query = QtSql.QSqlQuery()
-			query.prepare('INSERT INTO tags (tagname, userid) VALUES (?, ?)')
-			query.addBindValue(tagname)
-			query.addBindValue(db.userId)
-			query.exec_()
-
-			if query.lastError().isValid():
-				QtGui.QMessageBox.critical( self, 'Tag Error', query.lastError().text(), QtGui.QMessageBox.Ok)
+		if ok and tagName:
+			if tagName in self.model:
+				QtGui.QMessageBox.critical( self, 'Tag Error', 'Tag already exists!', QtGui.QMessageBox.Ok)
 				return
 
-			#  lastInsertId does not seem to work with psql - do it the hard way.
-			query.prepare('SELECT tagid from tags WHERE tagname=? AND userid=?')
-			query.addBindValue(tagname)
-			query.addBindValue(db.userId)
-			query.exec_()
-			query.next()
+			self.model.addTag(tagName)
 
-			item = QtGui.QListWidgetItem(tagname)
-			val, ok = query.value(0).toInt()
-			if ok:
-				item.setData(QtCore.Qt.UserRole, val)
-				item.setCheckState(QtCore.Qt.Checked)
-				self.tagListWidget.addItem(item)
-			
-	def setDeleteTags(self):
-		for item in self.tagListWidget.selectedItems():
-			font = QtGui.QFont(item.font())
-			font.setStrikeOut(True)
-			item.setFont(font)
 
 	def deleteTags(self):
-		tagsToDelete = []
-
-		for i in xrange(self.tagListWidget.count()):
-			item = self.tagListWidget.item(i)
-			if item.font().strikeOut():
-				tagsToDelete.append(str(item.data(QtCore.Qt.UserRole).toString()))
-
-		if tagsToDelete:
-			query = QtSql.QSqlQuery('DELETE FROM tags WHERE tagid IN (%s)' % ','.join(tagsToDelete))
-			query.next()
+		for index in self.tagView.selectionModel().selectedIndexes():
+			self.model.removeRows(index.row(), 1)
 
 	@showWaitCursor
-	def saveTags(self):
-		pdb.set_trace()
-		self.deleteTags()
-		for i in xrange(self.tagListWidget.count()):
-			item = self.tagListWidget.item(i)
-			if item.font().strikeOut():
-				# No point, they've gone.
-				continue
-			
-			tagId, ok = item.data(QtCore.Qt.UserRole).toInt()
-			if not ok:
-				continue
-
-			if item.checkState() == QtCore.Qt.Unchecked:
-				query = QtSql.QSqlQuery(
-					"DELETE FROM recordtags where tagid=%d and recordid in (%s)" % 
-					(tagId, self.recordIds.join(',')))
-				print '1:', query.lastQuery()
-				# query.next() ????
-
-			elif item.checkState() == QtCore.Qt.Checked:
-				existingRecordIds = []
-				query = QtSql.QSqlQuery("SELECT recordid from recordtags where tagid=%d" % tagId)
-				print '2:', query.lastQuery()
-				while query.next():
-					val, ok = query.value(0).toInt()
-					if not ok:
-						continue
-					existingRecordIds.append(val)
-
-				for recordId in self.recordIds:
-					if recordId in existingRecordIds:
-						query = QtSql.QSqlQuery()
-						query.prepare('INSERT INTO recordtags (recordid, tagid) VALUES (?, ?)')
-						query.addBindValue(recordId)
-						query.addBindValue(tagId)
-						query.exec_()
-						print '3:', query.lastQuery()
-						
-						if query.lastError().isValid():
-							QtGui.QMessageBox.critical( self, 'Tag Error', query.lastError().text(), QtGui.QMessageBox.Ok)
-							return
-			else:
-				# partial check - do nothing as values have not changed!
-				pass
+	def saveChanges(self):
+		QtSql.QSqlDatabase.database().commit()

@@ -2,7 +2,7 @@ import math
 from contextlib  import contextmanager
 from PyQt4 import QtGui, QtCore, QtSql
 from utils import showWaitCursor
-from models import SqlTableModel, SortProxyModel
+from models import RecordModel, SortProxyModel
 from helpBrowser import HelpBrowser
 from database import db
 from ui_pydosh import Ui_pydosh
@@ -74,6 +74,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				self.endDateEdit,
 		)
 		self.loadData()
+		# TODO: remove!
+		self.addTagButtonPressed()
+		self.quit()
 
 	def show(self):
 		""" I'm sure there's a better way of doing this..
@@ -124,7 +127,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		with self.blockAllSignals():
 
 			self.model = None
-			model = SqlTableModel(db.userId, self)
+			model = RecordModel(db.userId, self)
 
 			model.setTable("records")
 			model.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
@@ -186,9 +189,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	def addTagButtonPressed(self):
 
-		recordids = self.getSelectedRecordIds()
-#		pdb.set_trace()
-		dialog = TagDialog(recordids, self)
+		dialog = TagDialog(self.getSelectedRecordIds(), self)
 		if dialog.exec_():
 			self.setFilter()
 			self.loadTags()
@@ -280,8 +281,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			return
 
 		proxyModel = self.tableView.model()
-		self.toggleChecked(QtCore.QStringList(
-			self.model.record(proxyModel.mapToSource(index).row()).value(enum.kRecordColumn_RecordId).toString()))
+		recordId, ok = self.model.record(proxyModel.mapToSource(index).row()).value(enum.kRecordColumn_RecordId).toInt()
+		if ok:
+			self.toggleChecked([recordId])
 
 	def activateButtons(self):
 
@@ -300,7 +302,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		"""
 		if self.model and self.model.rowCount() == 1:
 			if key == QtCore.Qt.Key_Space:
-				self.toggleChecked(QtCore.QStringList(self.model.record(0).value(enum.kRecordColumn_RecordId).toString()))
+				recordId, ok = self.model.record(0).value(enum.kRecordColumn_RecordId).toInt()
+				if ok:
+					self.toggleChecked([recordId])
 
 	def toggleChecked(self, recordIds):
 		""" QStringList of record IDs to toggle
@@ -313,7 +317,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			WHERE recordid IN (%(recordids)s)
 			""" % {
 			'checkdate': QtCore.QDateTime.currentDateTime().toString("yyyy-MM-dd hh:mm:ss"),
-			'recordids': recordIds.join(',')
+			'recordids': ','.join(str(rec) for rec in recordIds)
 		})
 
 		query.next()
@@ -431,10 +435,14 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	
 		proxyModel = self.tableView.model()
 	
-		recordids = QtCore.QStringList()
+		recordIds = []
 		for index in selectionModel.selectedRows():
-			recordids.append(self.model.record(proxyModel.mapToSource(index).row()).value(enum.kRecordColumn_RecordId).toString())
-		return recordids
+			recordId, ok = self.model.record(proxyModel.mapToSource(index).row()).value(enum.kRecordColumn_RecordId).toInt()
+			if ok:
+				recordIds.append(recordId)
+		
+		
+		return recordIds
 
 
 	def toggleSelected(self):

@@ -31,3 +31,11 @@ kAccountTypeColumn_DebitField = 6
 kAccountTypeColumn_BalanceField = 7
 kAccountTypeColumn_CurrencySign = 8
 kAccountTypeColumn_DateFormat = 9
+
+kTagsColumn_TagId = 0
+kTagsColumn_TagName = 1
+kTagsColumn_UserId = 2
+
+kRecordTagsColumn_RecordTagId = 0
+kRecordTagsColumn_RecordId = 1
+kRecordTagsColumn_TagId = 2

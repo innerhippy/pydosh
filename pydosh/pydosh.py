@@ -12,7 +12,9 @@ def main():
 	QtCore.QCoreApplication.setOrganizationDomain("innerhippy.com")
 
 	loginDialog = LoginDialog()
-	if loginDialog.exec_():
+	# TODO: remove!
+	if True or loginDialog.exec_():
+	#if loginDialog.exec_():
 		window = PydoshWindow()
 		window.show()
 		return app.exec_()

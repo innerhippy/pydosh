@@ -17,9 +17,6 @@
    <item row="0" column="0" colspan="2">
     <widget class="QWidget" name="widget" native="true">
      <layout class="QGridLayout" name="gridLayout">
-      <item row="0" column="0" rowspan="3">
-       <widget class="QListWidget" name="tagListWidget"/>
-      </item>
       <item row="0" column="1">
        <widget class="QToolButton" name="addTagButton">
         <property name="text">
@@ -54,6 +51,9 @@
          </size>
         </property>
        </spacer>
+      </item>
+      <item row="0" column="0" rowspan="3">
+       <widget class="QListView" name="tagView"/>
       </item>
      </layout>
     </widget>
