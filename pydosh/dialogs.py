@@ -186,7 +186,11 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 		while query.next():
 			
 			item = QtGui.QListWidgetItem(query.value(0).toString())
-			item.setData(QtCore.Qt.UserRole, query.value(1).toInt())
+			val, ok = query.value(1).toInt()
+			if not ok:
+				continue
+
+			item.setData(QtCore.Qt.UserRole, val)
 
 			if query.value(2).toInt() == len(recordids):
 				item.setCheckState(QtCore.Qt.Checked)
@@ -196,7 +200,7 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 				item.setCheckState(QtCore.Qt.PartiallyChecked)
 			self.tagListWidget.addItem(item)
 
-		#self.accepted.connect(self.saveTags)
+		self.accepted.connect(self.saveTags)
 		self.addTagButton.pressed.connect(self.addTag)
 		self.deleteTagButton.pressed.connect(self.setDeleteTags)
 		self.tagListWidget.selectionModel().selectionChanged.connect(self.activateDeleteTagButton)
@@ -238,82 +242,74 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 			self.tagListWidget.addItem(item)
 			
 	def setDeleteTags(self):
-
 		for item in self.tagListWidget.selectedItems():
 			font = QtGui.QFont(item.font())
 			font.setStrikeOut(True)
 			item.setFont(font)
 
 	def deleteTags(self):
-	#QStringList tagsToDelete;
-		
+		tagsToDelete = []
+
+		for i in xrange(self.tagListWidget.count()):
+			item = self.tagListWidget.item(i)
+			if item.font().strikeOut():
+				tagsToDelete.append(str(item.data(QtCore.Qt.UserRole).toString()))
+
+		if tagsToDelete:
+			query = QtSql.QSqlQuery('DELETE FROM tags WHERE tagid IN (%s)' % ','.join(tagsToDelete))
+			query.next()
+
+	@showWaitCursor
+	def saveTags(self):
+
+		self.deleteTags()
+
 		pdb.set_trace()
-"""
-	for (int i=0; i< self.tagListWidget->count(); i++) {
-		QListWidgetItem* item = self.tagListWidget->item(i);
-		if (item->font().strikeOut()) {
-			tagsToDelete << item->data(Qt::UserRole).toString();
-		}
-	}
-	
-	if (tagsToDelete.size() > 0) {
-		QSqlQuery query(QString("DELETE FROM tags WHERE tagid IN (%1)").arg(tagsToDelete.join(",")));
-	} 
-}
-
-void TagDialog::saveTags()
-{
-	// This could take a long time...
-	QApplication::setOverrideCursor(Qt::WaitCursor);
-
-	deleteTags();
-	
-	for (int i=0; i< self.tagListWidget->count(); i++) {
-		QListWidgetItem* item = self.tagListWidget->item(i);
-		
-		if (item->font().strikeOut()) {
-			// No point, they've gone.
-			continue;
-		}
-		
-		int tagId = item->data(Qt::UserRole).toInt();
-
-		if (item->checkState() == Qt::Unchecked) {
-
-			QSqlQuery query(QString ("DELETE FROM recordtags where tagid=%1 and recordid in (%2)")
-					.arg(tagId)
-					.arg(m_recordids.join(",")));
-		}
-		else if (item->checkState() == Qt::Checked) {
-
-			QStringList existingRecs;
-			QSqlQuery query(QString("SELECT recordid from recordtags where tagid=%1").arg(tagId));
-
-			while (query.next()) {
-				existingRecs << query.value(0).toString();
+#		for (int i=0; i< self.tagListWidget->count(); i++) {
+#			QListWidgetItem* item = self.tagListWidget->item(i);
+"""			
+			if (item->font().strikeOut()) {
+				// No point, they've gone.
+				continue;
 			}
-
-			for (int i=0; i< m_recordids.size(); i++) {
-
-				if (!existingRecs.contains(m_recordids.at(i))) {
-
-					QSqlQuery query (QString("INSERT INTO recordtags (recordid, tagid) VALUES (%1, %2)")
-							.arg(m_recordids.at(i))
-							.arg(tagId));
-
-					if (query.lastError().isValid()) {
-						QApplication::restoreOverrideCursor();
-						QMessageBox::critical( this, tr("Tag Error"), query.lastError().text(), QMessageBox::Ok);
-     					return;
+			
+			int tagId = item->data(Qt::UserRole).toInt();
+	
+			if (item->checkState() == Qt::Unchecked) {
+	
+				QSqlQuery query(QString ("DELETE FROM recordtags where tagid=%1 and recordid in (%2)")
+						.arg(tagId)
+						.arg(m_recordids.join(",")));
+			}
+			else if (item->checkState() == Qt::Checked) {
+	
+				QStringList existingRecs;
+				QSqlQuery query(QString("SELECT recordid from recordtags where tagid=%1").arg(tagId));
+	
+				while (query.next()) {
+					existingRecs << query.value(0).toString();
+				}
+	
+				for (int i=0; i< m_recordids.size(); i++) {
+	
+					if (!existingRecs.contains(m_recordids.at(i))) {
+	
+						QSqlQuery query (QString("INSERT INTO recordtags (recordid, tagid) VALUES (%1, %2)")
+								.arg(m_recordids.at(i))
+								.arg(tagId));
+	
+						if (query.lastError().isValid()) {
+							QApplication::restoreOverrideCursor();
+							QMessageBox::critical( this, tr("Tag Error"), query.lastError().text(), QMessageBox::Ok);
+	     					return;
+						}
 					}
 				}
 			}
+			else {
+				// partial check - do nothing as values have not changed!
+			}
 		}
-		else {
-			// partial check - do nothing as values have not changed!
-		}
-	}
-	QApplication::restoreOverrideCursor();
-}
+		QApplication::restoreOverrideCursor();
 """
 
