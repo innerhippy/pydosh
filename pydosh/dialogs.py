@@ -184,6 +184,7 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 		self.tagView.setModelColumn(enum.kTagsColumn_TagName)
 
 		self.accepted.connect(self.saveChanges)
+		self.rejected.connect(self.cancelChanges)
 		self.addTagButton.pressed.connect(self.addTag)
 		self.deleteTagButton.pressed.connect(self.deleteTags)
 		self.tagView.selectionModel().selectionChanged.connect(self.activateDeleteTagButton)
@@ -211,7 +212,6 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 
 			self.model.addTag(tagName)
 
-
 	def deleteTags(self):
 		for index in self.tagView.selectionModel().selectedIndexes():
 			self.model.removeRows(index.row(), 1)
@@ -219,3 +219,7 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 	@showWaitCursor
 	def saveChanges(self):
 		QtSql.QSqlDatabase.database().commit()
+
+	@showWaitCursor
+	def cancelChanges(self):
+		QtSql.QSqlDatabase.database().rollback()
