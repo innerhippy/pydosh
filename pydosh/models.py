@@ -24,23 +24,24 @@ class ImportRecords(object):
 		self.__imported = value
 		
 	@property
-	def md5(self):
+	def checksum(self):
 		return QtCore.QCryptographicHash.hash(self.rawdata, QtCore.QCryptographicHash.Md5).toHex()
 
 class ImportModel(QtCore.QAbstractTableModel):
-	def __init__(self, records, parent=None):
+	def __init__(self, data, parent=None):
 		super(ImportModel, self).__init__(parent=parent)
-		self.__existingMd5s = []
+		self.__existingRecords = []
 		self.__records = []
-		#pdb.set_trace()
-		query = QtSql.QSqlQuery('SELECT md5 from records where userid=%d' % db.userId)
+		self.__data = set(data)
 
+		query = QtSql.QSqlQuery('SELECT checksum from records where userid=%d' % db.userId)
 		while query.next():
-			self.__existingMd5s.append(query.value(0).toString())
+			self.__existingRecords.append(query.value(0).toString())
 
-		for record in set(records):
+	def process(self):
+		for record in self.__data:
 			rec = ImportRecords(record)
-			if rec.md5 in self.__existingMd5s:
+			if rec.checksum in self.__existingRecords:
 				rec.imported = True
 			self.__records.append(rec)
 	
@@ -49,9 +50,10 @@ class ImportModel(QtCore.QAbstractTableModel):
 
 	def canImport(self, index):
 		rec = self.__records[index.row()]
+		print rec.imported, rec.error
 		return not rec.imported and rec.valid
 
-	def rowCount(self, index):
+	def rowCount(self, parent=QtCore.QModelIndex()):
 		return len(self.__records)
 
 	def columnCount(self, index):
@@ -63,7 +65,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 		row = index.row()
 		rec = self.__records[row]
 		rec.imported = True
-		self.__existingMd5s.append(rec.md5)
+		self.__existingRecords.append(rec.checksum)
 		self.dataChanged(self.createIndex(row, 0), self.createIndex(row, self.columnCount() - 1))
 
 
@@ -82,17 +84,13 @@ class ImportModel(QtCore.QAbstractTableModel):
 			return QtCore.QVariant()
 
 		if role == QtCore.Qt.BackgroundColorRole:
-
-			if self.__records[item.row()].valid:
+			if not self.__records[item.row()].valid:
 				return QtGui.QColor("#ffd3cf")
-
 			elif self.exists(item):
 				return QtGui.QColor("#b6ffac")
-
-		return QtCore.QVariant()
+			return QtCore.QVariant()
 
 		if role == QtCore.Qt.ToolTipRole:
-	
 			if not self.__records[item.row()].valid:
 				return self.__records[item.row()]
 	
@@ -115,9 +113,8 @@ class ImportModel(QtCore.QAbstractTableModel):
 		return QtCore.QVariant()
 
 	def haveRecordsToImport(self):
-
 		for rec in self.__records:
-			if rec.valid and rec.md5 not in self.__existingMd5s:
+			if rec.valid and rec.checksum not in self.__existingRecords:
 				return True
 		return False
 
@@ -129,7 +126,6 @@ class ImportModel(QtCore.QAbstractTableModel):
 			return "Imported";
 
 	def headerData (self, section, orientation, role):
-
 		if role == QtCore.Qt.DisplayRole:
 			if section == 0:
 				return "Status"

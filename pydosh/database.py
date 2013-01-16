@@ -1,4 +1,5 @@
 from PyQt4 import QtCore, QtGui, QtSql
+from contextlib  import contextmanager
 
 
 class _Database(QtCore.QObject):
@@ -76,7 +77,6 @@ class _Database(QtCore.QObject):
 		return len(names) and QtSql.QSqlDatabase.database(names[0], False).isOpen()
 
 	def disconnect(self):
-
 		for name in QtSql.QSqlDatabase.connectionNames():
 			QtSql.QSqlDatabase.removeDatabase(name)
 
@@ -85,7 +85,7 @@ class _Database(QtCore.QObject):
 	def connect(self):
 		self.disconnect()
 
-		db = QtSql.QSqlDatabase.addDatabase('QMYSQL')
+		db = QtSql.QSqlDatabase.addDatabase('QPSQL')
 		db.setDatabaseName(self.database)
 		db.setHostName(self.hostname)
 		db.setUserName(self.username)
@@ -98,4 +98,16 @@ class _Database(QtCore.QObject):
 
 		self.connected.emit(self.isConnected)
 		return True
+
+	@contextmanager
+	def transaction(self):
+		try:
+			QtSql.QSqlDatabase.database().transaction()
+			yield
+		except:
+			QtSql.QSqlDatabase.database().rollback()
+		else:
+			QtSql.QSqlDatabase.database().commit()
+
 db = _Database()
+

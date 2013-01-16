@@ -2,6 +2,7 @@ import sys
 from PyQt4 import QtGui, QtCore
 from main import PydoshWindow
 from dialogs import LoginDialog
+QtCore.pyqtRemoveInputHook()
 
 def main():
 

@@ -8,26 +8,27 @@ class DecoderException(Exception):
 	""" General Decoder exceptions
 	"""
 class Decoder(QtCore.QObject):
-	def __init__(self, files, parent=None):
-		super(Decoder, self).__init__(parent=parent)
-		self.__files = files
-#	def __init__(self, dateField, typeField, descriptionField, 
-#				creditField, debitField, currencySign, dateFormat, files, parent=None):
+#	def __init__(self, files, parent=None):
 #		super(Decoder, self).__init__(parent=parent)
-#		self.__dateField = None if dateField.isNull() else dateField.toInt()[0]
-#		self.__descriptionField = None if descriptionField.isNull() else descriptionField.toInt()[0]
-#		self.__creditField = None if creditField.isNull() else creditField.toInt()[0]
-#		self.__debitField = None if debitField.isNull() else debitField.toInt()[0]
-#		self.__currencySign = None if currencySign.isNull() else currencySign.toInt()[0]
-#		self.__dateFormat = None if dateFormat.isNull() else dateFormat.toString()
 #		self.__files = files
+	def __init__(self, dateField, descriptionField, 
+				creditField, debitField, currencySign, dateFormat, files, parent=None):
+		super(Decoder, self).__init__(parent=parent)
+		self.__dateField = None if dateField.isNull() else dateField.toInt()[0]
+		self.__descriptionField = None if descriptionField.isNull() else descriptionField.toInt()[0]
+		self.__creditField = None if creditField.isNull() else creditField.toInt()[0]
+		self.__debitField = None if debitField.isNull() else debitField.toInt()[0]
+		self.__currencySign = None if currencySign.isNull() else currencySign.toInt()[0]
+		self.__dateFormat = None if dateFormat.isNull() else dateFormat.toString()
+		self.__files = files
 
-		self.__dateField = 0
-		self.__descriptionField = 2
-		self.__creditField = 3
-		self.__debitField = 3
-		self.__currencySign = 1
-		self.__dateFormat = 'dd/MM/yyyy'
+		print self.__dateField, self.__descriptionField, self.__creditField, self.__debitField, self.__currencySign, self.__dateFormat
+#		self.__dateField = 0
+#		self.__descriptionField = 2
+#		self.__creditField = 3
+#		self.__debitField = 3
+#		self.__currencySign = 1
+#		self.__dateFormat = 'dd/MM/yyyy'
 		self.__records = []
 
 		for f in files:
@@ -51,7 +52,12 @@ class Decoder(QtCore.QObject):
 					txDate     = self.__getTransactionDate(row[self.__descriptionField], dateField)
 					debitField = self.__getAmountField(row[self.__debitField], operator.lt)
 					creditField = self.__getAmountField(row[self.__creditField], operator.gt)
+
+					if debitField is None and creditField is None:
+						raise DecoderException('No credit or debit found')
+
 				except IndexError:
+					# Can't parse fields - not a valid record
 					continue
 
 				except DecoderException, exc:
@@ -61,11 +67,6 @@ class Decoder(QtCore.QObject):
 				finally:
 					self.__records.append((rawdata, dateField, descField, txDate, debitField, creditField, error, ))
 
-		from models import ImportModel
-		from database import db
-		db.connect()
-		model = ImportModel(self.__records, self)
-		
 
 	def __getDateField(self, field):
 		date = QtCore.QDate.fromString(field, self.__dateFormat)
@@ -113,71 +114,3 @@ class Decoder(QtCore.QObject):
 			return value
 
 		return None
-
-	"""
-void
-CSVDecoder::import(const QString& filename)
-{
-	QFile file(filename);
-	
-	if (!file.open(QIODevice::ReadOnly)) {
-		qWarning() << "Cannot open file "  << file.fileName();
-		return;
-	}
-	
-	QTextStream in(&file);
-	
-	while (!in.atEnd()) {
-		CSVParser csv(in.readLine());
-
-		// Skip blank lines
-		if (!csv.size()) 
-			continue;
-
-		// If the line doesn't being with a valid date field, then skip it
-		if (!QDate::fromString(csv.get(m_fieldMap[DateField]), m_dateFormat).isValid()) {
-			continue;
-		}
-		
-		m_errorMessage.clear();
-
-		// Initialise the CSV record with the raw data
-		ImportRecord record(csv.line());
-		
-		// decode csv fields
-		record.date = getDateField(csv);
-
-		record.type = getTypeField(csv);
-		record.description = getDescriptionField(csv);
-		record.txDate = extractTransactionDate(record);
-		record.credit = getCreditField(csv);
-		record.debit = getDebitField(csv);
-		record.balance = getBalanceField(csv);
-
-		if (record.credit == 0.0 && record.debit == 0.0) {
-			setError("No credit or debit found");
-		}
-
-		record.valid = isValid();
-		record.error = m_errorMessage;
-
-		m_errorMessage.clear();
-		m_records.append(record);
-	}
-}
-
-void
-CSVDecoder::setError(const QString& message)
-{
-	if (!m_errorMessage.isEmpty())
-		m_errorMessage += ", ";
-
-	m_errorMessage += message;
-}
-
-
-
-
-
-
-	"""

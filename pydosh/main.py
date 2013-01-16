@@ -9,7 +9,6 @@ from database import db
 from ui_pydosh import Ui_pydosh
 from dialogs import SettingsDialog, LoginDialog, TagDialog, ImportDialog
 import enum
-QtCore.pyqtRemoveInputHook()
 import pydosh_rc
 import pdb
 
@@ -242,9 +241,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			QtGui.QMessageBox.critical(self, 'Import Error', 'No account type specified', QtGui.QMessageBox.Ok)
 			return
 
+		fileNames = QtCore.QStringList([QtCore.QFileInfo(f).fileName() for f in dialog.selectedFiles()]) 
 		dateField = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DateField).data()
 		descriptionField = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DescriptionField).data()
-		creditField =  combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DescriptionField).data()
+		creditField =  combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_CreditField).data()
 		debitField =  combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DebitField).data()
 		currencySign =  combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_CurrencySign).data()
 		dateFormat =  combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DateFormat).data()
@@ -253,7 +253,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		settings.setValue('options/importaccounttype', combo.currentText())
 		settings.setValue('options/importdirectory', dialog.directory().absolutePath())
 	
-		#pdb.set_trace()
 		try:
 			decoder = Decoder(
 					dateField,
@@ -268,23 +267,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			return
 
 		dialog = ImportDialog(decoder.records, accountId, self)
+		dialog.setWindowTitle(fileNames.join(', '))
 
-#		if decoder:
-#			QtGui.QMessageBox.critical(self, 'Import Error', decoder.error(), QtGui.QMessageBox.Ok)
-#			return
-#	
-#		d
-#	
-#		fileNames = []
-#		for f in dialog.selectedFiles:
-#			fileNames.append(QtGui.QFileInfo(file.fileName))
-#	
-#		dialog.setWindowTitle(', '.join(fileNames))
-#	
-##		dialog.
-#		if dialog.exec_():
-#			self.reset()
-
+		if dialog.exec_():
+			self.reset()
 
 	def itemChecked(self, index):
 

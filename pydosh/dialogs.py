@@ -23,8 +23,10 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 
 		self.progressBar.setVisible(False)
 		model = ImportModel(records, self)
+		model.process()
+
 		self.importButton.clicked.connect(self.importRecords)
-		self.selectAllButton.clicked.connect(self.selectAll)
+		self.selectAllButton.clicked.connect(self.view.selectAll)
 
 		self.errorsCounter.setNum(model.badRecordCount())
 		self.selectedCounter.setNum(0)
@@ -34,17 +36,17 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		proxy.setSourceModel(model)
 		proxy.setFilterKeyColumn(0)
 	
-		self.importTableView.setModel(proxy)
-		self.importTableView.verticalHeader().hide()
-		self.importTableView.setSortingEnabled(True)
-		self.importTableView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
-		self.importTableView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
-		self.importTableView.resizeColumnsToContents()
-		self.importTableView.horizontalHeader().setStretchLastSection(True)
-		self.importTableView.sortByColumn(1, QtCore.Qt.DescendingOrder)
+		self.view.setModel(proxy)
+		self.view.verticalHeader().hide()
+		self.view.setSortingEnabled(True)
+		self.view.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+		self.view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+		self.view.resizeColumnsToContents()
+		self.view.horizontalHeader().setStretchLastSection(True)
+		self.view.sortByColumn(1, QtCore.Qt.DescendingOrder)
 
-		self.closeButton.clicked.connect(self.closeButton)
-		self.importTableView.selectionModel().selectionChanged.connect(self.recordsSelected())
+		self.closeButton.clicked.connect(self.__close)
+		self.view.selectionModel().selectionChanged.connect(self.recordsSelected)
 
 		self.importButton.setEnabled(model.haveRecordsToImport())
 
@@ -54,8 +56,8 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		QtCore.QCoreApplication.processEvents()
 
 	def recordsSelected(self):
-		selectionModel = self.importTableView.selectionModel()
-		proxyModel = self.importTableView.model()
+		selectionModel = self.view.selectionModel()
+		proxyModel = self.view.model()
 		dataModel = proxyModel.sourceModel()
 	
 		selectionModel.blockSignals(True)
@@ -65,66 +67,64 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 				selectionModel.select(index, QtGui.QItemSelectionModel.Deselect | QtGui.QItemSelectionModel.Rows)
 		
 		# get the new selection
-		self.selectedCounter.setText(len(selectionModel.selectedRows()))
+		self.selectedCounter.setNum(len(selectionModel.selectedRows()))
 	
 		selectionModel.blockSignals(False)
 
-	def closeButton(self):
+	def __close(self):
 		self.done(self.__numImported)
 
 	def importRecords(self):
-		selectionModel = self.importTableView.selectionModel()
+		selectionModel = self.view.selectionModel()
 	
 		indexes = selectionModel.selectedRows()
 	
 		if len(indexes) == 0:
 			return
 	
-		proxyModel = self.importTableView.model()
+		proxyModel = self.view.model()
 		dataModel = proxyModel.sourceModel()
-	
-		QtSql.QSqlDatabase.database().transaction()
 	
 		self.progressBar.setVisible(True)
 		self.progressBar.setMaximum(len(indexes))
 	
-		self.importTableView.clearSelection()
+		self.view.clearSelection()
 	
-		for index in indexes:
-			rec = dataModel.record(proxyModel.mapToSource(index))
+		with db.transaction():
+			for index in indexes:
+				rec = dataModel.record(proxyModel.mapToSource(index))
+		
+				query = QtSql.QSqlQuery() 
+				query.prepare("""
+						INSERT INTO records
+						(date, userid, accounttypeid, description, txdate, amount, insertdate, rawdata, md5)
+						VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+					""")
+		
+				query.addBindValue(rec.date)
+				query.addBindValue(db.userId())
+				query.addBindValue(self.__accountId)
+				query.addBindValue(rec.description)
+				query.addBindValue(rec.txDate)
+				query.addBindValue(rec.credit if rec.credit else rec.debit)
+				query.addBindValue(QtCore.QDateTime.currentDateTime())
+				query.addBindValue(rec.rawdata)
+				query.addBindValue(rec.checksum)
+		
+				query.exec_()
+		
+				if query.lastError().isValid():
+					QtGui.QMessageBox.critical(self, 'Import Error', query.lastError().text(), QtGui.QMessageBox.Ok)
+					QtSql.QSqlDatabase.database().rollback()
+					self.progressBar.setVisible(False)
+					return
+		
+				dataModel.setImported(proxyModel.mapToSource(index))
+				self.view.scrollTo(index, QtGui.QAbstractItemView.PositionAtBottom)
+				self.view.resizeColumnsToContents()
+				self.incrementCounter(self.importedCounter)
+	#			self.progressBar.setValue(i+1)
 	
-			query = QtSql.QSqlQuery() 
-			query.prepare("""
-					INSERT INTO records
-					(date, userid, accounttypeid, description, txdate, amount, insertdate, rawdata, md5)
-					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-				""")
-	
-			query.addBindValue(rec.date)
-			query.addBindValue(db.userId())
-			query.addBindValue(self.__accountId)
-			query.addBindValue(rec.description)
-			query.addBindValue(rec.txDate)
-			query.addBindValue(rec.credit if rec.credit else rec.debit)
-			query.addBindValue(QtCore.QDateTime.currentDateTime())
-			query.addBindValue(rec.rawdata)
-			query.addBindValue(rec.md5)
-	
-			query.exec_()
-	
-			if query.lastError().isValid():
-				QtGui.QMessageBox.critical(self, 'Import Error', query.lastError().text(), QtGui.QMessageBox.Ok)
-				QtSql.QSqlDatabase.database().rollback()
-				self.progressBar.setVisible(False)
-				return
-	
-			dataModel.setImported(proxyModel.mapToSource(index))
-			self.importTableView.scrollTo(index, QtGui.QAbstractItemView.PositionAtBottom)
-			self.importTableView.resizeColumnsToContents()
-			self.incrementCounter(self.importedCounter)
-#			self.progressBar.setValue(i+1)
-	
-		QtSql.QSqlDatabase.database().commit()
 		self.progressBar.setVisible(False)
 		self.importButton.setEnabled(dataModel.haveRecordsToImport())
 
@@ -222,8 +222,6 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 		self.view.exit(index)
 
 	def deleteAccount(self):
-		import pdb
-		pdb.set_trace()
 		for index in self.view.selectionModel().selectedRows():
 			if index.isValid():
 				self.model.removeRows(index.row(), 1, QtCore.QModelIndex())
