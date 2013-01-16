@@ -4,6 +4,7 @@ from PyQt4 import QtGui, QtCore, QtSql
 from utils import showWaitCursor
 from models import RecordModel, SortProxyModel
 from helpBrowser import HelpBrowser
+from csvDecoder import Decoder
 from database import db
 from ui_pydosh import Ui_pydosh
 from dialogs import SettingsDialog, LoginDialog, TagDialog
@@ -199,7 +200,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		if not db.isConnected:
 			return
 
-		combo =  QtGui.QComboBox(self)
+		combo = QtGui.QComboBox(self)
 		combo.addItem('None')
 
 		query = QtSql.QSqlQuery("""
@@ -210,7 +211,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		while query.next():
 			# Store the accounttypeid in the userData field
-			combo.addItem(query.value(0).toString(), query.value(1).toInt())
+			accounttypeid, _ = query.value(0).toString(), query.value(1).toInt()
+			combo.addItem(accounttypeid)
 
 		# find the previous accounttype that was used (if any)
 		settings = QtCore.QSettings()
@@ -244,7 +246,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	
 		accountTypeId = combo.itemData(combo.currentIndex(), QtCore.Qt.UserRole)
 		accountName = combo.itemData(combo.currentIndex(), QtCore.Qt.DisplayRole).toString()
-	
+		pdb.set_trace()
 		# Save the settings for next time
 		settings.setValue('options/importaccounttype', accountName)
 		settings.setValue('options/importdirectory', dialog.directory().absolutePath())

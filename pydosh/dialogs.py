@@ -170,7 +170,7 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 		QtSql.QSqlDatabase.database().transaction()
 		self.tagView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 		self.tagView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
-		#self.tagView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+		self.tagView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
 		self.deleteTagButton.setEnabled(False)
 		# TODO: remove!
 		#model = TagModel([4000,5819], self)

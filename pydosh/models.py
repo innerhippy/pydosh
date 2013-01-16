@@ -150,15 +150,15 @@ class TagModel(QtSql.QSqlTableModel):
 	def __init__(self, recordIds, parent=None):
 		super(TagModel, self).__init__(parent=parent)
 		self.__recordIds = set(recordIds)
-#		self.__tagDict = {}
-
 		model = QtSql.QSqlTableModel(self)
 		model.setTable('recordtags')
-		#model.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
 		model.select()
 		self.__recordTagModel = model
 
 	def __contains__(self, tagName):
+		""" Allows convenient:
+				if "someTag" in model:
+		"""
 		for row in xrange(self.rowCount()):
 			if tagName == self.index(row, enum.kTagsColumn_TagName).data().toString():
 				return True
@@ -168,7 +168,11 @@ class TagModel(QtSql.QSqlTableModel):
 		return super(TagModel, self).flags(index) | QtCore.Qt.ItemIsUserCheckable
 
 	def data(self, item, role=QtCore.Qt.DisplayRole):
-
+		""" Tristate checkState:
+				checked - all records have the tag
+				partial - some records have the tag
+				unchecked - no records have the tag
+		"""
 		if not item.isValid():
 			return QtCore.QVariant()
 
@@ -187,6 +191,8 @@ class TagModel(QtSql.QSqlTableModel):
 		return super(TagModel, self).data(item, role)
 
 	def __getRecordIdsForTag(self, tagId):
+		""" Generator to get all recordIds assigned to a given tag (id)
+		"""
 		for row in xrange(self.__recordTagModel.rowCount()):
 			recordId, ok = self.__recordTagModel.index(row, enum.kRecordTagsColumn_RecordId).data().toInt()
 			recordTagId, ok = self.__recordTagModel.index(row, enum.kRecordTagsColumn_TagId).data().toInt()
@@ -195,10 +201,11 @@ class TagModel(QtSql.QSqlTableModel):
 				yield recordId
 		
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
-
+		""" Handle checkstate role changes 
+		"""
 		if not index.isValid():
 			return QtCore.QVariant()
-		
+
 		if role == QtCore.Qt.CheckStateRole:
 
 			tagId = self.index(index.row(), enum.kTagsColumn_TagId).data().toInt()[0]
@@ -248,6 +255,8 @@ class TagModel(QtSql.QSqlTableModel):
 
 
 	def addTag(self, tagName):
+		""" Add a new tag and assign to our current records
+		"""
 		rowCount = self.rowCount()
 		self.insertRows(rowCount, 1)
 		self.setData(self.index(rowCount, enum.kTagsColumn_TagName), QtCore.QVariant(tagName))
