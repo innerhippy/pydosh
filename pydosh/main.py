@@ -4,10 +4,10 @@ from PyQt4 import QtGui, QtCore, QtSql
 from utils import showWaitCursor
 from models import RecordModel, SortProxyModel
 from helpBrowser import HelpBrowser
-from csvDecoder import Decoder
+from csvDecoder import Decoder, DecoderException
 from database import db
 from ui_pydosh import Ui_pydosh
-from dialogs import SettingsDialog, LoginDialog, TagDialog
+from dialogs import SettingsDialog, LoginDialog, TagDialog, ImportDialog
 import enum
 QtCore.pyqtRemoveInputHook()
 import pydosh_rc
@@ -201,18 +201,11 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			return
 
 		combo = QtGui.QComboBox(self)
-		combo.addItem('None')
-
-		query = QtSql.QSqlQuery("""
-			SELECT accountname, accounttypeid
-			FROM accounttypes
-			ORDER BY accountname
-		""")
-
-		while query.next():
-			# Store the accounttypeid in the userData field
-			accounttypeid, _ = query.value(0).toString(), query.value(1).toInt()
-			combo.addItem(accounttypeid)
+		model = QtSql.QSqlTableModel(self)
+		model.setTable('accounttypes')
+		model.select()
+		combo.setModel(model)
+		combo.setModelColumn(enum.kAccountTypeColumn_AccountName)
 
 		# find the previous accounttype that was used (if any)
 		settings = QtCore.QSettings()
@@ -243,25 +236,44 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	
 		if not dialog.exec_():
 			return
-	
-		accountTypeId = combo.itemData(combo.currentIndex(), QtCore.Qt.UserRole)
-		accountName = combo.itemData(combo.currentIndex(), QtCore.Qt.DisplayRole).toString()
-		pdb.set_trace()
+
+		accountId, ok = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_AccountTypeId).data().toInt()
+		if not ok:
+			QtGui.QMessageBox.critical(self, 'Import Error', 'No account type specified', QtGui.QMessageBox.Ok)
+			return
+
+		dateField = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DateField).data()
+		descriptionField = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DescriptionField).data()
+		creditField =  combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DescriptionField).data()
+		debitField =  combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DebitField).data()
+		currencySign =  combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_CurrencySign).data()
+		dateFormat =  combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DateFormat).data()
+
 		# Save the settings for next time
-		settings.setValue('options/importaccounttype', accountName)
+		settings.setValue('options/importaccounttype', combo.currentText())
 		settings.setValue('options/importdirectory', dialog.directory().absolutePath())
 	
-		if accountTypeId.isValid():
-			QtGui.QMessageBox.critical(self, 'Import Error', 'No Account Type given!', QtGui.QMessageBox.Ok)
+		#pdb.set_trace()
+		try:
+			decoder = Decoder(
+					dateField,
+					descriptionField,
+					creditField,
+					debitField,
+					currencySign,
+					dateFormat,
+					dialog.selectedFiles())
+		except DecoderException, exc:
+			QtGui.QMessageBox.critical(self, 'Import Error', str(exc), QtGui.QMessageBox.Ok)
 			return
-	
-#		decoder = CSVDecoder(accountName, fd.selectedFiles())
-#	
+
+		dialog = ImportDialog(decoder.records, accountId, self)
+
 #		if decoder:
 #			QtGui.QMessageBox.critical(self, 'Import Error', decoder.error(), QtGui.QMessageBox.Ok)
 #			return
 #	
-#		dialog = ImportDialog(decoder.records(), accountTypeId.toInt(), self)
+#		d
 #	
 #		fileNames = []
 #		for f in dialog.selectedFiles:

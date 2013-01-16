@@ -5,6 +5,147 @@ import enum
 from database import db
 import pydosh_rc
 
+class ImportRecords(object):
+	def __init__(self, args):
+		super(ImportRecords, self).__init__()
+		self.rawdata, self.dateField, self.descField, self.txDate, self.debitField, self.creditField, self.error = args
+		self.__imported = False
+
+	@property
+	def valid(self):
+		return self.error is None
+
+	@property
+	def imported(self):
+		return self.__imported
+	
+	@imported.setter
+	def imported(self, value):
+		self.__imported = value
+		
+	@property
+	def md5(self):
+		return QtCore.QCryptographicHash.hash(self.rawdata, QtCore.QCryptographicHash.Md5).toHex()
+
+class ImportModel(QtCore.QAbstractTableModel):
+	def __init__(self, records, parent=None):
+		super(ImportModel, self).__init__(parent=parent)
+		self.__existingMd5s = []
+		self.__records = []
+		#pdb.set_trace()
+		query = QtSql.QSqlQuery('SELECT md5 from records where userid=%d' % db.userId)
+
+		while query.next():
+			self.__existingMd5s.append(query.value(0).toString())
+
+		for record in set(records):
+			rec = ImportRecords(record)
+			if rec.md5 in self.__existingMd5s:
+				rec.imported = True
+			self.__records.append(rec)
+	
+	def record(self, index):
+		return self.__records[index.row()]
+
+	def canImport(self, index):
+		rec = self.__records[index.row()]
+		return not rec.imported and rec.valid
+
+	def rowCount(self, index):
+		return len(self.__records)
+
+	def columnCount(self, index):
+		return 6
+
+	def setImported(self, index):
+		if not index.isValid():
+			return
+		row = index.row()
+		rec = self.__records[row]
+		rec.imported = True
+		self.__existingMd5s.append(rec.md5)
+		self.dataChanged(self.createIndex(row, 0), self.createIndex(row, self.columnCount() - 1))
+
+
+	def badRecordCount(self):
+		return len([rec for rec in self.__records if not rec.valid])
+
+	def importedRecordCount(self):
+		return len([rec for rec in self.__records if rec.imported])
+
+	def exists(self, index):
+		return self.__records[index.row()].imported
+	
+	def data(self, item, role=QtCore.Qt.DisplayRole):
+
+		if not item.isValid():
+			return QtCore.QVariant()
+
+		if role == QtCore.Qt.BackgroundColorRole:
+
+			if self.__records[item.row()].valid:
+				return QtGui.QColor("#ffd3cf")
+
+			elif self.exists(item):
+				return QtGui.QColor("#b6ffac")
+
+		return QtCore.QVariant()
+
+		if role == QtCore.Qt.ToolTipRole:
+	
+			if not self.__records[item.row()].valid:
+				return self.__records[item.row()]
+	
+			return self.__records[item.row()].rawdata 
+	
+		if role == QtCore.Qt.DisplayRole:
+			if item.column() == 0:
+				return self.recordStatusToText(item)
+			elif item.column() == 1:
+				return self.__records[item.row()].dateField
+			elif item.column() == 2:
+				return self.__records[item.row()].txDate
+			elif item.column() == 3:
+				return self.__records[item.row()].descField
+			elif item.column() == 4:
+				return self.__records[item.row()].creditField
+			elif item.column() == 5:
+				return self.__records[item.row()].debitField
+
+		return QtCore.QVariant()
+
+	def haveRecordsToImport(self):
+
+		for rec in self.__records:
+			if rec.valid and rec.md5 not in self.__existingMd5s:
+				return True
+		return False
+
+	def recordStatusToText(self, index):
+		if not self.__records[index.row()].valid:
+			return self.__records[index.row()].error
+
+		if self.exists(index):
+			return "Imported";
+
+	def headerData (self, section, orientation, role):
+
+		if role == QtCore.Qt.DisplayRole:
+			if section == 0:
+				return "Status"
+			elif section == 1:
+				return "Date"
+			elif section == 2:
+				return "TxDate"
+			elif section == 3:
+				return "Description"
+			elif section == 4:
+				return "Credit"
+			elif section == 5:
+				return "Debit"
+		return QtCore.QVariant()
+
+
 class RecordModel(QtSql.QSqlTableModel):
 	def __init__(self, userId, parent=None):
 		super(RecordModel, self).__init__(parent=parent)

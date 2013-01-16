@@ -85,7 +85,7 @@ class _Database(QtCore.QObject):
 	def connect(self):
 		self.disconnect()
 
-		db = QtSql.QSqlDatabase.addDatabase('QPSQL')
+		db = QtSql.QSqlDatabase.addDatabase('QMYSQL')
 		db.setDatabaseName(self.database)
 		db.setHostName(self.hostname)
 		db.setUserName(self.username)

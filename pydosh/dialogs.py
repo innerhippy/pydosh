@@ -3,13 +3,132 @@ from helpBrowser import HelpBrowser
 from ui_settings import Ui_Settings
 from ui_login import Ui_Login
 from ui_tags import Ui_Tags
+from ui_import import Ui_Import
 from utils import showWaitCursor
 import enum
 from database import db
 from delegates import AccountDelegate
-from models import AccountModel, TagModel
+from models import AccountModel, TagModel, ImportModel
 
 import pdb
+
+class ImportDialog(Ui_Import, QtGui.QDialog):
+	def __init__(self, records, accountId, parent=None):
+		super(ImportDialog, self).__init__(parent=parent)
+		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+		self.setupUi(self)
+		self.__records = records
+		self.__accountId = accountId
+		self.__numImported = 0
+
+		self.progressBar.setVisible(False)
+		model = ImportModel(records, self)
+		self.importButton.clicked.connect(self.importRecords)
+		self.selectAllButton.clicked.connect(self.selectAll)
+
+		self.errorsCounter.setNum(model.badRecordCount())
+		self.selectedCounter.setNum(0)
+		self.importedCounter.setNum(model.importedRecordCount())
+	
+		proxy = QtGui.QSortFilterProxyModel(model)
+		proxy.setSourceModel(model)
+		proxy.setFilterKeyColumn(0)
+	
+		self.importTableView.setModel(proxy)
+		self.importTableView.verticalHeader().hide()
+		self.importTableView.setSortingEnabled(True)
+		self.importTableView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+		self.importTableView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+		self.importTableView.resizeColumnsToContents()
+		self.importTableView.horizontalHeader().setStretchLastSection(True)
+		self.importTableView.sortByColumn(1, QtCore.Qt.DescendingOrder)
+
+		self.closeButton.clicked.connect(self.closeButton)
+		self.importTableView.selectionModel().selectionChanged.connect(self.recordsSelected())
+
+		self.importButton.setEnabled(model.haveRecordsToImport())
+
+	def incrementCounter(self, counter):
+		self.__numImported += 1
+		self.counter.setNum(self.__numImported)
+		QtCore.QCoreApplication.processEvents()
+
+	def recordsSelected(self):
+		selectionModel = self.importTableView.selectionModel()
+		proxyModel = self.importTableView.model()
+		dataModel = proxyModel.sourceModel()
+	
+		selectionModel.blockSignals(True)
+		for index in selectionModel.selectedRows():
+			# de-select any that have errors or duplicates
+			if not dataModel.canImport(proxyModel.mapToSource(index)):
+				selectionModel.select(index, QtGui.QItemSelectionModel.Deselect | QtGui.QItemSelectionModel.Rows)
+		
+		# get the new selection
+		self.selectedCounter.setText(len(selectionModel.selectedRows()))
+	
+		selectionModel.blockSignals(False)
+
+	def closeButton(self):
+		self.done(self.__numImported)
+
+	def importRecords(self):
+		selectionModel = self.importTableView.selectionModel()
+	
+		indexes = selectionModel.selectedRows()
+	
+		if len(indexes) == 0:
+			return
+	
+		proxyModel = self.importTableView.model()
+		dataModel = proxyModel.sourceModel()
+	
+		QtSql.QSqlDatabase.database().transaction()
+	
+		self.progressBar.setVisible(True)
+		self.progressBar.setMaximum(len(indexes))
+	
+		self.importTableView.clearSelection()
+	
+		for index in indexes:
+			rec = dataModel.record(proxyModel.mapToSource(index))
+	
+			query = QtSql.QSqlQuery() 
+			query.prepare("""
+					INSERT INTO records
+					(date, userid, accounttypeid, description, txdate, amount, insertdate, rawdata, md5)
+					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				""")
+	
+			query.addBindValue(rec.date)
+			query.addBindValue(db.userId())
+			query.addBindValue(self.__accountId)
+			query.addBindValue(rec.description)
+			query.addBindValue(rec.txDate)
+			query.addBindValue(rec.credit if rec.credit else rec.debit)
+			query.addBindValue(QtCore.QDateTime.currentDateTime())
+			query.addBindValue(rec.rawdata)
+			query.addBindValue(rec.md5)
+	
+			query.exec_()
+	
+			if query.lastError().isValid():
+				QtGui.QMessageBox.critical(self, 'Import Error', query.lastError().text(), QtGui.QMessageBox.Ok)
+				QtSql.QSqlDatabase.database().rollback()
+				self.progressBar.setVisible(False)
+				return
+	
+			dataModel.setImported(proxyModel.mapToSource(index))
+			self.importTableView.scrollTo(index, QtGui.QAbstractItemView.PositionAtBottom)
+			self.importTableView.resizeColumnsToContents()
+			self.incrementCounter(self.importedCounter)
+#			self.progressBar.setValue(i+1)
+	
+		QtSql.QSqlDatabase.database().commit()
+		self.progressBar.setVisible(False)
+		self.importButton.setEnabled(dataModel.haveRecordsToImport())
+
+
 
 class SettingsDialog(Ui_Settings, QtGui.QDialog):
 	def __init__(self, userId, parent=None):
@@ -59,15 +178,15 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 		error = ''
 
 		if not record.value(enum.kAccountTypeColumn_AccountName).toString():
-			error = "Account name cannot be empty!";
+			error = "Account name cannot be empty!"
 		elif record.value(enum.kAccountTypeColumn_DateField).isNull():
-			error = "Date field must be set!";
+			error = "Date field must be set!"
 		elif record.value(enum.kAccountTypeColumn_DescriptionField).isNull():
-			error = "Description field must be set!";
+			error = "Description field must be set!"
 		elif abs(record.value(enum.kAccountTypeColumn_CurrencySign).toInt()) != 1:
-			error = "Current sign value must be 1 or -1";
+			error = "Current sign value must be 1 or -1"
 		elif not record.value(enum.kAccountTypeColumn_DateFormat).toString():
-			error = "Date format cannot be empty!";
+			error = "Date format cannot be empty!"
 	
 		if error:
 			QtGui.QMessageBox.critical(self, 'Account failed', error, QtGui.QMessageBox.Ok)
