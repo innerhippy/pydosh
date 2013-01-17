@@ -17,19 +17,19 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		super(ImportDialog, self).__init__(parent=parent)
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 		self.setupUi(self)
-		self.__records = records
 		self.__accountId = accountId
 
 		self.progressBar.setVisible(False)
 		model = ImportModel(self)
-		model.process(records)
+		model.loadRecords(records)
 
-		self.importButton.clicked.connect(self.importRecords)
+		self.importButton.clicked.connect(self.__importRecords)
 		self.selectAllButton.clicked.connect(self.view.selectAll)
 
-		self.errorsCounter.setNum(model.badRecordCount())
+		
+		self.errorsCounter.setNum(model.numBadRecords)
 		self.selectedCounter.setNum(0)
-		self.importedCounter.setNum(model.importedRecordCount())
+		self.importedCounter.setNum(model.numRecordsImported)
 	
 		proxy = QtGui.QSortFilterProxyModel(model)
 		proxy.setSourceModel(model)
@@ -45,11 +45,19 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.view.sortByColumn(1, QtCore.Qt.DescendingOrder)
 
 		self.closeButton.clicked.connect(self.__close)
-		self.view.selectionModel().selectionChanged.connect(self.recordsSelected)
+		self.view.selectionModel().selectionChanged.connect(self.__recordsSelected)
 
-		self.importButton.setEnabled(model.haveRecordsToImport())
+		self.importButton.setEnabled(bool(model.numRecordsToImport))
+		
+		self.__setCounters()
+		
+	def __setCounters(self):
+		model = self.view.model().sourceModel()
+		self.errorsCounter.setNum(model.numBadRecords)
+		self.importedCounter.setNum(model.numRecordsImported)
+		self.selectedCounter.setNum(0)
 
-	def recordsSelected(self):
+	def __recordsSelected(self):
 		selectionModel = self.view.selectionModel()
 		proxyModel = self.view.model()
 		dataModel = proxyModel.sourceModel()
@@ -69,7 +77,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		val, _ = self.importedCounter.text().toInt()
 		self.done(val)
 
-	def importRecords(self):
+	def __importRecords(self):
 		selectionModel = self.view.selectionModel()
 		indexes = selectionModel.selectedRows()
 	
@@ -78,31 +86,30 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		
 		try:
 			self.progressBar.setVisible(True)
-			self.__importRecords(indexes)
+
+			proxyModel = self.view.model()
+			dataModel = proxyModel.sourceModel()
+		
+			self.progressBar.setMaximum(len(indexes))
+			self.view.clearSelection()
+		
+			with db.transaction():
+				for index in indexes:
+					dataModel.saveRecord(self.__accountId, proxyModel.mapToSource(index))
+
+					self.view.scrollTo(index, QtGui.QAbstractItemView.PositionAtBottom)
+					self.view.resizeColumnsToContents()
+					self.__setCounters()
+					QtCore.QCoreApplication.processEvents()
+					self.progressBar.setValue(self.progressBar.value() +1)
+	
+			self.importButton.setEnabled(bool(dataModel.numRecordsToImport))
+		
 		except Exception, exc:
 			QtGui.QMessageBox.critical(self, 'Import Error', str(exc), QtGui.QMessageBox.Ok)
 		finally:
 			self.progressBar.setVisible(False)
 	
-	def __importRecords(self, indexes):
-		proxyModel = self.view.model()
-		dataModel = proxyModel.sourceModel()
-	
-		self.progressBar.setMaximum(len(indexes))
-		self.view.clearSelection()
-	
-		with db.transaction():
-			for index in indexes:
-				dataModel.saveRecord(self.__accountId, proxyModel.mapToSource(index))
-				self.view.scrollTo(index, QtGui.QAbstractItemView.PositionAtBottom)
-				self.view.resizeColumnsToContents()
-				val, _ = self.importedCounter.text().toInt()
-				self.importedCounter.setNum(val +1)
-				QtCore.QCoreApplication.processEvents()
-				self.progressBar.setValue(self.progressBar.value() +1)
-
-		self.importButton.setEnabled(dataModel.haveRecordsToImport())
-
 
 class SettingsDialog(Ui_Settings, QtGui.QDialog):
 	def __init__(self, userId, parent=None):

@@ -34,16 +34,7 @@ class ImportException(Exception):
 class ImportModel(QtCore.QAbstractTableModel):
 	def __init__(self, parent=None):
 		super(ImportModel, self).__init__(parent=parent)
-		self.__existingRecords = []
 		self.__records = []
-
-		query = QtSql.QSqlQuery('SELECT md5 from records where userid=%d' % db.userId)
-
-		if query.lastError().isValid():
-			raise ImportException(query.lastError().text())
-
-		while query.next():
-			self.__existingRecords.append(query.value(0).toString())
 
 	def saveRecord(self, accountId, index):
 		""" Saves the import record to the database
@@ -74,20 +65,28 @@ class ImportModel(QtCore.QAbstractTableModel):
 			raise ImportException(query.lastError().text())
 
 		rec.imported = True
-		self.__existingRecords.append(rec.checksum)
 	
 		# Tell the view our data has changed
 		self.dataChanged.emit(self.createIndex(index.row(), 0), self.createIndex(index.row(), self.columnCount() - 1))
 
-	def process(self, records):
+	def loadRecords(self, records):
+		existingRecords = []
+		query = QtSql.QSqlQuery('SELECT md5 from records where userid=%d' % db.userId)
+
+		if query.lastError().isValid():
+			raise ImportException(query.lastError().text())
+
+		while query.next():
+			existingRecords.append(query.value(0).toString())
+			
 		for record in set(records):
 			rec = ImportRecord(record)
-			if rec.checksum in self.__existingRecords:
+			if rec.checksum in existingRecords:
 				rec.imported = True
 			self.__records.append(rec)
 	
-	def record(self, index):
-		return self.__records[index.row()]
+#	def record(self, index):
+#		return self.__records[index.row()]
 
 	def canImport(self, index):
 		rec = self.__records[index.row()]
@@ -99,11 +98,17 @@ class ImportModel(QtCore.QAbstractTableModel):
 	def columnCount(self, index=QtCore.QModelIndex()):
 		return 6
 
-	def badRecordCount(self):
+	@property
+	def numBadRecords(self):
 		return len([rec for rec in self.__records if not rec.valid])
 
-	def importedRecordCount(self):
+	@property
+	def numRecordsImported(self):
 		return len([rec for rec in self.__records if rec.imported])
+
+	@property
+	def numRecordsToImport(self):
+		return len([rec for rec in self.__records if rec.valid and not rec.imported])
 
 	def exists(self, index):
 		return self.__records[index.row()].imported
@@ -141,12 +146,6 @@ class ImportModel(QtCore.QAbstractTableModel):
 				return self.__records[item.row()].debit
 
 		return QtCore.QVariant()
-
-	def haveRecordsToImport(self):
-		for rec in self.__records:
-			if rec.valid and rec.checksum not in self.__existingRecords:
-				return True
-		return False
 
 	def recordStatusToText(self, index):
 		if not self.__records[index.row()].valid:
