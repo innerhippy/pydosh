@@ -5,10 +5,10 @@ import enum
 from database import db
 import pydosh_rc
 
-class ImportRecords(object):
+class ImportRecord(object):
 	def __init__(self, args):
-		super(ImportRecords, self).__init__()
-		self.rawdata, self.dateField, self.descField, self.txDate, self.debitField, self.creditField, self.error = args
+		super(ImportRecord, self).__init__()
+		self.data, self.date, self.desc, self.txdate, self.debit, self.credit, self.error = args
 		self.__imported = False
 
 	@property
@@ -25,22 +25,63 @@ class ImportRecords(object):
 		
 	@property
 	def checksum(self):
-		return QtCore.QCryptographicHash.hash(self.rawdata, QtCore.QCryptographicHash.Md5).toHex()
+		return QtCore.QCryptographicHash.hash(self.data, QtCore.QCryptographicHash.Md5).toHex()
+
+class ImportException(Exception):
+	""" General exception for record import
+	"""
 
 class ImportModel(QtCore.QAbstractTableModel):
-	def __init__(self, data, parent=None):
+	def __init__(self, parent=None):
 		super(ImportModel, self).__init__(parent=parent)
 		self.__existingRecords = []
 		self.__records = []
-		self.__data = set(data)
 
-		query = QtSql.QSqlQuery('SELECT checksum from records where userid=%d' % db.userId)
+		query = QtSql.QSqlQuery('SELECT md5 from records where userid=%d' % db.userId)
+
+		if query.lastError().isValid():
+			raise ImportException(query.lastError().text())
+
 		while query.next():
 			self.__existingRecords.append(query.value(0).toString())
 
-	def process(self):
-		for record in self.__data:
-			rec = ImportRecords(record)
+	def saveRecord(self, accountId, index):
+		""" Saves the import record to the database
+			Raises ImportException on error	
+		"""
+		rec = self.__records[index.row()]
+	
+		query = QtSql.QSqlQuery() 
+		query.prepare("""
+				INSERT INTO records
+				(date, userid, accounttypeid, description, txdate, amount, insertdate, rawdata, md5)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+			""")
+
+		query.addBindValue(rec.date)
+		query.addBindValue(db.userId)
+		query.addBindValue(accountId)
+		query.addBindValue(rec.desc)
+		query.addBindValue(rec.txdate)
+		query.addBindValue(rec.credit if rec.credit else rec.debit)
+		query.addBindValue(QtCore.QDateTime.currentDateTime())
+		query.addBindValue(rec.data)
+		query.addBindValue(rec.checksum)
+
+		query.exec_()
+
+		if query.lastError().isValid():
+			raise ImportException(query.lastError().text())
+
+		rec.imported = True
+		self.__existingRecords.append(rec.checksum)
+	
+		# Tell the view our data has changed
+		self.dataChanged.emit(self.createIndex(index.row(), 0), self.createIndex(index.row(), self.columnCount() - 1))
+
+	def process(self, records):
+		for record in set(records):
+			rec = ImportRecord(record)
 			if rec.checksum in self.__existingRecords:
 				rec.imported = True
 			self.__records.append(rec)
@@ -50,24 +91,13 @@ class ImportModel(QtCore.QAbstractTableModel):
 
 	def canImport(self, index):
 		rec = self.__records[index.row()]
-		print rec.imported, rec.error
 		return not rec.imported and rec.valid
 
 	def rowCount(self, parent=QtCore.QModelIndex()):
 		return len(self.__records)
 
-	def columnCount(self, index):
+	def columnCount(self, index=QtCore.QModelIndex()):
 		return 6
-
-	def setImported(self, index):
-		if not index.isValid():
-			return
-		row = index.row()
-		rec = self.__records[row]
-		rec.imported = True
-		self.__existingRecords.append(rec.checksum)
-		self.dataChanged(self.createIndex(row, 0), self.createIndex(row, self.columnCount() - 1))
-
 
 	def badRecordCount(self):
 		return len([rec for rec in self.__records if not rec.valid])
@@ -94,21 +124,21 @@ class ImportModel(QtCore.QAbstractTableModel):
 			if not self.__records[item.row()].valid:
 				return self.__records[item.row()]
 	
-			return self.__records[item.row()].rawdata 
+			return self.__records[item.row()].data 
 	
 		if role == QtCore.Qt.DisplayRole:
 			if item.column() == 0:
 				return self.recordStatusToText(item)
 			elif item.column() == 1:
-				return self.__records[item.row()].dateField
+				return self.__records[item.row()].date
 			elif item.column() == 2:
-				return self.__records[item.row()].txDate
+				return self.__records[item.row()].txdate
 			elif item.column() == 3:
-				return self.__records[item.row()].descField
+				return self.__records[item.row()].desc
 			elif item.column() == 4:
-				return self.__records[item.row()].creditField
+				return self.__records[item.row()].credit
 			elif item.column() == 5:
-				return self.__records[item.row()].debitField
+				return self.__records[item.row()].debit
 
 		return QtCore.QVariant()
 

@@ -1,4 +1,5 @@
 import pdb
+import codecs
 import operator
 import csv
 from PyQt4 import QtCore
@@ -21,14 +22,6 @@ class Decoder(QtCore.QObject):
 		self.__currencySign = None if currencySign.isNull() else currencySign.toInt()[0]
 		self.__dateFormat = None if dateFormat.isNull() else dateFormat.toString()
 		self.__files = files
-
-		print self.__dateField, self.__descriptionField, self.__creditField, self.__debitField, self.__currencySign, self.__dateFormat
-#		self.__dateField = 0
-#		self.__descriptionField = 2
-#		self.__creditField = 3
-#		self.__debitField = 3
-#		self.__currencySign = 1
-#		self.__dateFormat = 'dd/MM/yyyy'
 		self.__records = []
 
 		for f in files:
@@ -40,13 +33,18 @@ class Decoder(QtCore.QObject):
 		
 	def process(self, filename):
 
-		with open(filename, 'rb') as csvfile:
+		with codecs.open(filename, encoding='utf-8', mode='rb') as csvfile:
 			for line in csvfile:
 				row = csv.reader([line]).next()
 				rawdata = line.strip()
+
+				if len(rawdata) == 0:
+					# Skip blank lines
+					continue
+	
 				dateField = descField = txDate = debitField = creditField = error = None
+
 				try:
-					
 					dateField  = self.__getDateField(row[self.__dateField])
 					descField  = self.__getDescriptionField(row[self.__descriptionField])
 					txDate     = self.__getTransactionDate(row[self.__descriptionField], dateField)
@@ -61,7 +59,7 @@ class Decoder(QtCore.QObject):
 					continue
 
 				except DecoderException, exc:
-					self.setError(str(exc))
+#					self.setError(str(exc))
 					error = str(exc)
 
 				finally:
@@ -78,9 +76,9 @@ class Decoder(QtCore.QObject):
 
 	def __getDescriptionField(self, field):
 		return field.replace("'",'')
-
-	def setError(self, error):
-		print error
+#
+#	def setError(self, error):
+#		print error
 		
 	def __getTransactionDate(self, field, dateField):
 

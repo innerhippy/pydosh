@@ -1,4 +1,5 @@
 import sys
+import pdb
 from PyQt4 import QtGui, QtCore
 from main import PydoshWindow
 from dialogs import LoginDialog

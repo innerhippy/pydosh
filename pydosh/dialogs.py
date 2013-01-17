@@ -19,11 +19,10 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.setupUi(self)
 		self.__records = records
 		self.__accountId = accountId
-		self.__numImported = 0
 
 		self.progressBar.setVisible(False)
-		model = ImportModel(records, self)
-		model.process()
+		model = ImportModel(self)
+		model.process(records)
 
 		self.importButton.clicked.connect(self.importRecords)
 		self.selectAllButton.clicked.connect(self.view.selectAll)
@@ -50,11 +49,6 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 
 		self.importButton.setEnabled(model.haveRecordsToImport())
 
-	def incrementCounter(self, counter):
-		self.__numImported += 1
-		self.counter.setNum(self.__numImported)
-		QtCore.QCoreApplication.processEvents()
-
 	def recordsSelected(self):
 		selectionModel = self.view.selectionModel()
 		proxyModel = self.view.model()
@@ -72,62 +66,42 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		selectionModel.blockSignals(False)
 
 	def __close(self):
-		self.done(self.__numImported)
+		val, _ = self.importedCounter.text().toInt()
+		self.done(val)
 
 	def importRecords(self):
 		selectionModel = self.view.selectionModel()
-	
 		indexes = selectionModel.selectedRows()
 	
 		if len(indexes) == 0:
 			return
+		
+		try:
+			self.progressBar.setVisible(True)
+			self.__importRecords(indexes)
+		except Exception, exc:
+			QtGui.QMessageBox.critical(self, 'Import Error', str(exc), QtGui.QMessageBox.Ok)
+		finally:
+			self.progressBar.setVisible(False)
 	
+	def __importRecords(self, indexes):
 		proxyModel = self.view.model()
 		dataModel = proxyModel.sourceModel()
 	
-		self.progressBar.setVisible(True)
 		self.progressBar.setMaximum(len(indexes))
-	
 		self.view.clearSelection()
 	
 		with db.transaction():
 			for index in indexes:
-				rec = dataModel.record(proxyModel.mapToSource(index))
-		
-				query = QtSql.QSqlQuery() 
-				query.prepare("""
-						INSERT INTO records
-						(date, userid, accounttypeid, description, txdate, amount, insertdate, rawdata, md5)
-						VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-					""")
-		
-				query.addBindValue(rec.date)
-				query.addBindValue(db.userId())
-				query.addBindValue(self.__accountId)
-				query.addBindValue(rec.description)
-				query.addBindValue(rec.txDate)
-				query.addBindValue(rec.credit if rec.credit else rec.debit)
-				query.addBindValue(QtCore.QDateTime.currentDateTime())
-				query.addBindValue(rec.rawdata)
-				query.addBindValue(rec.checksum)
-		
-				query.exec_()
-		
-				if query.lastError().isValid():
-					QtGui.QMessageBox.critical(self, 'Import Error', query.lastError().text(), QtGui.QMessageBox.Ok)
-					QtSql.QSqlDatabase.database().rollback()
-					self.progressBar.setVisible(False)
-					return
-		
-				dataModel.setImported(proxyModel.mapToSource(index))
+				dataModel.saveRecord(self.__accountId, proxyModel.mapToSource(index))
 				self.view.scrollTo(index, QtGui.QAbstractItemView.PositionAtBottom)
 				self.view.resizeColumnsToContents()
-				self.incrementCounter(self.importedCounter)
-	#			self.progressBar.setValue(i+1)
-	
-		self.progressBar.setVisible(False)
-		self.importButton.setEnabled(dataModel.haveRecordsToImport())
+				val, _ = self.importedCounter.text().toInt()
+				self.importedCounter.setNum(val +1)
+				QtCore.QCoreApplication.processEvents()
+				self.progressBar.setValue(self.progressBar.value() +1)
 
+		self.importButton.setEnabled(dataModel.haveRecordsToImport())
 
 
 class SettingsDialog(Ui_Settings, QtGui.QDialog):
