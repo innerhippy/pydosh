@@ -31,6 +31,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.tagEditButton.setEnabled(False)
 		self.toggleCheckButton.setEnabled(False)
+		self.deleteButton.setEnabled(False)
 
 		self.checkedCombo.currentIndexChanged.connect(self.setFilter)
 		self.inoutCombo.currentIndexChanged.connect(self.setFilter)
@@ -43,6 +44,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.startDateEdit.dateChanged.connect(self.setFilter)
 		self.endDateEdit.dateChanged.connect(self.setFilter)
 		self.toggleCheckButton.clicked.connect(self.toggleSelected)
+		self.deleteButton.clicked.connect(self.deleteRecords)
 		self.dateRangeCheckbox.stateChanged.connect(self.setEndDate)
 		self.reloadButton.clicked.connect(self.reset)
 		self.tableView.clicked.connect(self.itemChecked)
@@ -130,7 +132,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			model = RecordModel(db.userId, self)
 
 			model.setTable("records")
-			model.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
+			model.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
 			model.select()
 
 			proxyModel = SortProxyModel(self)
@@ -295,6 +297,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		
 		self.tagEditButton.setEnabled(enable)
 		self.toggleCheckButton.setEnabled(enable)
+		self.deleteButton.setEnabled(enable)
 
 
 	def controlKeyPressed(self, key):
@@ -306,6 +309,24 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				if ok:
 					self.toggleChecked([recordId])
 
+	def deleteRecords(self):
+		""" Delete selected records
+		"""
+		selectionModel = self.tableView.selectionModel()
+		proxyModel = self.tableView.model()
+		dataModel = proxyModel.sourceModel()
+
+		if QtGui.QMessageBox.question(
+				self, 'Delete Records',
+				'Are you sure you want to delete %d rows?' % len(selectionModel.selectedRows()), 
+				QtGui.QMessageBox.Yes|QtGui.QMessageBox.No) != QtGui.QMessageBox.Yes:
+			return
+
+		for index in selectionModel.selectedRows():
+			dataModel.removeRow(proxyModel.mapToSource(index).row())
+
+		dataModel.submitAll()
+
 	def toggleChecked(self, recordIds):
 		""" QStringList of record IDs to toggle
 		"""
@@ -313,7 +334,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			return
 
 		query = QtSql.QSqlQuery("""
-			UPDATE records SET checked=abs(checked -1),checkdate='%(checkdate)s'
+			UPDATE records SET checked=abs(checked -1), checkdate='%(checkdate)s'
 			WHERE recordid IN (%(recordids)s)
 			""" % {
 			'checkdate': QtCore.QDateTime.currentDateTime().toString("yyyy-MM-dd hh:mm:ss"),

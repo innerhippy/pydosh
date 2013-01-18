@@ -339,6 +339,20 @@ p, li { white-space: pre-wrap; }
         </widget>
        </item>
        <item>
+        <widget class="QToolButton" name="deleteButton">
+         <property name="toolTip">
+          <string>reload data (Alt-r)</string>
+         </property>
+         <property name="text">
+          <string>&amp;r</string>
+         </property>
+         <property name="icon">
+          <iconset resource="pydosh.qrc">
+           <normaloff>:/icons/cross.png</normaloff>:/icons/cross.png</iconset>
+         </property>
+        </widget>
+       </item>
+       <item>
         <spacer name="horizontalSpacer_4">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
