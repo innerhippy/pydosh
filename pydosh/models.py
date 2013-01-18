@@ -9,7 +9,7 @@ class ImportRecord(object):
 	def __init__(self, args):
 		super(ImportRecord, self).__init__()
 		self.data, self.date, self.desc, self.txdate, self.debit, self.credit, self.error = args
-		self.__imported = False
+		self.__isImported = False
 
 	@property
 	def valid(self):
@@ -17,11 +17,11 @@ class ImportRecord(object):
 
 	@property
 	def imported(self):
-		return self.__imported
+		return self.__isImported
 	
 	@imported.setter
 	def imported(self, value):
-		self.__imported = value
+		self.__isImported = value
 		
 	@property
 	def checksum(self):
@@ -70,6 +70,13 @@ class ImportModel(QtCore.QAbstractTableModel):
 		self.dataChanged.emit(self.createIndex(index.row(), 0), self.createIndex(index.row(), self.columnCount() - 1))
 
 	def loadRecords(self, records):
+		""" Import the records into our model
+			An input record is a tuple containing 
+			(rawData, date, description, txDate, debit, credit, error,)
+			
+			The record is checked to see if it's already been imported into the database.
+			For this we use the md5 checksum on the rawData field
+		"""
 		existingRecords = []
 		query = QtSql.QSqlQuery('SELECT md5 from records where userid=%d' % db.userId)
 
@@ -78,41 +85,41 @@ class ImportModel(QtCore.QAbstractTableModel):
 
 		while query.next():
 			existingRecords.append(query.value(0).toString())
-			
+
 		for record in set(records):
 			rec = ImportRecord(record)
 			if rec.checksum in existingRecords:
 				rec.imported = True
 			self.__records.append(rec)
 	
-#	def record(self, index):
-#		return self.__records[index.row()]
-
 	def canImport(self, index):
+		""" Returns True if the record at index can be imported,
+			ie no error and hasn't been imported yet
+		"""
 		rec = self.__records[index.row()]
 		return not rec.imported and rec.valid
 
 	def rowCount(self, parent=QtCore.QModelIndex()):
 		return len(self.__records)
 
-	def columnCount(self, index=QtCore.QModelIndex()):
-		return 6
-
 	@property
 	def numBadRecords(self):
+		""" Returns the number of records with csv import errors
+		"""
 		return len([rec for rec in self.__records if not rec.valid])
 
 	@property
 	def numRecordsImported(self):
+		""" Returns the number of records that have already been imported
+		"""
 		return len([rec for rec in self.__records if rec.imported])
 
 	@property
 	def numRecordsToImport(self):
+		""" Returns the number of records left that can be imported
+		"""
 		return len([rec for rec in self.__records if rec.valid and not rec.imported])
 
-	def exists(self, index):
-		return self.__records[index.row()].imported
-	
 	def data(self, item, role=QtCore.Qt.DisplayRole):
 
 		if not item.isValid():
@@ -121,7 +128,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 		if role == QtCore.Qt.BackgroundColorRole:
 			if not self.__records[item.row()].valid:
 				return QtGui.QColor("#ffd3cf")
-			elif self.exists(item):
+			elif self.__isImported(item):
 				return QtGui.QColor("#b6ffac")
 			return QtCore.QVariant()
 
@@ -133,7 +140,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 	
 		if role == QtCore.Qt.DisplayRole:
 			if item.column() == 0:
-				return self.recordStatusToText(item)
+				return self.__recordStatusToText(item)
 			elif item.column() == 1:
 				return self.__records[item.row()].date
 			elif item.column() == 2:
@@ -147,12 +154,10 @@ class ImportModel(QtCore.QAbstractTableModel):
 
 		return QtCore.QVariant()
 
-	def recordStatusToText(self, index):
-		if not self.__records[index.row()].valid:
-			return self.__records[index.row()].error
-
-		if self.exists(index):
-			return "Imported";
+	def columnCount(self, index=QtCore.QModelIndex()):
+		""" Needs to match headerData
+		"""
+		return 6
 
 	def headerData (self, section, orientation, role):
 		if role == QtCore.Qt.DisplayRole:
@@ -170,6 +175,23 @@ class ImportModel(QtCore.QAbstractTableModel):
 				return "Debit"
 		return QtCore.QVariant()
 
+	def __recordStatusToText(self, index):
+		""" Returns the record status:
+			"imported" if imported, or the error text or None
+		"""
+		rec = self.__records[index.row()]
+
+		if not rec.valid:
+			return rec.error
+		elif rec.imported:
+			return "Imported"
+		else:
+			return ''
+
+	def __isImported(self, index):
+		""" Returns True if the record has been imported
+		"""
+		return self.__records[index.row()].imported
 
 class RecordModel(QtSql.QSqlTableModel):
 	def __init__(self, userId, parent=None):

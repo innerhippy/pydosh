@@ -94,6 +94,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			self.view.clearSelection()
 		
 			with db.transaction():
+				# Wrap the import in a transaction
 				for index in indexes:
 					dataModel.saveRecord(self.__accountId, proxyModel.mapToSource(index))
 
