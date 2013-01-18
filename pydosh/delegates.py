@@ -9,10 +9,16 @@ class AccountDelegate(QtGui.QItemDelegate):
 
 		lineEdit = QtGui.QLineEdit(parent=parent)
 
-		if index.column() == enum.kAccountTypeColumn_CurrencySign:
-			lineEdit.setValidator(QtGui.QRegExpValidator(QtCore.QRegExp('-1|1')))
-		else:
+		if index.column() in (
+						enum.kAccountTypeColumn_DateField,
+						enum.kAccountTypeColumn_TypeField,
+						enum.kAccountTypeColumn_DescriptionField,
+						enum.kAccountTypeColumn_CreditField,
+						enum.kAccountTypeColumn_DebitField):
 			lineEdit.setValidator(QtGui.QRegExpValidator(QtCore.QRegExp('[0-9]+'), lineEdit))
+
+		elif index.column() == enum.kAccountTypeColumn_CurrencySign:
+			lineEdit.setValidator(QtGui.QRegExpValidator(QtCore.QRegExp('-1|1')))
 
 		return lineEdit
 
@@ -28,3 +34,6 @@ class AccountDelegate(QtGui.QItemDelegate):
 			else:
 				value = editor.text() if editor.text() else QtCore.QVariant(QtCore.QVariant.Int)
 				model.setData(index, value)
+
+	def updateEditorGeometry(self, editor, option, index):
+		editor.setGeometry(option.rect)

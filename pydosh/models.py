@@ -25,7 +25,7 @@ class ImportRecord(object):
 		
 	@property
 	def checksum(self):
-		return QtCore.QCryptographicHash.hash(self.data, QtCore.QCryptographicHash.Md5).toHex()
+		return QtCore.QString(QtCore.QCryptographicHash.hash(self.data, QtCore.QCryptographicHash.Md5).toHex())
 
 class ImportException(Exception):
 	""" General exception for record import
@@ -35,13 +35,14 @@ class ImportModel(QtCore.QAbstractTableModel):
 	def __init__(self, parent=None):
 		super(ImportModel, self).__init__(parent=parent)
 		self.__records = []
+		self.dataSaved = False
 
 	def saveRecord(self, accountId, index):
 		""" Saves the import record to the database
 			Raises ImportException on error	
 		"""
 		rec = self.__records[index.row()]
-	
+
 		query = QtSql.QSqlQuery() 
 		query.prepare("""
 				INSERT INTO records
@@ -65,7 +66,8 @@ class ImportModel(QtCore.QAbstractTableModel):
 			raise ImportException(query.lastError().text())
 
 		rec.imported = True
-	
+		self.dataSaved = True
+
 		# Tell the view our data has changed
 		self.dataChanged.emit(self.createIndex(index.row(), 0), self.createIndex(index.row(), self.columnCount() - 1))
 
@@ -128,7 +130,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 		if role == QtCore.Qt.BackgroundColorRole:
 			if not self.__records[item.row()].valid:
 				return QtGui.QColor("#ffd3cf")
-			elif self.__isImported(item):
+			elif self.__records[item.row()].imported:
 				return QtGui.QColor("#b6ffac")
 			return QtCore.QVariant()
 
@@ -186,12 +188,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 		elif rec.imported:
 			return "Imported"
 		else:
-			return ''
-
-	def __isImported(self, index):
-		""" Returns True if the record has been imported
-		"""
-		return self.__records[index.row()].imported
+			return 'ready'
 
 class RecordModel(QtSql.QSqlTableModel):
 	def __init__(self, userId, parent=None):

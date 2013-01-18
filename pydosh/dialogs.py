@@ -26,11 +26,6 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.importButton.clicked.connect(self.__importRecords)
 		self.selectAllButton.clicked.connect(self.view.selectAll)
 
-		
-		self.errorsCounter.setNum(model.numBadRecords)
-		self.selectedCounter.setNum(0)
-		self.importedCounter.setNum(model.numRecordsImported)
-	
 		proxy = QtGui.QSortFilterProxyModel(model)
 		proxy.setSourceModel(model)
 		proxy.setFilterKeyColumn(0)
@@ -47,7 +42,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.closeButton.clicked.connect(self.__close)
 		self.view.selectionModel().selectionChanged.connect(self.__recordsSelected)
 
-		self.importButton.setEnabled(bool(model.numRecordsToImport))
+		self.importButton.setEnabled(False)
 		
 		self.__setCounters()
 		
@@ -55,7 +50,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		model = self.view.model().sourceModel()
 		self.errorsCounter.setNum(model.numBadRecords)
 		self.importedCounter.setNum(model.numRecordsImported)
-		self.selectedCounter.setNum(0)
+		self.toImportCounter.setNum(model.numRecordsToImport)
 
 	def __recordsSelected(self):
 		selectionModel = self.view.selectionModel()
@@ -69,13 +64,14 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 				selectionModel.select(index, QtGui.QItemSelectionModel.Deselect | QtGui.QItemSelectionModel.Rows)
 		
 		# get the new selection
-		self.selectedCounter.setNum(len(selectionModel.selectedRows()))
+		numSelected = len(selectionModel.selectedRows())
+		self.selectedCounter.setNum(numSelected)
+		self.importButton.setEnabled(bool(numSelected))
 	
 		selectionModel.blockSignals(False)
 
 	def __close(self):
-		val, _ = self.importedCounter.text().toInt()
-		self.done(val)
+		self.done(self.view.model().sourceModel().dataSaved)
 
 	def __importRecords(self):
 		selectionModel = self.view.selectionModel()
@@ -89,7 +85,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 
 			proxyModel = self.view.model()
 			dataModel = proxyModel.sourceModel()
-		
+			self.progressBar.setValue(0)
 			self.progressBar.setMaximum(len(indexes))
 			self.view.clearSelection()
 		
@@ -158,14 +154,14 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 
 	def validateNewAccount(self, record):
 		error = ''
-
+		currencySign, ok = record.value(enum.kAccountTypeColumn_CurrencySign).toInt()
 		if not record.value(enum.kAccountTypeColumn_AccountName).toString():
 			error = "Account name cannot be empty!"
 		elif record.value(enum.kAccountTypeColumn_DateField).isNull():
 			error = "Date field must be set!"
 		elif record.value(enum.kAccountTypeColumn_DescriptionField).isNull():
 			error = "Description field must be set!"
-		elif abs(record.value(enum.kAccountTypeColumn_CurrencySign).toInt()) != 1:
+		elif ok and abs(currencySign) != 1:
 			error = "Current sign value must be 1 or -1"
 		elif not record.value(enum.kAccountTypeColumn_DateFormat).toString():
 			error = "Date format cannot be empty!"
@@ -175,10 +171,9 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 			# Trash the bad record
 			record.clear()
 
-
 	def saveSettings(self):
 
-		if self.m_model.submitAll() and self.model.lastError().isValid():
+		if self.model.submitAll() and self.model.lastError().isValid():
 			# If we've cleared the record from validateNewAccount() then the database error
 			# will be empty. No need to issue a second error message
 			if self.m_model.lastError().databaseText():
@@ -201,7 +196,7 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 
 		index = self.model.index(rowCount, 1)
 		self.view.setCurrentIndex(index)
-		self.view.exit(index)
+		self.view.edit(index)
 
 	def deleteAccount(self):
 		for index in self.view.selectionModel().selectedRows():
