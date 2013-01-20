@@ -5,8 +5,12 @@ import enum
 from database import db
 import pydosh_rc
 
+class ImportException(Exception):
+	""" General exception for record import
+	"""
+
 class ImportRecord(object):
-	def __init__(self, args):
+	def __init__(self, *args):
 		super(ImportRecord, self).__init__()
 		self.data, self.date, self.desc, self.txdate, self.debit, self.credit, self.error = args
 		self.__isImported = False
@@ -22,14 +26,20 @@ class ImportRecord(object):
 	@imported.setter
 	def imported(self, value):
 		self.__isImported = value
-		
+
 	@property
 	def checksum(self):
 		return QtCore.QString(QtCore.QCryptographicHash.hash(self.data, QtCore.QCryptographicHash.Md5).toHex())
 
-class ImportException(Exception):
-	""" General exception for record import
-	"""
+	@property
+	def __key(self):
+		return (self.date, self.credit, self.debit, self.txdate,)
+	
+	def __eq__(self, other):
+		return self.__key == other.__key
+
+	def __str__(self):
+		return 'date=%r txdate=%r debit=%r credit=%r desc=%r' % (self.date, self.txdate, self.credit, self.debit, self.desc)
 
 class ImportModel(QtCore.QAbstractTableModel):
 	def __init__(self, parent=None):
@@ -80,7 +90,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 			For this we use the md5 checksum on the rawData field
 		"""
 		existingRecords = []
-		query = QtSql.QSqlQuery('SELECT md5 from records where userid=%d' % db.userId)
+		query = QtSql.QSqlQuery('SELECT coalesce(checksum, md5) from records where userid=%d' % db.userId)
 
 		if query.lastError().isValid():
 			raise ImportException(query.lastError().text())
@@ -89,7 +99,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 			existingRecords.append(query.value(0).toString())
 
 		for record in set(records):
-			rec = ImportRecord(record)
+			rec = ImportRecord(*record)
 			if rec.checksum in existingRecords:
 				rec.imported = True
 			self.__records.append(rec)

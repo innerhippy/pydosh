@@ -9,9 +9,6 @@ class DecoderException(Exception):
 	""" General Decoder exceptions
 	"""
 class Decoder(QtCore.QObject):
-#	def __init__(self, files, parent=None):
-#		super(Decoder, self).__init__(parent=parent)
-#		self.__files = files
 	def __init__(self, dateField, descriptionField, 
 				creditField, debitField, currencySign, dateFormat, files, parent=None):
 		super(Decoder, self).__init__(parent=parent)
@@ -35,16 +32,16 @@ class Decoder(QtCore.QObject):
 
 		with codecs.open(filename, encoding='utf-8', mode='rb') as csvfile:
 			for line in csvfile:
-				row = csv.reader([line]).next()
-				rawdata = line.strip()
-
-				if len(rawdata) == 0:
-					# Skip blank lines
-					continue
-	
-				dateField = descField = txDate = debitField = creditField = error = None
+				rawdata = dateField = descField = txDate = debitField = creditField = error = None
 
 				try:
+					row = csv.reader([line]).next()
+					rawdata = line.strip()
+
+					if len(rawdata) == 0:
+						# Skip blank lines
+						continue
+
 					dateField  = self.__getDateField(row[self.__dateField])
 					descField  = self.__getDescriptionField(row[self.__descriptionField])
 					txDate     = self.__getTransactionDate(row[self.__descriptionField], dateField)
@@ -59,7 +56,6 @@ class Decoder(QtCore.QObject):
 					continue
 
 				except DecoderException, exc:
-#					self.setError(str(exc))
 					error = str(exc)
 
 				finally:
@@ -76,10 +72,7 @@ class Decoder(QtCore.QObject):
 
 	def __getDescriptionField(self, field):
 		return field.replace("'",'')
-#
-#	def setError(self, error):
-#		print error
-		
+
 	def __getTransactionDate(self, field, dateField):
 
 		#Format is "23DEC09 1210"
@@ -104,7 +97,7 @@ class Decoder(QtCore.QObject):
 	def __getAmountField(self, field, comp):
 		value, ok = QtCore.QString(field).toDouble()
 		if not ok:
-			raise DecoderException('Invalid debit field: %r' % field)
+			return
 	
 		value *= self.__currencySign
 
