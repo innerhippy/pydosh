@@ -18,11 +18,8 @@
     <file>icons/help.png</file>
     <file>icons/thumb_down.png</file>
     <file>icons/thumb_up.png</file>
-    <file>schema/mysql_schema.sql</file>
-    <file>schema/sqlite_schema.sql</file>
     <file>schema/accounttypes_data.sql</file>
-    <file>schema/codes_data.sql</file>
-    <file>schema/pg_schema.sql</file>
+    <file>schema/schema.sql</file>
     <file>doc/index.html</file>
     <file>doc/main.html</file>
     <file>doc/import.html</file>

@@ -11,7 +11,6 @@ class AccountDelegate(QtGui.QItemDelegate):
 
 		if index.column() in (
 						enum.kAccountTypeColumn_DateField,
-						enum.kAccountTypeColumn_TypeField,
 						enum.kAccountTypeColumn_DescriptionField,
 						enum.kAccountTypeColumn_CreditField,
 						enum.kAccountTypeColumn_DebitField):

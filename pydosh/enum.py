@@ -22,11 +22,9 @@ kInOutStatus_Out = 2
 kAccountTypeColumn_AccountTypeId = 0
 kAccountTypeColumn_AccountName = 1
 kAccountTypeColumn_DateField = 2
-kAccountTypeColumn_TypeField = 3
 kAccountTypeColumn_DescriptionField = 4
 kAccountTypeColumn_CreditField = 5
 kAccountTypeColumn_DebitField = 6
-kAccountTypeColumn_BalanceField = 7
 kAccountTypeColumn_CurrencySign = 8
 kAccountTypeColumn_DateFormat = 9
 

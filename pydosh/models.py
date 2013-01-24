@@ -519,8 +519,6 @@ class AccountModel(QtSql.QSqlTableModel):
 				return 'Account Name'
 			elif section == enum.kAccountTypeColumn_DateField:
 				return 'Date'
-			elif section == enum.kAccountTypeColumn_TypeField:
-				return 'Type'
 			elif section == enum.kAccountTypeColumn_DescriptionField:
 				return 'Desc'
 			elif section == enum.kAccountTypeColumn_CreditField:

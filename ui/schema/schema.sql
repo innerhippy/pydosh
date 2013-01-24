@@ -36,11 +36,9 @@ CREATE TABLE accounttypes (
     accounttypeid integer NOT NULL,
     accountname text NOT NULL,
     datefield integer NOT NULL,
-    typefield integer,
     descriptionfield integer NOT NULL,
     creditfield integer,
     debitfield integer,
-    balancefield integer,
     currencysign integer DEFAULT 1 NOT NULL,
     dateformat text NOT NULL
 );

@@ -1,7 +1,7 @@
 import pdb
 from PyQt4 import QtCore, QtGui, QtSql
 from contextlib  import contextmanager
-
+import pydosh_rc
 
 class _Database(QtCore.QObject):
 	connected = QtCore.pyqtSignal(bool)
@@ -35,7 +35,7 @@ class _Database(QtCore.QObject):
 	@property
 	def database(self):
 		settings = QtCore.QSettings()
-		return settings.value('options/database', 'doshlogger2').toString()
+		return settings.value('options/database', 'pydosh').toString()
 
 	@database.setter
 	def database(self, database):
@@ -125,11 +125,74 @@ class _Database(QtCore.QObject):
 		db.setPort(self.port)
 
 		if not db.open():
-			QtGui.QMessageBox.warning(None, 'Connection failed', 'Failed to connect to database: %s' % db.lastError().text())
+			raise Exception('Failed to connect to database: %r' % db.lastError().text())
+#			QtGui.QMessageBox.warning(None, 'Connection failed', 'Failed to connect to database: %r' % db.lastError().text())
 			return False
+
+		if not self.__checkInitialised():
+			self.__initialise()
 
 		self.connected.emit(self.isConnected)
 		return True
+
+	def __initialise(self):
+		with self.transaction():
+			self.__runCommandsFromFile(":/schema/schema.sql")
+			self.__runCommandsFromFile(":/schema/accounttypes_data.sql")
+			
+
+	def __runCommandsFromFile(self, filename):
+		
+		cmdfile = QtCore.QFile(filename)
+
+		if not cmdfile.open(QtCore.QIODevice.ReadOnly | QtCore.QIODevice.Text):
+			raise Exception('Cannot open command file %r' % filename)
+
+		stream = QtCore.QTextStream(cmdfile)
+
+		# commands in file can span multiple lines. Read everything in 
+		# a buffer then run each command, delimited by ';'
+		buffer = []
+
+		while not stream.atEnd():
+			line = stream.readLine()
+
+			if len(line) == 0 or line.startsWith('--'):
+				continue
+
+			buffer.append(str(line))
+
+		# combine all command and then split again on ';'
+		for command in ' '.join(buffer).split(';'):
+			self.__executeQuery(command.strip())
+
+	def __executeQuery(self, query):
+		sql = QtSql.QSqlQuery(query)
+		if sql.lastError().isValid():
+			raise Exception('Failed to run command %r: %r' % (query, sql.lastError().text()))
+
+	def __checkInitialised(self):
+
+		query = QtSql.QSqlQuery()
+		query.prepare("""
+			SELECT count(table_name)
+			FROM information_schema.tables
+			WHERE table_schema = 'public'
+			AND table_catalog=?
+		""")
+		query.addBindValue(self.database)
+		query.exec_()
+
+		if query.lastError().isValid():
+			raise Exception(query.lastError().text())
+		
+		query.next()
+		count, ok = query.value(0).toInt()
+		
+		if not ok:
+			raise Exception('Failed to run command %r' % query.lastQuery())
+
+		return count > 0
 
 	@contextmanager
 	def transaction(self):
