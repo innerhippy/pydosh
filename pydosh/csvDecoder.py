@@ -1,9 +1,7 @@
 import pdb
-import codecs
 import operator
 import csv
 from PyQt4 import QtCore
-import enum
 
 class DecoderException(Exception):
 	""" General Decoder exceptions
@@ -35,16 +33,12 @@ class Decoder(QtCore.QObject):
 		if not csvfile.open(QtCore.QIODevice.ReadOnly | QtCore.QIODevice.Text):
 			raise DecoderException('Cannot open file %r' % filename)
 
+		lineno = 0
 		while not csvfile.atEnd():
-
 			rawdata = dateField = descField = txDate = debitField = creditField = error = None
+
 			try:
 				rawdata = csvfile.readLine().trimmed()
-
-				if len(rawdata) == 0:
-					# Skip blank lines
-					continue
-
 				row = csv.reader([str(rawdata)]).next()
 				dateField  = self.__getDateField(row[self.__dateField])
 				descField  = self.__getDescriptionField(row[self.__descriptionField])
@@ -55,16 +49,13 @@ class Decoder(QtCore.QObject):
 				if debitField is None and creditField is None:
 					raise DecoderException('No credit or debit found')
 
-			except IndexError:
-				# Can't parse fields - not a valid record
-				continue
-
 			except Exception, exc:
-				error = str(exc)
-				self.__records.append((None, None, None, None, None, None, str(exc), ))
+				error = '%s[%d]: %r' % (QtCore.QFileInfo(csvfile).fileName(), lineno, str(exc))
 
-			else:
-				self.__records.append((rawdata, dateField, descField, txDate, debitField, creditField, error, ))
+			finally:
+				lineno += 1
+				if len(rawdata):
+					self.__records.append((rawdata, dateField, descField, txDate, debitField, creditField, error,))
 
 
 	def __getDateField(self, field):
@@ -103,7 +94,6 @@ class Decoder(QtCore.QObject):
 		value, ok = QtCore.QString(field).toDouble()
 		if not ok:
 			return
-#			raise DecoderException('Invalid debit field: %r' % field)
 	
 		value *= self.__currencySign
 

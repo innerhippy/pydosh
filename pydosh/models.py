@@ -99,8 +99,9 @@ class ImportModel(QtCore.QAbstractTableModel):
 
 		for record in set(records):
 			rec = ImportRecord(*record)
-			if rec.checksum in existingRecords:
+			if rec.valid and rec.checksum in existingRecords:
 				rec.imported = True
+
 			self.__records.append(rec)
 	
 	def canImport(self, index):
@@ -144,11 +145,8 @@ class ImportModel(QtCore.QAbstractTableModel):
 			return QtCore.QVariant()
 
 		if role == QtCore.Qt.ToolTipRole:
-			if not self.__records[item.row()].valid:
-				return self.__records[item.row()]
-	
 			return self.__records[item.row()].data 
-	
+
 		if role == QtCore.Qt.DisplayRole:
 			if item.column() == 0:
 				return self.__recordStatusToText(item)

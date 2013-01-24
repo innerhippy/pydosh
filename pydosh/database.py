@@ -136,7 +136,8 @@ class _Database(QtCore.QObject):
 		self.connected.emit(False)
 
 	def connect(self):
-		self.disconnect()
+		if self.isConnected:
+			self.disconnect()
 
 		db = QtSql.QSqlDatabase.addDatabase(self.driver)
 		db.setDatabaseName(self.database)

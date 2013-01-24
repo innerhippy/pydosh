@@ -22,11 +22,11 @@ kInOutStatus_Out = 2
 kAccountTypeColumn_AccountTypeId = 0
 kAccountTypeColumn_AccountName = 1
 kAccountTypeColumn_DateField = 2
-kAccountTypeColumn_DescriptionField = 4
-kAccountTypeColumn_CreditField = 5
-kAccountTypeColumn_DebitField = 6
-kAccountTypeColumn_CurrencySign = 8
-kAccountTypeColumn_DateFormat = 9
+kAccountTypeColumn_DescriptionField = 3
+kAccountTypeColumn_CreditField = 4
+kAccountTypeColumn_DebitField = 5
+kAccountTypeColumn_CurrencySign = 6
+kAccountTypeColumn_DateFormat = 7
 
 kTagsColumn_TagId = 0
 kTagsColumn_TagName = 1
