@@ -31,15 +31,14 @@ class ImportRecord(object):
 	def checksum(self):
 		return QtCore.QString(QtCore.QCryptographicHash.hash(self.data, QtCore.QCryptographicHash.Md5).toHex())
 
-	@property
-	def __key(self):
-		return (self.date, self.credit, self.debit, self.txdate,)
-	
 	def __eq__(self, other):
-		return self.__key == other.__key
+		return self.checksum == other.checksum
 
 	def __str__(self):
 		return 'date=%r txdate=%r debit=%r credit=%r desc=%r' % (self.date, self.txdate, self.credit, self.debit, self.desc)
+
+	def __repr__(self):
+		return '%r' % str(self)
 
 class ImportModel(QtCore.QAbstractTableModel):
 	def __init__(self, parent=None):
@@ -90,7 +89,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 			For this we use the md5 checksum on the rawData field
 		"""
 		existingRecords = []
-		query = QtSql.QSqlQuery('SELECT coalesce(checksum, md5) from records where userid=%d' % db.userId)
+		query = QtSql.QSqlQuery('SELECT checksum from records where userid=%d' % db.userId)
 
 		if query.lastError().isValid():
 			raise ImportException(query.lastError().text())

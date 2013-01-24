@@ -30,36 +30,41 @@ class Decoder(QtCore.QObject):
 		
 	def process(self, filename):
 
-		with codecs.open(filename, encoding='utf-8', mode='rb') as csvfile:
-			for line in csvfile:
-				rawdata = dateField = descField = txDate = debitField = creditField = error = None
+		csvfile = QtCore.QFile(filename)
 
-				try:
-					row = csv.reader([line]).next()
-					rawdata = line.strip()
+		if not csvfile.open(QtCore.QIODevice.ReadOnly | QtCore.QIODevice.Text):
+			raise DecoderException('Cannot open file %r' % filename)
 
-					if len(rawdata) == 0:
-						# Skip blank lines
-						continue
+		while not csvfile.atEnd():
 
-					dateField  = self.__getDateField(row[self.__dateField])
-					descField  = self.__getDescriptionField(row[self.__descriptionField])
-					txDate     = self.__getTransactionDate(row[self.__descriptionField], dateField)
-					debitField = self.__getAmountField(row[self.__debitField], operator.lt)
-					creditField = self.__getAmountField(row[self.__creditField], operator.gt)
+			rawdata = dateField = descField = txDate = debitField = creditField = error = None
+			try:
+				rawdata = csvfile.readLine().trimmed()
 
-					if debitField is None and creditField is None:
-						raise DecoderException('No credit or debit found')
-
-				except IndexError:
-					# Can't parse fields - not a valid record
+				if len(rawdata) == 0:
+					# Skip blank lines
 					continue
 
-				except DecoderException, exc:
-					error = str(exc)
+				row = csv.reader([str(rawdata)]).next()
+				dateField  = self.__getDateField(row[self.__dateField])
+				descField  = self.__getDescriptionField(row[self.__descriptionField])
+				txDate     = self.__getTransactionDate(row[self.__descriptionField], dateField)
+				debitField = self.__getAmountField(row[self.__debitField], operator.lt)
+				creditField = self.__getAmountField(row[self.__creditField], operator.gt)
 
-				finally:
-					self.__records.append((rawdata, dateField, descField, txDate, debitField, creditField, error, ))
+				if debitField is None and creditField is None:
+					raise DecoderException('No credit or debit found')
+
+			except IndexError:
+				# Can't parse fields - not a valid record
+				continue
+
+			except Exception, exc:
+				error = str(exc)
+				self.__records.append((None, None, None, None, None, None, str(exc), ))
+
+			else:
+				self.__records.append((rawdata, dateField, descField, txDate, debitField, creditField, error, ))
 
 
 	def __getDateField(self, field):
@@ -98,6 +103,7 @@ class Decoder(QtCore.QObject):
 		value, ok = QtCore.QString(field).toDouble()
 		if not ok:
 			return
+#			raise DecoderException('Invalid debit field: %r' % field)
 	
 		value *= self.__currencySign
 
