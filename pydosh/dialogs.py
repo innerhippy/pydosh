@@ -6,7 +6,7 @@ from ui_tags import Ui_Tags
 from ui_import import Ui_Import
 from utils import showWaitCursor
 import enum
-from database import db
+from database import db, ConnectionException
 from delegates import AccountDelegate
 from models import AccountModel, TagModel, ImportModel
 
@@ -246,7 +246,11 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 			db.password = self.passwordEdit.text()
 			db.port = self.portSpinBox.value()
 
-			if db.connect():
+			try:
+				db.connect()
+			except ConnectionException, err:
+				QtGui.QMessageBox.warning(self, 'Connection failed', 'Failed to connect to database: %r' % str(err))
+			else:
 				self.accept()
 
 	def showHelp(self):

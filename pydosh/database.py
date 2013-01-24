@@ -1,7 +1,11 @@
 import pdb
-from PyQt4 import QtCore, QtGui, QtSql
+from PyQt4 import QtCore, QtSql
 from contextlib  import contextmanager
 import pydosh_rc
+
+class ConnectionException(Exception):
+	""" Connection exception
+	"""
 
 class _Database(QtCore.QObject):
 	connected = QtCore.pyqtSignal(bool)
@@ -84,21 +88,27 @@ class _Database(QtCore.QObject):
 		"""
 
 		if self.__userId is None and self.isConnected:
-			query=QtSql.QSqlQuery()
-			query.prepare('SELECT userid from users where username=(?)')
-			query.addBindValue(self.username)
-			query.exec_()
-			query.next()
-
-			if query.lastError().isValid():
-				raise Exception(query.lastError().text())
-
-			self.__userId, ok = query.value(0).toInt()
-
-			if not ok:
-				raise Exception('Cannot find userid for %r' % self.username)
+			self.__userId = self.__getCurrentUserId()
 
 		return self.__userId
+
+	@contextmanager
+	def transaction(self):
+		""" Context manager to provide transaction code blocks. Any exception
+			raised in the 'with' block will cause a rollback. Otherwise commit.
+		"""
+
+		try:
+		#	print 'Start transaction'
+			QtSql.QSqlDatabase.database().transaction()
+			yield
+		except:
+		#	print 'Rollback'
+			QtSql.QSqlDatabase.database().rollback()
+			raise
+		else:
+		#	print 'Commit transaction'
+			QtSql.QSqlDatabase.database().commit()
 
 	@property
 	def isConnected(self):
@@ -125,15 +135,56 @@ class _Database(QtCore.QObject):
 		db.setPort(self.port)
 
 		if not db.open():
-			raise Exception('Failed to connect to database: %r' % db.lastError().text())
-#			QtGui.QMessageBox.warning(None, 'Connection failed', 'Failed to connect to database: %r' % db.lastError().text())
-			return False
+			raise ConnectionException('Failed to connect to database: %r' % db.lastError().text())
 
 		if not self.__checkInitialised():
 			self.__initialise()
 
 		self.connected.emit(self.isConnected)
-		return True
+
+	def __getCurrentUserId(self):
+		""" Returns the current username's userid from the users table.
+			Raises ConnectionException if cannot be found
+		"""
+		query=QtSql.QSqlQuery()
+		query.prepare('SELECT userid from users where username=(?)')
+		query.addBindValue(self.username)
+		query.exec_()
+		query.next()
+
+		if query.lastError().isValid():
+			raise ConnectionException(query.lastError().text())
+
+		if not query.isValid():
+			# no user exists - create entry for current user
+			return self.__addCurrentUser()
+
+		userId, ok = query.value(0).toInt()
+
+		if not ok:
+			raise ConnectionException('Cannot get userid for %r' % self.username)
+
+		return userId
+
+	def __addCurrentUser(self):
+		""" Add the current user to the users table.
+			Returns new user id
+		"""
+		query = QtSql.QSqlQuery()
+		query.prepare('INSERT INTO users (username) VALUES (?) RETURNING userid')
+		query.addBindValue(self.username)
+		query.exec_()
+
+		if query.lastError().isValid():
+			raise ConnectionException(query.lastError().text())
+
+		query.next()
+		userId, ok = query.value(0).toInt()
+
+		if not ok:
+			raise ConnectionException('Cannot add new user %r' % self.username)
+
+		return userId
 
 	def __initialise(self):
 		with self.transaction():
@@ -146,7 +197,7 @@ class _Database(QtCore.QObject):
 		cmdfile = QtCore.QFile(filename)
 
 		if not cmdfile.open(QtCore.QIODevice.ReadOnly | QtCore.QIODevice.Text):
-			raise Exception('Cannot open command file %r' % filename)
+			raise ConnectionException('Cannot open command file %r' % filename)
 
 		stream = QtCore.QTextStream(cmdfile)
 
@@ -169,48 +220,32 @@ class _Database(QtCore.QObject):
 	def __executeQuery(self, query):
 		sql = QtSql.QSqlQuery(query)
 		if sql.lastError().isValid():
-			raise Exception('Failed to run command %r: %r' % (query, sql.lastError().text()))
+			raise ConnectionException('Failed to run command %r: %r' % (query, sql.lastError().text()))
 
 	def __checkInitialised(self):
 
 		query = QtSql.QSqlQuery()
+
 		query.prepare("""
 			SELECT count(table_name)
 			FROM information_schema.tables
 			WHERE table_schema = 'public'
 			AND table_catalog=?
 		""")
+
 		query.addBindValue(self.database)
 		query.exec_()
 
 		if query.lastError().isValid():
-			raise Exception(query.lastError().text())
+			raise ConnectionException(query.lastError().text())
 		
 		query.next()
 		count, ok = query.value(0).toInt()
 		
 		if not ok:
-			raise Exception('Failed to run command %r' % query.lastQuery())
+			raise ConnectionException('Failed to run command %r' % query.lastQuery())
 
 		return count > 0
-
-	@contextmanager
-	def transaction(self):
-		""" Context manager to provide transaction code blocks. Any exception
-			raised in the 'with' block will cause a rollback. Otherwise commit.
-		"""
-
-		try:
-		#	print 'Start transaction'
-			QtSql.QSqlDatabase.database().transaction()
-			yield
-		except:
-		#	print 'Rollback'
-			QtSql.QSqlDatabase.database().rollback()
-			raise
-		else:
-		#	print 'Commit transaction'
-			QtSql.QSqlDatabase.database().commit()
 
 db = _Database()
 
