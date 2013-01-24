@@ -1,0 +1,4 @@
+Database schema dump created with:
+
+pg_dump --schema-only --no-privileges --no-owner pydosh > sql/schema.sql
+
