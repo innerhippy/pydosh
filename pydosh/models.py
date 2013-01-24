@@ -55,7 +55,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 		query = QtSql.QSqlQuery() 
 		query.prepare("""
 				INSERT INTO records
-				(date, userid, accounttypeid, description, txdate, amount, insertdate, rawdata, md5)
+				(date, userid, accounttypeid, description, txdate, amount, insertdate, rawdata, checksum)
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 			""")
 
@@ -64,9 +64,9 @@ class ImportModel(QtCore.QAbstractTableModel):
 		query.addBindValue(accountId)
 		query.addBindValue(rec.desc)
 		query.addBindValue(rec.txdate)
-		query.addBindValue(rec.credit if rec.credit else rec.debit)
+		query.addBindValue(rec.credit or rec.debit)
 		query.addBindValue(QtCore.QDateTime.currentDateTime())
-		query.addBindValue(rec.data)
+		query.addBindValue(QtCore.QString.fromUtf8(rec.data))
 		query.addBindValue(rec.checksum)
 
 		query.exec_()
@@ -203,7 +203,6 @@ class RecordModel(QtSql.QSqlTableModel):
 	def __init__(self, userId, parent=None):
 		super(RecordModel, self).__init__(parent=parent)
 		self.__userId = userId
-		self.__parameters = {}
 
 	def select(self):
 		status = super(RecordModel, self).select()
