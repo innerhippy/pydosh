@@ -8,6 +8,7 @@ class _Database(QtCore.QObject):
 
 	def __init__(self):
 		super(_Database, self).__init__()
+		self.__userId = None
 
 	@property
 	def driver(self):
@@ -79,7 +80,25 @@ class _Database(QtCore.QObject):
 
 	@property
 	def userId(self):
-		return 2
+		""" Return the cached value or get from database if not set yet
+		"""
+
+		if self.__userId is None and self.isConnected:
+			query=QtSql.QSqlQuery()
+			query.prepare('SELECT userid from users where username=(?)')
+			query.addBindValue(self.username)
+			query.exec_()
+			query.next()
+
+			if query.lastError().isValid():
+				raise Exception(query.lastError().text())
+
+			self.__userId, ok = query.value(0).toInt()
+
+			if not ok:
+				raise Exception('Cannot find userid for %r' % self.username)
+
+		return self.__userId
 
 	@property
 	def isConnected(self):
@@ -92,6 +111,7 @@ class _Database(QtCore.QObject):
 		for name in QtSql.QSqlDatabase.connectionNames():
 			QtSql.QSqlDatabase.removeDatabase(name)
 
+		self.__userId = None
 		self.connected.emit(False)
 
 	def connect(self):
@@ -113,16 +133,20 @@ class _Database(QtCore.QObject):
 
 	@contextmanager
 	def transaction(self):
+		""" Context manager to provide transaction code blocks. Any exception
+			raised in the 'with' block will cause a rollback. Otherwise commit.
+		"""
+
 		try:
-			print 'Start transaction'
+		#	print 'Start transaction'
 			QtSql.QSqlDatabase.database().transaction()
 			yield
 		except:
-			print 'Rollback'
+		#	print 'Rollback'
 			QtSql.QSqlDatabase.database().rollback()
 			raise
 		else:
-			print 'Commit transaction'
+		#	print 'Commit transaction'
 			QtSql.QSqlDatabase.database().commit()
 
 db = _Database()
