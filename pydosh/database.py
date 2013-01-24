@@ -7,6 +7,10 @@ class ConnectionException(Exception):
 	""" Connection exception
 	"""
 
+class DatabaseNotInitialisedException(Exception):
+	""" Exception raised if database is empty
+	"""
+
 class _Database(QtCore.QObject):
 	connected = QtCore.pyqtSignal(bool)
 
@@ -92,12 +96,19 @@ class _Database(QtCore.QObject):
 
 		return self.__userId
 
+	def initialise(self):
+		if self. __isDatabaseInitialised():
+			raise ConnectionException('Database is already initialised')
+	
+		with self.transaction():
+			self.__runCommandsFromFile(":/schema/schema.sql")
+			self.__runCommandsFromFile(":/schema/accounttypes_data.sql")
+	
 	@contextmanager
 	def transaction(self):
 		""" Context manager to provide transaction code blocks. Any exception
 			raised in the 'with' block will cause a rollback. Otherwise commit.
 		"""
-
 		try:
 		#	print 'Start transaction'
 			QtSql.QSqlDatabase.database().transaction()
@@ -137,8 +148,8 @@ class _Database(QtCore.QObject):
 		if not db.open():
 			raise ConnectionException('Failed to connect to database: %r' % db.lastError().text())
 
-		if not self.__checkInitialised():
-			self.__initialise()
+		if not self.__isDatabaseInitialised():
+			raise DatabaseNotInitialisedException
 
 		self.connected.emit(self.isConnected)
 
@@ -186,11 +197,7 @@ class _Database(QtCore.QObject):
 
 		return userId
 
-	def __initialise(self):
-		with self.transaction():
-			self.__runCommandsFromFile(":/schema/schema.sql")
-			self.__runCommandsFromFile(":/schema/accounttypes_data.sql")
-			
+		
 
 	def __runCommandsFromFile(self, filename):
 		
@@ -217,12 +224,13 @@ class _Database(QtCore.QObject):
 		for command in ' '.join(buffer).split(';'):
 			self.__executeQuery(command.strip())
 
+
 	def __executeQuery(self, query):
 		sql = QtSql.QSqlQuery(query)
 		if sql.lastError().isValid():
 			raise ConnectionException('Failed to run command %r: %r' % (query, sql.lastError().text()))
 
-	def __checkInitialised(self):
+	def __isDatabaseInitialised(self):
 
 		query = QtSql.QSqlQuery()
 

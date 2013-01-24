@@ -6,7 +6,7 @@ from ui_tags import Ui_Tags
 from ui_import import Ui_Import
 from utils import showWaitCursor
 import enum
-from database import db, ConnectionException
+from database import db
 from delegates import AccountDelegate
 from models import AccountModel, TagModel, ImportModel
 
@@ -248,7 +248,19 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 
 			try:
 				db.connect()
-			except ConnectionException, err:
+			except db.DatabaseNotInitialisedException:
+				if QtGui.QMessageBox.question
+					(self, 'Database error', 
+					'Database %s is empty, do you want to initialise it?' % db.database) == QtGui.QMessageBox.Ok):
+					try:
+						db.initialise()
+					except db.ConnectionException, err:
+						QtGui.QMessageBox.critical(self, 'Initialise database ', str(err))
+					else:
+						db.connect()
+				else:
+					return
+			except db.ConnectionException, err:
 				QtGui.QMessageBox.warning(self, 'Connection failed', 'Failed to connect to database: %r' % str(err))
 			else:
 				self.accept()
