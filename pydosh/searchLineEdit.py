@@ -6,7 +6,7 @@ class SearchLineEdit(QtGui.QLineEdit):
 
 	def __init__(self, parent=None):
 		super(SearchLineEdit, self).__init__(parent=parent)
-		
+
 		clearButton = QtGui.QToolButton(self)
 		pixmap = QtGui.QPixmap(":/icons/clearsearch.png").scaledToHeight(15, QtCore.Qt.SmoothTransformation)
 		clearButton.setIcon(QtGui.QIcon(pixmap))

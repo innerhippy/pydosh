@@ -92,7 +92,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 
 	def showHelp(self):
-		
+
 		browser = HelpBrowser(self)
 		browser.showPage("main.html")
 
@@ -218,20 +218,20 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		label = QtGui.QLabel('Account type:')
 		importDir = settings.value("options/importdirectory").toString()
-	
+
 		if importDir.isEmpty():
 			importDir = QtCore.QDir.homePath()
 
 		dialog = QtGui.QFileDialog(self, 'Open File', importDir, "*.csv")
 		dialog.setFileMode(QtGui.QFileDialog.ExistingFiles)
 		dialog.setOption(QtGui.QFileDialog.DontUseNativeDialog)
-	
+
 		gridbox = dialog.layout()
-	
+
 		if gridbox:
 			gridbox.addWidget(label)
 			gridbox.addWidget(combo)
-	
+
 		if not dialog.exec_():
 			return
 
@@ -251,7 +251,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		# Save the settings for next time
 		settings.setValue('options/importaccounttype', combo.currentText())
 		settings.setValue('options/importdirectory', dialog.directory().absolutePath())
-	
+
 		try:
 			decoder = Decoder(
 					dateField,
@@ -288,10 +288,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		model = self.tableView.selectionModel()
 		enable = False
-	
+
 		if model:
 			enable = len(model.selectedRows()) > 0
-		
+
 		self.tagEditButton.setEnabled(enable)
 		self.toggleCheckButton.setEnabled(enable)
 		self.deleteButton.setEnabled(enable)
@@ -358,7 +358,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			descFilter = self.descEdit.text()
 			amountFilter = self.amountEdit.text()
 			tagFilter = self.tagEdit.text()
-	
+
 			if descFilter and not amountFilter and not tagFilter:
 				self.descEdit.clear()
 				self.descEdit.setFocus(QtCore.Qt.OtherFocusReason)
@@ -380,7 +380,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		finally:
 			for widget in self.__signalsToBlock:
 				widget.blockSignals(False)
-		
+
 
 	def populateAccounts(self):
 		""" Extract account names from database and populate account combo
@@ -431,15 +431,15 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		query = QtSql.QSqlQuery(
 				"SELECT tagname FROM tags WHERE userid=%d" % db.userId
 		)
-	
+
 		while query.next():
 			tagList.append(query.value(0).toString())
-	
+
 		completer = QtGui.QCompleter(tagList, self.tagEdit)
 		self.tagEdit.setCompleter(completer)
 		self.tagEdit.completer().setCaseSensitivity(QtCore.Qt.CaseInsensitive)
 		self.tagEdit.completer().setCompletionMode(QtGui.QCompleter.PopupCompletion)
-		
+
 		completer.activated.connect(self.setFilter)
 
 
@@ -449,16 +449,16 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		selectionModel = self.tableView.selectionModel()
 		if selectionModel is None:
 			return []
-	
+
 		proxyModel = self.tableView.model()
-	
+
 		recordIds = []
 		for index in selectionModel.selectedRows():
 			recordId, ok = self.model.record(proxyModel.mapToSource(index).row()).value(enum.kRecordColumn_RecordId).toInt()
 			if ok:
 				recordIds.append(recordId)
-		
-		
+
+
 		return recordIds
 
 
@@ -477,7 +477,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.checkedCombo.setCurrentIndex(0)
 			self.typeCombo.setCurrentIndex(0)
 			self.accountCombo.setCurrentIndex(0)
-	
+
 			self.inoutCombo.setCurrentIndex(0)
 			self.amountEdit.clear()
 			self.descEdit.clear()
@@ -494,49 +494,49 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		quitAction.setStatusTip('Exit the program')
 		quitAction.setIcon(QtGui.QIcon(':/icons/exit.png'))
 		quitAction.triggered.connect(self.close)
-	
+
 		settingsAction = QtGui.QAction('&Settings', self)
 		settingsAction.setShortcut('Alt+s')
 		settingsAction.setStatusTip('Change the settings')
 		settingsAction.setIcon(QtGui.QIcon(':/icons/wrench.png'))
 		settingsAction.triggered.connect(self.settingsDialog)
-	
+
 		loginAction = QtGui.QAction('&Login', self)
 		loginAction.setShortcut('Alt+l')
 		loginAction.setStatusTip('Login')
 		loginAction.setIcon(QtGui.QIcon(':/icons/disconnect.png'))
 		loginAction.triggered.connect(self.loginDialog)
-	
+
 		importAction = QtGui.QAction('&Import', self)
 		importAction.setShortcut('Alt+i')
 		importAction.setStatusTip('Import Bank statements')
 		importAction.setIcon(QtGui.QIcon(':/icons/import.png'))
 		importAction.triggered.connect(self.importDialog)
-	
+
 		aboutAction = QtGui.QAction('&About', self)
 		aboutAction.setStatusTip('About')
 		aboutAction.setIcon(QtGui.QIcon(':/icons/help.png'))
 #		aboutAction.triggered.connect(self.showAbout)
-		
+
 		helpAction = QtGui.QAction('&Help', self)
 		helpAction.setStatusTip('Help')
 		helpAction.setIcon(QtGui.QIcon(':/icons/help.png'))
 		helpAction.triggered.connect(self.showHelp)
-	
+
 		self.addAction(settingsAction)
 		self.addAction(importAction)
 		self.addAction(quitAction)
 		self.addAction(aboutAction)
 		self.addAction(helpAction)
 		self.addAction(loginAction)
-	
+
 		# File menu
 		fileMenu = self.menuBar().addMenu('&Tools')
 		fileMenu.addAction(loginAction)
 		fileMenu.addAction(settingsAction)
 		fileMenu.addAction(importAction)
 		fileMenu.addAction(quitAction)
-	
+
 		# Help menu
 		helpMenu = self.menuBar().addMenu('&Help')
 		helpMenu.addAction(aboutAction)
@@ -548,10 +548,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		totalRecords = 0
 		inTotal = 0.0
 		outTotal = 0.0
-	
+
 		if self.model is not None:
 			numRecords = self.model.rowCount()
-	
+
 			query = QtSql.QSqlQuery('SELECT COUNT(*) FROM records WHERE userid=%d' % db.userId)
 			query.next()
 			totalRecords, _ = query.value(0).toInt()
@@ -600,7 +600,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				queryFilter.append('checked=1')
 			elif state == enum.kCheckedStatus_UnChecked:
 				queryFilter.append('checked=0')
-		
+
 		# money in/out filter
 		state, ok = self.inoutCombo.itemData(self.inoutCombo.currentIndex(), QtCore.Qt.UserRole).toInt()
 		if ok:

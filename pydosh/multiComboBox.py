@@ -8,15 +8,15 @@ class MultiComboBox(QtGui.QComboBox):
 
 	def __init__(self, parent=None):
 		super(MultiComboBox, self).__init__(parent=parent)
-		
+
 		model = CheckComboModel(self)
-		
+
 		self.activated.connect(self.__toggleCheckState)
 		model.checkStateChanged.connect(self.__toggleCheckState)
 		model.checkStateChanged.connect(self.__updateCheckedItems)
 		model.rowsInserted.connect(self.__updateCheckedItems)
 		model.rowsRemoved.connect(self.__updateCheckedItems)
-		
+
 		self.setModel(model)
 
 		lineEdit = QtGui.QLineEdit(self)
@@ -24,7 +24,7 @@ class MultiComboBox(QtGui.QComboBox):
 		self.setLineEdit(lineEdit)
 		#lineEdit.disconnect(self, QtCore.SIGNAL('textChanged(QString)'))
 		self.setInsertPolicy(QtGui.QComboBox.NoInsert)
-		
+
 		self.view().installEventFilter(self)
 		self.view().window().installEventFilter(self)
 		self.view().viewport().installEventFilter(self)
@@ -47,7 +47,7 @@ class MultiComboBox(QtGui.QComboBox):
 
 		elif event.type() == QtCore.QEvent.MouseButtonRelease:
 			self.__containerMousePress = False
-		
+
 		return False
 
 	def __toggleCheckState(self, index):

@@ -22,7 +22,7 @@ class ImportRecord(object):
 	@property
 	def imported(self):
 		return self.__isImported
-	
+
 	@imported.setter
 	def imported(self, value):
 		self.__isImported = value
@@ -84,7 +84,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 		""" Import the records into our model
 			An input record is a tuple containing 
 			(rawData, date, description, txDate, debit, credit, error,)
-			
+
 			The record is checked to see if it's already been imported into the database.
 			For this we use the md5 checksum on the rawData field
 		"""
@@ -103,7 +103,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 				rec.imported = True
 
 			self.__records.append(rec)
-	
+
 	def canImport(self, index):
 		""" Returns True if the record at index can be imported,
 			ie no error and hasn't been imported yet
@@ -390,7 +390,7 @@ class TagModel(QtSql.QSqlTableModel):
 
 			if ok and tagId == recordTagId:
 				yield recordId
-		
+
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
 		""" Handle checkstate role changes 
 		"""
@@ -410,7 +410,7 @@ class TagModel(QtSql.QSqlTableModel):
 			return True
 
 		return super(TagModel, self).setData(index, value, role)
-	
+
 	def __removeTagsFromRecords(self, tagId):
 		""" Delete a tag from our records
 		"""
@@ -531,7 +531,7 @@ class AccountModel(QtSql.QSqlTableModel):
 		return QtCore.QVariant()
 
 class CheckComboModel(QtGui.QStandardItemModel):
-	
+
 	checkStateChanged = QtCore.pyqtSignal()
 	dataChanged = QtCore.pyqtSignal('QModelIndex, QModelIndex)')
 
@@ -544,7 +544,7 @@ class CheckComboModel(QtGui.QStandardItemModel):
 
 	def data(self, index, role):
 		value = super(CheckComboModel, self).data(index, role)
-		
+
 		if index.isValid() and role == QtCore.Qt.CheckStateRole and not value.isValid():
 			value = QtCore.Qt.Unchecked
 

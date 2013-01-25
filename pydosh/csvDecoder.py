@@ -25,7 +25,7 @@ class Decoder(QtCore.QObject):
 	@property
 	def records(self):
 		return self.__records
-		
+
 	def process(self, filename):
 
 		csvfile = QtCore.QFile(filename)
@@ -75,12 +75,12 @@ class Decoder(QtCore.QObject):
 		rx = QtCore.QRegExp('(\\d\\d[A-Z]{3}\\d\\d \\d{4})')
 		if rx.indexIn(field) != -1:
 			return QtCore.QDateTime.fromString (rx.cap(1), "ddMMMyy hhmm").addYears(100)
-		
+
 		# Format is "06NOV10"
 		rx = QtCore.QRegExp('(\\d{2}[A-Z]{3}\\d{2})')
 		if rx.indexIn(field) != -1:
 			return QtCore.QDateTime.fromString (rx.cap(1), "ddMMMyy").addYears(100)
-		
+
 		# Format is " 06NOV" <- note the stupid leading blank space..
 		rx = QtCore.QRegExp(' (\\d\\d[A-Z]{3})')
 		if rx.indexIn(field) != -1:
@@ -94,7 +94,7 @@ class Decoder(QtCore.QObject):
 		value, ok = QtCore.QString(field).toDouble()
 		if not ok:
 			return
-	
+
 		value *= self.__currencySign
 
 		if comp(value, 0.0):

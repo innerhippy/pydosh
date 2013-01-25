@@ -29,7 +29,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		proxy = QtGui.QSortFilterProxyModel(model)
 		proxy.setSourceModel(model)
 		proxy.setFilterKeyColumn(0)
-	
+
 		self.view.setModel(proxy)
 		self.view.verticalHeader().hide()
 		self.view.setSortingEnabled(True)
@@ -43,9 +43,9 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.view.selectionModel().selectionChanged.connect(self.__recordsSelected)
 
 		self.importButton.setEnabled(False)
-		
+
 		self.__setCounters()
-		
+
 	def __setCounters(self):
 		model = self.view.model().sourceModel()
 		self.errorsCounter.setNum(model.numBadRecords)
@@ -56,18 +56,18 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		selectionModel = self.view.selectionModel()
 		proxyModel = self.view.model()
 		dataModel = proxyModel.sourceModel()
-	
+
 		selectionModel.blockSignals(True)
 		for index in selectionModel.selectedRows():
 			# de-select any that have errors or duplicates
 			if not dataModel.canImport(proxyModel.mapToSource(index)):
 				selectionModel.select(index, QtGui.QItemSelectionModel.Deselect | QtGui.QItemSelectionModel.Rows)
-		
+
 		# get the new selection
 		numSelected = len(selectionModel.selectedRows())
 		self.selectedCounter.setNum(numSelected)
 		self.importButton.setEnabled(bool(numSelected))
-	
+
 		selectionModel.blockSignals(False)
 
 	def __close(self):
@@ -76,10 +76,10 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 	def __importRecords(self):
 		selectionModel = self.view.selectionModel()
 		indexes = selectionModel.selectedRows()
-	
+
 		if len(indexes) == 0:
 			return
-		
+
 		try:
 			self.progressBar.setVisible(True)
 
@@ -88,7 +88,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			self.progressBar.setValue(0)
 			self.progressBar.setMaximum(len(indexes))
 			self.view.clearSelection()
-		
+
 			with db.transaction():
 				# Wrap the import in a transaction
 				for index in indexes:
@@ -99,22 +99,22 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 					self.__setCounters()
 					QtCore.QCoreApplication.processEvents()
 					self.progressBar.setValue(self.progressBar.value() +1)
-	
+
 			self.importButton.setEnabled(bool(dataModel.numRecordsToImport))
-		
+
 		except Exception, exc:
 			QtGui.QMessageBox.critical(self, 'Import Error', str(exc), QtGui.QMessageBox.Ok)
 		finally:
 			self.progressBar.setVisible(False)
-	
+
 
 class SettingsDialog(Ui_Settings, QtGui.QDialog):
 	def __init__(self, userId, parent=None):
 		super(SettingsDialog, self).__init__(parent=parent)
-		
+
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 		self.setupUi(self)
-	
+
 		self.saveButton.clicked.connect(self.saveSettings)
 		self.revertButton.clicked.connect(self.cancelSettings)
 		self.closeButton.clicked.connect(self.close)
@@ -128,7 +128,7 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 		model.setTable('accounttypes')
 		model.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
 		model.select()
-	
+
 		self.view.setModel(model)
 		self.view.setColumnHidden(enum.kAccountTypeColumn_AccountTypeId, True)
 		self.view.verticalHeader().hide()
@@ -165,7 +165,7 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 			error = "Current sign value must be 1 or -1"
 		elif not record.value(enum.kAccountTypeColumn_DateFormat).toString():
 			error = "Date format cannot be empty!"
-	
+
 		if error:
 			QtGui.QMessageBox.critical(self, 'Account failed', error, QtGui.QMessageBox.Ok)
 			# Trash the bad record
@@ -210,7 +210,7 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 class LoginDialog(Ui_Login, QtGui.QDialog):
 	def __init__(self, parent=None):
 		super(LoginDialog, self).__init__(parent=parent)
-	
+
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 		self.setupUi(self)
 
@@ -234,9 +234,9 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 
 	def setConnectionStatus(self):
 		self.connectionButton.setText('Disconnect' if db.isConnected else 'Connect')
-		
+
 	def activateConnection(self):
-		
+
 		if db.isConnected:
 			db.disconnect()
 		else:
@@ -269,13 +269,13 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 	def showHelp(self):
 		browser = HelpBrowser(self)
 		browser.showPage('login.html')
-		
-		
+
+
 
 class TagDialog(Ui_Tags, QtGui.QDialog):
 	def __init__(self, recordIds, parent=None):
 		super(TagDialog, self).__init__(parent=parent)
-		
+
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 		self.setupUi(self)
 		QtSql.QSqlDatabase.database().transaction()
@@ -290,7 +290,7 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 		model.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
 		model.setFilter('userid=%d' % db.userId)
 		model.select()
-		
+
 		self.tagView.setModel(model)
 		self.tagView.setModelColumn(enum.kTagsColumn_TagName)
 
@@ -299,7 +299,7 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 		self.addTagButton.pressed.connect(self.addTag)
 		self.deleteTagButton.pressed.connect(self.deleteTags)
 		self.tagView.selectionModel().selectionChanged.connect(self.activateDeleteTagButton)
-	
+
 		self.helpButton.pressed.connect(self.showHelp)
 		self.model = model
 

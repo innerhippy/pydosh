@@ -99,11 +99,11 @@ class _Database(QtCore.QObject):
 	def initialise(self):
 		if self. __isDatabaseInitialised():
 			raise ConnectionException('Database is already initialised')
-	
+
 		with self.transaction():
 			self.__runCommandsFromFile(":/schema/schema.sql")
 			self.__runCommandsFromFile(":/schema/accounttypes_data.sql")
-	
+
 	@contextmanager
 	def transaction(self):
 		""" Context manager to provide transaction code blocks. Any exception
@@ -198,10 +198,10 @@ class _Database(QtCore.QObject):
 
 		return userId
 
-		
+
 
 	def __runCommandsFromFile(self, filename):
-		
+
 		cmdfile = QtCore.QFile(filename)
 
 		if not cmdfile.open(QtCore.QIODevice.ReadOnly | QtCore.QIODevice.Text):
@@ -247,10 +247,10 @@ class _Database(QtCore.QObject):
 
 		if query.lastError().isValid():
 			raise ConnectionException(query.lastError().text())
-		
+
 		query.next()
 		count, ok = query.value(0).toInt()
-		
+
 		if not ok:
 			raise ConnectionException('Failed to run command %r' % query.lastQuery())
 

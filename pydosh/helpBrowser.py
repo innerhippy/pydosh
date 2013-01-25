@@ -6,13 +6,13 @@ import pydosh_rc
 class _HelpBrowser(Ui_Help, QtGui.QDialog):
 	def __init__(self, parent=None):
 		super(_HelpBrowser, self).__init__(parent=parent)
-		
+
 		self.setAttribute(QtCore.Qt.WA_GroupLeader)
 		self.setupUi(self)
-	
+
 		self.closeButton.clicked.connect(self.hide)
 		self.treeWidget.itemClicked.connect(self.helpClicked)
-	
+
 		self.treeWidget.header().hide()
 		self.splitter.setStretchFactor( 0, 1 )
 		self.splitter.setStretchFactor( 1, 2 )
@@ -22,23 +22,23 @@ class _HelpBrowser(Ui_Help, QtGui.QDialog):
 		homeHelp= QtGui.QTreeWidgetItem(self.treeWidget)
 		homeHelp.setText(0, 'Home')
 		homeHelp.setData(0, QtCore.Qt.UserRole, QtCore.QVariant('qrc:/doc/index.html'))
-	
+
 		mainHelp = QtGui.QTreeWidgetItem(homeHelp)
 		mainHelp.setText(0, 'Main Window')
 		mainHelp.setData(0, QtCore.Qt.UserRole, QtCore.QVariant('qrc:/doc/main.html'))
-	
+
 		loginHelp = QtGui.QTreeWidgetItem(homeHelp)
 		loginHelp.setText(0, 'Login')
 		loginHelp.setData(0, QtCore.Qt.UserRole, QtCore.QVariant('qrc:/doc/login.html'))
-		
+
 		optionsHelp = QtGui.QTreeWidgetItem(homeHelp)
 		optionsHelp.setText(0, 'Options')
 		optionsHelp.setData(0, QtCore.Qt.UserRole, QtCore.QVariant('qrc:/doc/options.html'))
-		
+
 		importHelp = QtGui.QTreeWidgetItem(homeHelp)
 		importHelp.setText(0, 'Import')
 		importHelp.setData(0, QtCore.Qt.UserRole, QtCore.QVariant('qrc:/doc/import.html'))
-		
+
 		self.treeWidget.expandItem(homeHelp)
 
 	def helpClicked(self, item):
@@ -51,7 +51,7 @@ class _HelpBrowser(Ui_Help, QtGui.QDialog):
 
 	def showPage(self, page):
 		self.showDocumentation('qrc:/doc/%s' % page)
-		
+
 __helpBroswerInstance = None
 
 def HelpBrowser(parent):
