@@ -529,3 +529,31 @@ class AccountModel(QtSql.QSqlTableModel):
 				return 'Date formats'
 
 		return QtCore.QVariant()
+
+class CheckComboModel(QtGui.QStandardItemModel):
+	
+	checkStateChanged = QtCore.pyqtSignal()
+	dataChanged = QtCore.pyqtSignal('QModelIndex, QModelIndex)')
+
+	def __init__(self, parent=None):
+		super(CheckComboModel, self).__init__(0, 1, parent=parent)
+
+	def flags(self, index):
+		return super(CheckComboModel, self).flags(index) | QtCore.Qt.ItemIsUserCheckable
+
+
+	def data(self, index, role):
+		value = super(CheckComboModel, self).data(index, role)
+		
+		if index.isValid() and role == QtCore.Qt.CheckStateRole and not value.isValid():
+			value = QtCore.Qt.Unchecked
+
+		return value
+
+	def setData(self, index, value, role):
+		ok = super(CheckComboModel, self).setData(index, value, role)
+		if ok and role == QtCore.Qt.CheckStateRole:
+			self.emit(QtCore.SIGNAL('dataChanged(QModelIndex, QModelIndex)'), index, index)
+			self.emit(QtCore.SIGNAL('checkStateChanged()'))
+
+		return ok

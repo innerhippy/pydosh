@@ -250,8 +250,9 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 				db.connect()
 			except DatabaseNotInitialisedException:
 				if QtGui.QMessageBox.question(
-					self, 'Database', 
-					'Database %s is empty, do you want to initialise it?' % db.database) == QtGui.QMessageBox.Ok:
+						self, 'Database', 
+						'Database %s is empty, do you want to initialise it?' % db.database, 
+						QtGui.QMessageBox.Yes|QtGui.QMessageBox.No) == QtGui.QMessageBox.Yes:
 					try:
 						db.initialise()
 					except ConnectionException, err:
