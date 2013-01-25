@@ -170,8 +170,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.connectionStatusIcon.setPixmap(QtGui.QPixmap(':/icons/thumb_down.png'))
 			self.model = None
 
-			self.displayRecordCount()
 			self.tableView.setModel(None)
+			self.displayRecordCount()
 
 
 	def setEndDate(self, state):
@@ -188,16 +188,13 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		if dialog.exec_():
 			self.loadData()
 
-
 	def addTagButtonPressed(self):
-
 		dialog = TagDialog(self.getSelectedRecordIds(), self)
 		if dialog.exec_():
 			self.setFilter()
 			self.loadTags()
 
 	def importDialog(self):
-	
 		if not db.isConnected:
 			return
 
@@ -410,25 +407,24 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	def populateDates(self):
 
-		query = QtSql.QSqlQuery()
-		query.prepare("""
+		query = QtSql.QSqlQuery('''
 			SELECT MIN(date), MAX(date)
 			FROM records
-			WHERE userid=?
-		""")
-
-		query.addBindValue(db.userId)
-		query.exec_()
+			WHERE userid=%d
+		''' % db.userId)
 
 		if query.next():
 			startDate = query.value(0).toDate()
 			endDate = query.value(1).toDate()
+			print 'min %r, max %r' % (startDate, endDate)
 
 			self.startDateEdit.setDateRange(startDate, endDate)
 			self.endDateEdit.setDateRange(startDate, endDate)
 
 			self.endDateEdit.setDate(self.startDateEdit.maximumDate())
 			self.startDateEdit.setDate(self.endDateEdit.date().addYears(-1))
+
+			print 'set: start %r, end %r' % (self.startDateEdit.date(), self.endDateEdit.date())
 
 	def loadTags(self):
 		tagList = []
@@ -477,7 +473,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		with self.blockAllSignals():
 			self.populateAccounts()
 			self.populateDates()
-	#		self.populateCodes()
 			self.loadTags()
 			self.checkedCombo.setCurrentIndex(0)
 			self.typeCombo.setCurrentIndex(0)
@@ -595,6 +590,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		if startDate.isValid() and endDate.isValid():
 			queryFilter.append("date >= '%s'" % startDate.toString(QtCore.Qt.ISODate))
 			queryFilter.append("date < '%s'" % endDate.addMonths(1).toString(QtCore.Qt.ISODate))
+			print 'query:', queryFilter[-2]
+			print 'query:', queryFilter[-1]
 
 		# checked state filter
 		state, ok = self.checkedCombo.itemData(self.checkedCombo.currentIndex(), QtCore.Qt.UserRole).toInt()
@@ -645,7 +642,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.model.setFilter('\nAND '.join(queryFilter))
 
-		#print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
+		print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
 		self.tableView.resizeColumnsToContents()
 		self.displayRecordCount()
 
