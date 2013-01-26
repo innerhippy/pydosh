@@ -29,13 +29,16 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.inoutCombo.addItem('in', enum.kInOutStatus_In)
 		self.inoutCombo.addItem('out', enum.kInOutStatus_Out)
 
+		self.dateCombo.addItem('All', userData=enum.kDate_All)
+		self.dateCombo.addItem('Last 12 months', userData=enum.kDate_PreviousYear)
+		self.dateCombo.addItem('Last month', userData=enum.kDate_PreviousMonth)
+
 		self.tagEditButton.setEnabled(False)
 		self.toggleCheckButton.setEnabled(False)
 		self.deleteButton.setEnabled(False)
 
 		self.checkedCombo.currentIndexChanged.connect(self.setFilter)
 		self.inoutCombo.currentIndexChanged.connect(self.setFilter)
-		self.typeCombo.currentIndexChanged.connect(self.setFilter)
 		self.accountCombo.currentIndexChanged.connect(self.setFilter)
 		self.descEdit.textChanged.connect(self.setFilter)
 		self.amountEdit.textChanged.connect(self.setFilter)
@@ -45,7 +48,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.endDateEdit.dateChanged.connect(self.setFilter)
 		self.toggleCheckButton.clicked.connect(self.toggleSelected)
 		self.deleteButton.clicked.connect(self.deleteRecords)
-		self.dateRangeCheckbox.stateChanged.connect(self.setEndDate)
+		self.dateCombo.currentIndexChanged.connect(self.setDate)
 		self.reloadButton.clicked.connect(self.reset)
 		self.tableView.clicked.connect(self.itemChecked)
 		self.tagEditButton.pressed.connect(self.addTagButtonPressed)
@@ -68,17 +71,15 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.__signalsToBlock = (
 				self.accountCombo,
-				self.typeCombo,
-				self.dateRangeCheckbox,
+				self.dateCombo,
 				self.descEdit,
 				self.amountEdit,
 				self.startDateEdit,
 				self.endDateEdit,
 		)
+		
 		self.loadData()
-		# TODO: remove!
-		#self.addTagButtonPressed()
-		#self.quit()
+
 
 	def show(self):
 		""" I'm sure there's a better way of doing this..
@@ -174,8 +175,20 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.displayRecordCount()
 
 
-	def setEndDate(self, state):
-		self.endDateEdit.setEnabled(state == QtCore.Qt.Checked)
+	def setDate(self):
+		selected, _ = self.dateCombo.itemData(self.dateCombo.currentIndex(), QtCore.Qt.UserRole).toInt()
+
+		if selected == enum.kDate_All:
+			self.startDateEdit.setDate(self.startDateEdit.minimumDate())
+			self.endDateEdit.setDate(self.endDateEdit.maximumDate())
+			self.endDateEdit.setEnabled(True)
+		elif selected == enum.kDate_PreviousMonth:
+			self.startDateEdit.setDate(self.endDateEdit.date().addMonths(-1))
+			self.startDateEdit.setEnabled(False)
+		elif selected == enum.kDate_PreviousYear:
+			self.startDateEdit.setDate(self.endDateEdit.date().addYears(-1))
+			self.startDateEdit.setEnabled(True)
+
 		self.setFilter()
 
 	def settingsDialog(self):
@@ -416,15 +429,12 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		if query.next():
 			startDate = query.value(0).toDate()
 			endDate = query.value(1).toDate()
-			print 'min %r, max %r' % (startDate, endDate)
 
 			self.startDateEdit.setDateRange(startDate, endDate)
 			self.endDateEdit.setDateRange(startDate, endDate)
 
-			self.endDateEdit.setDate(self.startDateEdit.maximumDate())
-			self.startDateEdit.setDate(self.endDateEdit.date().addYears(-1))
-
-			print 'set: start %r, end %r' % (self.startDateEdit.date(), self.endDateEdit.date())
+			self.startDateEdit.setDate(startDate)
+			self.endDateEdit.setDate(endDate)
 
 	def loadTags(self):
 		tagList = []
@@ -458,7 +468,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			if ok:
 				recordIds.append(recordId)
 
-
 		return recordIds
 
 
@@ -474,15 +483,15 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.populateAccounts()
 			self.populateDates()
 			self.loadTags()
-			self.checkedCombo.setCurrentIndex(0)
-			self.typeCombo.setCurrentIndex(0)
+			self.checkedCombo.setCurrentIndex(enum.kCheckedStatus_All)
 			self.accountCombo.setCurrentIndex(0)
+			self.dateCombo.setCurrentIndex(enum.kDate_PreviousYear)
+			self.setDate()
 
-			self.inoutCombo.setCurrentIndex(0)
+			self.inoutCombo.setCurrentIndex(enum.kInOutStatus_All)
 			self.amountEdit.clear()
 			self.descEdit.clear()
 			self.tagEdit.clear()
-			self.dateRangeCheckbox.setCheckState(QtCore.Qt.Checked)
 			self.endDateEdit.setEnabled(True)
 			self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.DescendingOrder)
 
@@ -582,16 +591,12 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		# Date filter
 		startDate = self.startDateEdit.date()
-		if self.dateRangeCheckbox.checkState() == QtCore.Qt.Unchecked:
-			endDate = self.endDateEdit.date()
-		else:
-			endDate = startDate
+		endDate = self.endDateEdit.date()
 
 		if startDate.isValid() and endDate.isValid():
 			queryFilter.append("date >= '%s'" % startDate.toString(QtCore.Qt.ISODate))
-			queryFilter.append("date < '%s'" % endDate.addMonths(1).toString(QtCore.Qt.ISODate))
-			print 'query:', queryFilter[-2]
-			print 'query:', queryFilter[-1]
+			#queryFilter.append("date < '%s'" % endDate.addMonths(1).toString(QtCore.Qt.ISODate))
+			queryFilter.append("date <= '%s'" % endDate.toString(QtCore.Qt.ISODate))
 
 		# checked state filter
 		state, ok = self.checkedCombo.itemData(self.checkedCombo.currentIndex(), QtCore.Qt.UserRole).toInt()
@@ -642,7 +647,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.model.setFilter('\nAND '.join(queryFilter))
 
-		print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
+		#print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
 		self.tableView.resizeColumnsToContents()
 		self.displayRecordCount()
 

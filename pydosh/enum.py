@@ -11,6 +11,11 @@ kRecordColumn_Amount = 9
 kRecordColumn_InsertDate = 10
 kRecordColumn_RawData = 11
 
+kDate_All = 0
+kDate_PreviousYear = 1
+kDate_PreviousMonth = 2
+
+
 kCheckedStatus_All =0
 kCheckedStatus_Checked = 1
 kCheckedStatus_UnChecked = 2
