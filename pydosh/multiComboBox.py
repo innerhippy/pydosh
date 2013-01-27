@@ -16,9 +16,6 @@ class MultiComboBox(QtGui.QComboBox):
 		self.__selectedItems = None
 
 		self.activated.connect(self.__toggleCheckState)
-		model.checkStateChanged.connect(self.__updateCheckedItems)
-		model.rowsInserted.connect(self.__updateCheckedItems)
-		model.rowsRemoved.connect(self.__updateCheckedItems)
 
 		self.setModel(model)
 
@@ -33,6 +30,12 @@ class MultiComboBox(QtGui.QComboBox):
 		self.view().viewport().installEventFilter(self)
 
 		self.__containerMousePress = False
+
+	def setModel(self, model):
+		model.checkStateChanged.connect(self.__updateCheckedItems)
+		model.rowsInserted.connect(self.__updateCheckedItems)
+		model.rowsRemoved.connect(self.__updateCheckedItems)
+		super(MultiComboBox, self).setModel(model)
 
 	def defaultText(self):
 		""" Function to get the default text of ComboBox.

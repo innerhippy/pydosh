@@ -3,7 +3,7 @@ from contextlib  import contextmanager
 from PyQt4 import QtGui, QtCore, QtSql
 QtCore.pyqtRemoveInputHook()
 from utils import showWaitCursor
-from models import RecordModel, SortProxyModel
+from models import RecordModel, SortProxyModel, CheckComboModel
 from helpBrowser import HelpBrowser
 from csvDecoder import Decoder, DecoderException
 from database import db
@@ -132,15 +132,16 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		with self.blockAllSignals():
 
+			self.accountCombo.setModel(CheckComboModel())
+
 			self.model = None
-			model = RecordModel(db.userId, self)
-
-			model.setTable("records")
-			model.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
-			model.select()
-
+			recordsModel = RecordModel(db.userId, self)
+			recordsModel.setTable("records")
+			recordsModel.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
+			recordsModel.select()
+			
 			proxyModel = SortProxyModel(self)
-			proxyModel.setSourceModel(model)
+			proxyModel.setSourceModel(recordsModel)
 			proxyModel.setFilterKeyColumn(-1)
 
 			self.tableView.setEditTriggers(QtGui.QAbstractItemView.DoubleClicked | QtGui.QAbstractItemView.SelectedClicked)
@@ -160,7 +161,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.horizontalHeader().setStretchLastSection(True)
 			self.tableView.selectionModel().selectionChanged.connect(self.activateButtons)
 
-			self.model = model
+			self.model = recordsModel
 			self.reset()
 
 
@@ -373,7 +374,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			# search filter and set focus
 			descFilter = self.descEdit.text()
 			amountFilter = self.amountEdit.text()
-			tagFilter = self.tagEdit.text()
+#			tagFilter = self.tagEdit.text()
 
 			if descFilter and not amountFilter and not tagFilter:
 				self.descEdit.clear()
@@ -381,9 +382,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			elif amountFilter and not descFilter and not tagFilter:
 				self.amountEdit.clear()
 				self.amountEdit.setFocus(QtCore.Qt.OtherFocusReason)
-			elif tagFilter and not descFilter and not amountFilter:
-				self.tagEdit.clear()
-				self.tagEdit.setFocus(QtCore.Qt.OtherFocusReason)
+#			elif tagFilter and not descFilter and not amountFilter:
+#				self.tagEdit.clear()
+#				self.tagEdit.setFocus(QtCore.Qt.OtherFocusReason)
 
 		self.displayRecordCount()
 
@@ -439,6 +440,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.endDateEdit.setDate(endDate)
 
 	def loadTags(self):
+		return
 		tagList = []
 		query = QtSql.QSqlQuery(
 				"SELECT tagname FROM tags WHERE userid=%d" % db.userId
@@ -493,7 +495,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.inoutCombo.setCurrentIndex(enum.kInOutStatus_All)
 			self.amountEdit.clear()
 			self.descEdit.clear()
-			self.tagEdit.clear()
+#			self.tagEdit.clear()
 			self.endDateEdit.setEnabled(True)
 			self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.DescendingOrder)
 
@@ -636,15 +638,15 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 					"CAST(r.amount AS char(10)) LIKE '%s%%' OR CAST(r.amount AS char(10)) LIKE '-%s%%'" % 
 					(amountFilter, amountFilter))
 
-		# tag filter
-		if self.tagEdit.text():
-			queryFilter.append("""
-				r.recordid IN 
-				(SELECT recordid from recordtags rt 
-					JOIN tags t ON t.tagid=rt.tagid 
-					WHERE t.tagname ='%s'
-				)
-			""" % self.tagEdit.text())
+#		# tag filter
+#		if self.tagEdit.text():
+#			queryFilter.append("""
+#				r.recordid IN 
+#				(SELECT recordid from recordtags rt 
+#					JOIN tags t ON t.tagid=rt.tagid 
+#					WHERE t.tagname ='%s'
+#				)
+#			""" % self.tagEdit.text())
 
 		self.model.setFilter('\nAND '.join(queryFilter))
 
