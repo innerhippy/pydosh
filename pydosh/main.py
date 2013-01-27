@@ -1,6 +1,7 @@
 import math
 from contextlib  import contextmanager
 from PyQt4 import QtGui, QtCore, QtSql
+QtCore.pyqtRemoveInputHook()
 from utils import showWaitCursor
 from models import RecordModel, SortProxyModel
 from helpBrowser import HelpBrowser
@@ -37,13 +38,15 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.toggleCheckButton.setEnabled(False)
 		self.deleteButton.setEnabled(False)
 
+		self.accountCombo.setDefaultText('all')
+
 		self.checkedCombo.currentIndexChanged.connect(self.setFilter)
 		self.inoutCombo.currentIndexChanged.connect(self.setFilter)
-		self.accountCombo.currentIndexChanged.connect(self.setFilter)
+		self.accountCombo.selectionChanged.connect(self.setFilter)
 		self.descEdit.textChanged.connect(self.setFilter)
 		self.amountEdit.textChanged.connect(self.setFilter)
 		self.amountEdit.controlKeyPressed.connect(self.controlKeyPressed)
-		self.tagEdit.editingFinished.connect(self.setFilter)
+		self.tagCombo.selectionChanged.connect(self.setFilter)
 		self.startDateEdit.dateChanged.connect(self.setFilter)
 		self.endDateEdit.dateChanged.connect(self.setFilter)
 		self.toggleCheckButton.clicked.connect(self.toggleSelected)
@@ -399,7 +402,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		""" Extract account names from database and populate account combo
 		"""
 		self.accountCombo.clear()
-		self.accountCombo.addItem('all')
 
 		# Only pull in account types used by this user
 		query = QtSql.QSqlQuery()
@@ -416,7 +418,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		while query.next():
 			# Store the accounttypeid in the userData field
-			self.accountCombo.addItem(query.value(0).toString(), query.value(1).toInt())
+			self.accountCombo.addItem(query.value(0).toString(), query.value(1).toPyObject())
 
 	def populateDates(self):
 
@@ -484,7 +486,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.populateDates()
 			self.loadTags()
 			self.checkedCombo.setCurrentIndex(enum.kCheckedStatus_All)
-			self.accountCombo.setCurrentIndex(0)
+#			self.accountCombo.setCurrentIndex(0)
 			self.dateCombo.setCurrentIndex(enum.kDate_PreviousYear)
 			self.setDate()
 
@@ -584,35 +586,34 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		queryFilter = []
 
-		# Account filter
-		accountNo = self.accountCombo.itemData(self.accountCombo.currentIndex(), QtCore.Qt.UserRole)
-		if accountNo.isValid():
-			queryFilter.append('r.accounttypeid=%d' % accountNo.toInt())
+#		# Account filter
+		accountIds = [index.data(QtCore.Qt.UserRole).toPyObject() for index in self.accountCombo.checkedIndexes()]
+		if accountIds:
+			queryFilter.append('r.accounttypeid in (%s)' % ', '.join(str(acid) for acid in accountIds))
 
 		# Date filter
 		startDate = self.startDateEdit.date()
 		endDate = self.endDateEdit.date()
 
 		if startDate.isValid() and endDate.isValid():
-			queryFilter.append("date >= '%s'" % startDate.toString(QtCore.Qt.ISODate))
-			#queryFilter.append("date < '%s'" % endDate.addMonths(1).toString(QtCore.Qt.ISODate))
-			queryFilter.append("date <= '%s'" % endDate.toString(QtCore.Qt.ISODate))
+			queryFilter.append("r.date >= '%s'" % startDate.toString(QtCore.Qt.ISODate))
+			queryFilter.append("r.date <= '%s'" % endDate.toString(QtCore.Qt.ISODate))
 
 		# checked state filter
 		state, ok = self.checkedCombo.itemData(self.checkedCombo.currentIndex(), QtCore.Qt.UserRole).toInt()
 		if ok:
 			if state == enum.kCheckedStatus_Checked:
-				queryFilter.append('checked=1')
+				queryFilter.append('r.checked=1')
 			elif state == enum.kCheckedStatus_UnChecked:
-				queryFilter.append('checked=0')
+				queryFilter.append('r.checked=0')
 
 		# money in/out filter
 		state, ok = self.inoutCombo.itemData(self.inoutCombo.currentIndex(), QtCore.Qt.UserRole).toInt()
 		if ok:
 			if state == enum.kInOutStatus_In:
-				queryFilter.append('amount > 0')
+				queryFilter.append('r.amount > 0')
 			elif state == enum.kInOutStatus_Out:
-				queryFilter.append('amount < 0')
+				queryFilter.append('r.amount < 0')
 
 		# description filter
 		if self.descEdit.text():
@@ -625,7 +626,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				# looks like we have operators, test validity and amount
 				rx = QtCore.QRegExp('^(=|>|<|>=|<=)([\\.\\d+]+)')
 				if rx.indexIn(amountFilter) != -1:
-					queryFilter.append('abs(amount) %s %s' % (rx.cap(1), rx.cap(2)))
+					queryFilter.append('abs(r.amount) %s %s' % (rx.cap(1), rx.cap(2)))
 				else:
 					# Input not complete yet.
 					return

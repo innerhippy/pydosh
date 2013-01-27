@@ -8,14 +8,14 @@ QtCore.pyqtRemoveInputHook()
 def main():
 
 	app = QtGui.QApplication(sys.argv)
+	app.setStyle(QtGui.QStyleFactory.create("Plastique"))
 
 	QtCore.QCoreApplication.setApplicationName("doshlogger")
 	QtCore.QCoreApplication.setOrganizationName("innerhippy")
 	QtCore.QCoreApplication.setOrganizationDomain("innerhippy.com")
 
 	loginDialog = LoginDialog()
-	# TODO: remove!
-	#if True or loginDialog.exec_():
+
 	if loginDialog.exec_():
 		window = PydoshWindow()
 		window.show()
