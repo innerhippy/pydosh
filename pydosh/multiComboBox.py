@@ -15,16 +15,16 @@ class MultiComboBox(QtGui.QComboBox):
 		model = CheckComboModel(self)
 		self.__selectedItems = None
 
-		self.activated.connect(self.__toggleCheckState)
+		self.activated[int].connect(self.__toggleCheckState)
 
 		self.setModel(model)
 
 		lineEdit = QtGui.QLineEdit(self)
 		lineEdit.setReadOnly(True)
 		self.setLineEdit(lineEdit)
-		#lineEdit.disconnect(self, QtCore.SIGNAL('textChanged(QString)'))
 		self.setInsertPolicy(QtGui.QComboBox.NoInsert)
-
+	
+		lineEdit.installEventFilter(self)
 		self.view().installEventFilter(self)
 		self.view().window().installEventFilter(self)
 		self.view().viewport().installEventFilter(self)
@@ -75,6 +75,9 @@ class MultiComboBox(QtGui.QComboBox):
 
 	def __toggleCheckState(self, index):
 		value = self.itemData(index, QtCore.Qt.CheckStateRole)
+		if self.sender() == self.lineEdit():
+			return
+
 		if value.isValid():
 			state = value.toPyObject()
 			self.setItemData(index, QtCore.Qt.Checked if state == QtCore.Qt.Unchecked else QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole) 
@@ -116,13 +119,13 @@ class MultiComboBox(QtGui.QComboBox):
 
 
 def main():
-#	from mpc.pyqtUtils.utils import SignalTracer
-#	tracer = SignalTracer()
+#	from  signaltracer import SignalTracer
+	tracer = SignalTracer()
 	app = QtGui.QApplication(sys.argv)
 	app.setStyle(QtGui.QStyleFactory.create("Plastique"))
 
 	widget = MultiComboBox()
-	#tracer.monitor(widget.lineEdit())
+#	tracer.monitor(widget, widget.lineEdit(), widget.model())
 
 	widget.addItems(['item %d' %i for i in xrange(10)])
 
