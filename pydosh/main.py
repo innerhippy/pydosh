@@ -139,6 +139,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			recordsModel.setTable("records")
 			recordsModel.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
 			recordsModel.select()
+			self.model = recordsModel
 			
 			proxyModel = SortProxyModel(self)
 			proxyModel.setSourceModel(recordsModel)
@@ -161,7 +162,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.horizontalHeader().setStretchLastSection(True)
 			self.tableView.selectionModel().selectionChanged.connect(self.activateButtons)
 
-			self.model = recordsModel
 			self.reset()
 
 
@@ -177,7 +177,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 			self.tableView.setModel(None)
 			self.displayRecordCount()
-
 
 	def setDate(self):
 		selected, _ = self.dateCombo.itemData(self.dateCombo.currentIndex(), QtCore.Qt.UserRole).toInt()
@@ -202,14 +201,14 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	def loginDialog(self):
 		dialog = LoginDialog(self)
-		if dialog.exec_():
-			self.loadData()
+		dialog.accepted.connect(self.loadData)
+		dialog.exec_()
 
 	def addTagButtonPressed(self):
 		dialog = TagDialog(self.getSelectedRecordIds(), self)
-		if dialog.exec_():
-			self.setFilter()
-			self.loadTags()
+		dialog.accepted.connect(self.populateTags)
+		dialog.accepted.connect(self.setFilter)
+		dialog.exec_()
 
 	def importDialog(self):
 		if not db.isConnected:
@@ -421,6 +420,18 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			# Store the accounttypeid in the userData field
 			self.accountCombo.addItem(query.value(0).toString(), query.value(1).toPyObject())
 
+	def populateTags(self):
+		print 'TAGS'
+		self.tagCombo.clear()
+
+		query = QtSql.QSqlQuery(
+			"SELECT tagname, tagid FROM tags WHERE userid=%d" % db.userId
+		)
+
+		while query.next():
+			self.tagCombo.addItem(query.value(0).toString(), query.value(1).toPyObject())
+
+
 	def populateDates(self):
 
 		query = QtSql.QSqlQuery('''
@@ -439,22 +450,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.startDateEdit.setDate(startDate)
 			self.endDateEdit.setDate(endDate)
 
-	def loadTags(self):
-		return
-		tagList = []
-		query = QtSql.QSqlQuery(
-				"SELECT tagname FROM tags WHERE userid=%d" % db.userId
-		)
 
-		while query.next():
-			tagList.append(query.value(0).toString())
-
-		completer = QtGui.QCompleter(tagList, self.tagEdit)
-		self.tagEdit.setCompleter(completer)
-		self.tagEdit.completer().setCaseSensitivity(QtCore.Qt.CaseInsensitive)
-		self.tagEdit.completer().setCompletionMode(QtGui.QCompleter.PopupCompletion)
-
-		completer.activated.connect(self.setFilter)
 
 
 	def getSelectedRecordIds(self):
@@ -486,7 +482,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		with self.blockAllSignals():
 			self.populateAccounts()
 			self.populateDates()
-			self.loadTags()
+			self.populateTags()
 			self.checkedCombo.setCurrentIndex(enum.kCheckedStatus_All)
 #			self.accountCombo.setCurrentIndex(0)
 			self.dateCombo.setCurrentIndex(enum.kDate_PreviousYear)
@@ -639,18 +635,18 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 					(amountFilter, amountFilter))
 
 #		# tag filter
-#		if self.tagEdit.text():
-#			queryFilter.append("""
-#				r.recordid IN 
-#				(SELECT recordid from recordtags rt 
-#					JOIN tags t ON t.tagid=rt.tagid 
-#					WHERE t.tagname ='%s'
-#				)
-#			""" % self.tagEdit.text())
+		tagIds = [index.data(QtCore.Qt.UserRole).toPyObject() for index in self.tagCombo.checkedIndexes()]
+		if tagIds:
+			queryFilter.append("""
+				r.recordid IN (
+					SELECT recordid
+					FROM recordtags
+					WHERE tagid in (%s))
+				""" % ', '.join([str(tagid) for tagid in tagIds])) 
 
 		self.model.setFilter('\nAND '.join(queryFilter))
 
-		#print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
+#		print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
 		self.tableView.resizeColumnsToContents()
 		self.displayRecordCount()
 
