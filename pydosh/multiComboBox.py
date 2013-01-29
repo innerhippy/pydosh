@@ -23,13 +23,13 @@ class MultiComboBox(QtGui.QComboBox):
 		lineEdit.setReadOnly(True)
 		self.setLineEdit(lineEdit)
 		self.setInsertPolicy(QtGui.QComboBox.NoInsert)
-	
+
 		lineEdit.installEventFilter(self)
 		self.view().installEventFilter(self)
 		self.view().window().installEventFilter(self)
 		self.view().viewport().installEventFilter(self)
 
-		self.__containerMousePress = False
+		self.__persistDropdown = False
 
 	def setModel(self, model):
 		model.checkStateChanged.connect(self.__updateCheckedItems)
@@ -65,13 +65,18 @@ class MultiComboBox(QtGui.QComboBox):
 				return True
 
 		elif event.type() == QtCore.QEvent.MouseButtonPress:
-			self.__containerMousePress = (receiver == self.view().window())
+			# Persist the dropdown if we haven't clicked outside the combo box and we have a
+			# control key held down
+			self.__persistDropdown = (receiver != self.view().window())
+			print 'mouse press event: in window:%s, persist: %s' % (receiver == self.view().window(), self.__persistDropdown)
+
 
 		elif event.type() == QtCore.QEvent.MouseButtonRelease:
-			self.__containerMousePress = False
+			# Only keep the dropdown open if we have the shift key pressed
+			self.__persistDropdown = QtGui.QApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier
+			print 'mouse release event, persist: ', self.__persistDropdown 
 
 		return False
-	
 
 	def __toggleCheckState(self, index):
 		value = self.itemData(index, QtCore.Qt.CheckStateRole)
@@ -96,7 +101,7 @@ class MultiComboBox(QtGui.QComboBox):
 			currentIndex = self.model().index(0, self.modelColumn(), self.rootModelIndex())
 			indexes = self.model().match(currentIndex, QtCore.Qt.CheckStateRole, QtCore.Qt.Checked, -1, QtCore.Qt.MatchExactly)
 		return indexes
-	
+
 	def __updateCheckedItems(self, ):
 		items = self.checkedItems()
 
@@ -110,9 +115,10 @@ class MultiComboBox(QtGui.QComboBox):
 	def showPopup(self):
 		self.__selectedItems = self.checkedItems()
 		super(MultiComboBox, self).showPopup()
-		
+
 	def hidePopup(self):
-		if self.__containerMousePress:
+		print 'keep open?', self.__persistDropdown
+		if not self.__persistDropdown:
 			if self.checkedItems() != self.__selectedItems:
 				self.selectionChanged.emit()
 			super(MultiComboBox, self).hidePopup()
@@ -139,7 +145,7 @@ def main():
 	app.exec_()
 	return 0
 
-	
+
 
 if __name__ == '__main__':
 	import sys
