@@ -223,7 +223,6 @@ class RecordModel(QtSql.QSqlTableModel):
 				(select count(*) from recordtags rt where rt.recordid=r.recordid), 
 				r.checkdate, 
 				r.date, 
-				users.username, 
 				accounttypes.accountname, 
 				r.description, 
 				r.txdate, 
@@ -232,7 +231,6 @@ class RecordModel(QtSql.QSqlTableModel):
 				r.rawdata 
 			FROM records r
 			INNER JOIN accounttypes ON accounttypes.accounttypeid=r.accounttypeid 
-			INNER JOIN users ON users.userid=r.userid
 			WHERE r.userid=%(userid)s
 			%(filter)s
 			ORDER BY r.date, r.description

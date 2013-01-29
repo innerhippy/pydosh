@@ -155,7 +155,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.setColumnHidden(enum.kRecordColumn_RecordId, True)
 			self.tableView.setColumnHidden(enum.kRecordColumn_CheckDate, True)
 			self.tableView.setColumnHidden(enum.kRecordColumn_RawData, True)
-			self.tableView.setColumnHidden(enum.kRecordColumn_User, True)
 			self.tableView.setColumnHidden(enum.kRecordColumn_InsertDate, True)
 			self.tableView.setSortingEnabled(True)
 			self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.DescendingOrder)
@@ -163,7 +162,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.selectionModel().selectionChanged.connect(self.activateButtons)
 
 			self.reset()
-
 
 	def setConnectionStatus(self, isConnected):
 		if isConnected:
@@ -421,7 +419,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.accountCombo.addItem(query.value(0).toString(), query.value(1).toPyObject())
 
 	def populateTags(self):
-		print 'TAGS'
 		self.tagCombo.clear()
 
 		query = QtSql.QSqlQuery(
