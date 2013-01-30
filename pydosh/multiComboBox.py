@@ -5,7 +5,6 @@ from models import CheckComboModel
 class MultiComboBox(QtGui.QComboBox):
 	""" Extension of QComboBox widget that allows for multiple selection
 	"""
-	checkedItemsChanged = QtCore.pyqtSignal('PyQt_PyObject')
 	selectionChanged = QtCore.pyqtSignal()
 
 	def __init__(self, parent=None):
@@ -13,23 +12,29 @@ class MultiComboBox(QtGui.QComboBox):
 
 		self._defaultText = ''
 		model = CheckComboModel(self)
-		self.__selectedItems = None
 
 		self.activated[int].connect(self.__toggleCheckState)
 
 		self.setModel(model)
 
-		lineEdit = QtGui.QLineEdit(self)
-		lineEdit.setReadOnly(True)
-		self.setLineEdit(lineEdit)
 		self.setInsertPolicy(QtGui.QComboBox.NoInsert)
 
-		lineEdit.installEventFilter(self)
 		self.view().installEventFilter(self)
 		self.view().window().installEventFilter(self)
 		self.view().viewport().installEventFilter(self)
 
 		self.__persistDropdown = False
+		
+		self.setLineEdit(QtGui.QLineEdit())
+		
+	def (self, text):
+		if not text:
+		
+	def setLineEdit(self, edit):
+		edit.setReadOnly(True)
+		edit.installEventFilter(self)
+		super(MultiComboBox, self).setLineEdit(edit)
+		
 
 	def setModel(self, model):
 		model.checkStateChanged.connect(self.__updateCheckedItems)
@@ -65,27 +70,24 @@ class MultiComboBox(QtGui.QComboBox):
 				return True
 
 		elif event.type() == QtCore.QEvent.MouseButtonPress:
-			# Persist the dropdown if we haven't clicked outside the combo box and we have a
-			# control key held down
-			self.__persistDropdown = (receiver != self.view().window())
-			print 'mouse press event: in window:%s, persist: %s' % (receiver == self.view().window(), self.__persistDropdown)
-
-
-		elif event.type() == QtCore.QEvent.MouseButtonRelease:
-			# Only keep the dropdown open if we have the shift key pressed
-			self.__persistDropdown = QtGui.QApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier
-			print 'mouse release event, persist: ', self.__persistDropdown 
+			# Cancel the dropdown persist if we've clicked outside the widget
+			if receiver == self.view().window():
+				self.__persistDropdown = False
 
 		return False
 
 	def __toggleCheckState(self, index):
 		value = self.itemData(index, QtCore.Qt.CheckStateRole)
+
+		# Can't seem to block signals from lineEdit, so do it the hard way...
 		if self.sender() == self.lineEdit():
 			return
 
 		if value.isValid():
 			state = value.toPyObject()
-			self.setItemData(index, QtCore.Qt.Checked if state == QtCore.Qt.Unchecked else QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole) 
+			self.setItemData(index, QtCore.Qt.Checked if state == QtCore.Qt.Unchecked else QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
+			
+#		print 'toggled %s' % str(self) 
 
 	def checkedItems(self):
 		items = []
@@ -110,28 +112,29 @@ class MultiComboBox(QtGui.QComboBox):
 		else:
 			self.setEditText(', '.join([str(item) for item in items]))
 
-		self.checkedItemsChanged.emit(items)
+		self.selectionChanged.emit()
 
 	def showPopup(self):
-		self.__selectedItems = self.checkedItems()
+		self.__persistDropdown = QtGui.QApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier
 		super(MultiComboBox, self).showPopup()
 
 	def hidePopup(self):
-		print 'keep open?', self.__persistDropdown
 		if not self.__persistDropdown:
-			if self.checkedItems() != self.__selectedItems:
-				self.selectionChanged.emit()
 			super(MultiComboBox, self).hidePopup()
+			
+	def __str__(self):
+		return ', '.join([str(item) for item in self.checkedItems()])
 
 
 def main():
-#	from  signaltracer import SignalTracer
+	from searchLineEdit import SearchLineEdit
+	from  signaltracer import SignalTracer
 	tracer = SignalTracer()
 	app = QtGui.QApplication(sys.argv)
 	app.setStyle(QtGui.QStyleFactory.create("Plastique"))
-
 	widget = MultiComboBox()
-#	tracer.monitor(widget, widget.lineEdit(), widget.model())
+	widget.setLineEdit(SearchLineEdit())
+	tracer.monitor(widget.lineEdit(), widget.lineEdit().clearButton)
 
 	widget.addItems(['item %d' %i for i in xrange(10)])
 
@@ -142,7 +145,7 @@ def main():
 	dialog.setLayout(layout)
 	dialog.show()
 
-	app.exec_()
+	app.exec_()	
 	return 0
 
 

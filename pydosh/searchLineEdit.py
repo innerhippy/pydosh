@@ -21,9 +21,9 @@ class SearchLineEdit(QtGui.QLineEdit):
 		frameWidth = self.style().pixelMetric(QtGui.QStyle.PM_DefaultFrameWidth)
 		self.setStyleSheet(QtCore.QString("QLineEdit { padding-right: %1px; } ").arg(clearButton.sizeHint().width() + frameWidth + 1))
 
-		msz = self.minimumSizeHint()
-		self.setMinimumSize(max(msz.width(), clearButton.sizeHint().height() + frameWidth * 2 + 2),
-				max(msz.height(), clearButton.sizeHint().height() + frameWidth * 2 + 2))
+#		msz = self.minimumSizeHint()
+#		self.setMinimumSize(max(msz.width(), clearButton.sizeHint().height() + frameWidth * 2 + 2),
+#				max(msz.height(), clearButton.sizeHint().height() + frameWidth * 2 + 2))
 
 		self.clearButton = clearButton
 
@@ -43,7 +43,6 @@ class SearchLineEdit(QtGui.QLineEdit):
 
 	def paintEvent(self, event):
 		super(SearchLineEdit, self).paintEvent(event)
-
 		if not self.text() and not self.hasFocus():
 			pixmap = QtGui.QPixmap(":/icons/search.png").scaledToHeight(15, QtCore.Qt.SmoothTransformation)
 			rect = QtCore.QRect(QtCore.QPoint(0, 0), pixmap.size())

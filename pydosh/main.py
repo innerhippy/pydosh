@@ -9,6 +9,7 @@ from csvDecoder import Decoder, DecoderException
 from database import db
 from ui_pydosh import Ui_pydosh
 from dialogs import SettingsDialog, LoginDialog, TagDialog, ImportDialog
+from searchLineEdit import SearchLineEdit
 import enum
 import pydosh_rc
 import pdb
@@ -39,6 +40,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.deleteButton.setEnabled(False)
 
 		self.accountCombo.setDefaultText('all')
+		
+		self.tagCombo.selectionChanged.connect(self.setFilter)
+		self.tagCombo.setLineEdit(SearchLineEdit())
 
 		self.checkedCombo.currentIndexChanged.connect(self.setFilter)
 		self.inoutCombo.currentIndexChanged.connect(self.setFilter)
@@ -46,7 +50,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.descEdit.textChanged.connect(self.setFilter)
 		self.amountEdit.textChanged.connect(self.setFilter)
 		self.amountEdit.controlKeyPressed.connect(self.controlKeyPressed)
-		self.tagCombo.selectionChanged.connect(self.setFilter)
 		self.startDateEdit.dateChanged.connect(self.setFilter)
 		self.endDateEdit.dateChanged.connect(self.setFilter)
 		self.toggleCheckButton.clicked.connect(self.toggleSelected)
