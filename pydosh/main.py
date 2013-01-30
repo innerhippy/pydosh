@@ -40,9 +40,11 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.deleteButton.setEnabled(False)
 
 		self.accountCombo.setDefaultText('all')
-		
+
+		lineEdit = SearchLineEdit()
+		self.tagCombo.setLineEdit(lineEdit)
+		lineEdit.clearButtonPressed.connect(self.tagCombo.clearAll)
 		self.tagCombo.selectionChanged.connect(self.setFilter)
-		self.tagCombo.setLineEdit(SearchLineEdit())
 
 		self.checkedCombo.currentIndexChanged.connect(self.setFilter)
 		self.inoutCombo.currentIndexChanged.connect(self.setFilter)
@@ -135,15 +137,13 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		with self.blockAllSignals():
 
-			self.accountCombo.setModel(CheckComboModel())
-
 			self.model = None
 			recordsModel = RecordModel(db.userId, self)
 			recordsModel.setTable("records")
 			recordsModel.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
 			recordsModel.select()
 			self.model = recordsModel
-			
+
 			proxyModel = SortProxyModel(self)
 			proxyModel.setSourceModel(recordsModel)
 			proxyModel.setFilterKeyColumn(-1)
@@ -484,14 +484,12 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.populateDates()
 			self.populateTags()
 			self.checkedCombo.setCurrentIndex(enum.kCheckedStatus_All)
-#			self.accountCombo.setCurrentIndex(0)
 			self.dateCombo.setCurrentIndex(enum.kDate_PreviousYear)
 			self.setDate()
 
 			self.inoutCombo.setCurrentIndex(enum.kInOutStatus_All)
 			self.amountEdit.clear()
 			self.descEdit.clear()
-#			self.tagEdit.clear()
 			self.endDateEdit.setEnabled(True)
 			self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.DescendingOrder)
 
@@ -631,10 +629,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			else:
 				# No operator supplied - treat amount as a string
 				queryFilter.append(
-					"CAST(r.amount AS char(10)) LIKE '%s%%' OR CAST(r.amount AS char(10)) LIKE '-%s%%'" % 
+					"CAST(r.amount AS char(10)) LIKE '%s%%' OR CAST(r.amount AS char(10)) LIKE '-%s%%'" %
 					(amountFilter, amountFilter))
 
-#		# tag filter
+		# tag filter
 		tagIds = [index.data(QtCore.Qt.UserRole).toPyObject() for index in self.tagCombo.checkedIndexes()]
 		if tagIds:
 			queryFilter.append("""
@@ -642,7 +640,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 					SELECT recordid
 					FROM recordtags
 					WHERE tagid in (%s))
-				""" % ', '.join([str(tagid) for tagid in tagIds])) 
+				""" % ', '.join([str(tagid) for tagid in tagIds]))
 
 		self.model.setFilter('\nAND '.join(queryFilter))
 

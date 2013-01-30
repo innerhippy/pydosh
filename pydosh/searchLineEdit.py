@@ -3,6 +3,7 @@ import pydosh_rc
 
 class SearchLineEdit(QtGui.QLineEdit):
 	controlKeyPressed = QtCore.pyqtSignal(int)
+	clearButtonPressed = QtCore.pyqtSignal()
 
 	def __init__(self, parent=None):
 		super(SearchLineEdit, self).__init__(parent=parent)
@@ -16,6 +17,7 @@ class SearchLineEdit(QtGui.QLineEdit):
 		clearButton.hide()
 
 		clearButton.clicked.connect(self.clear)
+		clearButton.clicked.connect(self.clearButtonPressed.emit)
 		self.textChanged.connect(self.updateCloseButton)
 
 		frameWidth = self.style().pixelMetric(QtGui.QStyle.PM_DefaultFrameWidth)
@@ -27,7 +29,7 @@ class SearchLineEdit(QtGui.QLineEdit):
 
 		self.clearButton = clearButton
 
-	def keyPressEvent(self, event): 
+	def keyPressEvent(self, event):
 		if event.key() == QtCore.Qt.Key_Space:
 			self.controlKeyPressed.emit(event.key())
 		super(SearchLineEdit, self).keyPressEvent(event)
