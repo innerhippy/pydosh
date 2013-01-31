@@ -57,6 +57,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.toggleCheckButton.clicked.connect(self.toggleSelected)
 		self.deleteButton.clicked.connect(self.deleteRecords)
 		self.dateCombo.currentIndexChanged.connect(self.setDate)
+		self.startDateEdit.dateChanged.connect(self.setFilter)
+		self.endDateEdit.dateChanged.connect(self.setFilter)
 		self.reloadButton.clicked.connect(self.reset)
 		self.tableView.clicked.connect(self.itemChecked)
 		self.tagEditButton.pressed.connect(self.addTagButtonPressed)
@@ -79,6 +81,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.__signalsToBlock = (
 				self.accountCombo,
+				self.checkedCombo,
+				self.inoutCombo,
+				self.tagCombo,	
 				self.dateCombo,
 				self.descEdit,
 				self.amountEdit,
@@ -180,7 +185,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.displayRecordCount()
 
 	def setDate(self):
-		selected, _ = self.dateCombo.itemData(self.dateCombo.currentIndex(), QtCore.Qt.UserRole).toInt()
+		selected = self.dateCombo.itemData(self.dateCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
 
 		if selected == enum.kDate_All:
 			self.startDateEdit.setDate(self.startDateEdit.minimumDate())
@@ -192,8 +197,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		elif selected == enum.kDate_PreviousYear:
 			self.startDateEdit.setDate(self.endDateEdit.date().addYears(-1))
 			self.startDateEdit.setEnabled(True)
-
-		self.setFilter()
 
 	def settingsDialog(self):
 		dialog = SettingsDialog(self)
@@ -284,9 +287,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		dialog = ImportDialog(decoder.records, accountId, self)
 		dialog.setWindowTitle(fileNames.join(', '))
-
-		if dialog.exec_():
-			self.reset()
+		dialog.accepted.connect(self.setFilter)
+		dialog.exec_()
 
 	def itemChecked(self, index):
 
@@ -297,9 +299,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			return
 
 		proxyModel = self.tableView.model()
-		recordId, ok = self.model.record(proxyModel.mapToSource(index).row()).value(enum.kRecordColumn_RecordId).toInt()
-		if ok:
-			self.toggleChecked([recordId])
+		recordId  = self.model.record(proxyModel.mapToSource(index).row()).value(enum.kRecordColumn_RecordId).toPyObject()
+		self.toggleChecked([recordId])
 
 	def activateButtons(self):
 
@@ -317,11 +318,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def controlKeyPressed(self, key):
 		""" control key has been pressed - if we have a single row displayed, then toggle the status
 		"""
-		if self.model and self.model.rowCount() == 1:
-			if key == QtCore.Qt.Key_Space:
-				recordId, ok = self.model.record(0).value(enum.kRecordColumn_RecordId).toInt()
-				if ok:
-					self.toggleChecked([recordId])
+		if self.model and key == QtCore.Qt.Key_Space and self.model.rowCount() == 1:
+			self.toggleChecked([self.model.record(0).value(enum.kRecordColumn_RecordId).toPyObject()])
 
 	def deleteRecords(self):
 		""" Delete selected records
@@ -374,17 +372,13 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			# search filter and set focus
 			descFilter = self.descEdit.text()
 			amountFilter = self.amountEdit.text()
-#			tagFilter = self.tagEdit.text()
 
-			if descFilter and not amountFilter and not tagFilter:
+			if descFilter and not amountFilter:
 				self.descEdit.clear()
 				self.descEdit.setFocus(QtCore.Qt.OtherFocusReason)
-			elif amountFilter and not descFilter and not tagFilter:
+			elif amountFilter and not descFilter:
 				self.amountEdit.clear()
 				self.amountEdit.setFocus(QtCore.Qt.OtherFocusReason)
-#			elif tagFilter and not descFilter and not amountFilter:
-#				self.tagEdit.clear()
-#				self.tagEdit.setFocus(QtCore.Qt.OtherFocusReason)
 
 		self.displayRecordCount()
 
@@ -450,9 +444,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.startDateEdit.setDate(startDate)
 			self.endDateEdit.setDate(endDate)
 
-
-
-
 	def getSelectedRecordIds(self):
 
 		# Get recordids from all selected rows
@@ -464,9 +455,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		recordIds = []
 		for index in selectionModel.selectedRows():
-			recordId, ok = self.model.record(proxyModel.mapToSource(index).row()).value(enum.kRecordColumn_RecordId).toInt()
-			if ok:
-				recordIds.append(recordId)
+			recordIds.append(self.model.record(proxyModel.mapToSource(index).row()).value(enum.kRecordColumn_RecordId).toPyObject())
 
 		return recordIds
 
@@ -561,7 +550,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 			query = QtSql.QSqlQuery('SELECT COUNT(*) FROM records WHERE userid=%d' % db.userId)
 			query.next()
-			totalRecords, _ = query.value(0).toInt()
+			totalRecords = query.value(0).toPyObject()
 
 			for i in xrange(numRecords):
 				amount, _ = self.model.record(i).value(enum.kRecordColumn_Amount).toDouble()
@@ -644,7 +633,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.model.setFilter('\nAND '.join(queryFilter))
 
-#		print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
 		self.tableView.resizeColumnsToContents()
 		self.displayRecordCount()
 

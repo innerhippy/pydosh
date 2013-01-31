@@ -233,7 +233,7 @@ class RecordModel(QtSql.QSqlTableModel):
 			INNER JOIN accounttypes ON accounttypes.accounttypeid=r.accounttypeid 
 			WHERE r.userid=%(userid)s
 			%(filter)s
-			ORDER BY r.date, r.description
+			ORDER BY r.date, r.description, r.txdate, r.recordid
 		""" % {'userid': self.__userId, 'filter': queryFilter}
 
 		return query
