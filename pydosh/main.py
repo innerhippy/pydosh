@@ -287,7 +287,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		dialog = ImportDialog(decoder.records, accountId, self)
 		dialog.setWindowTitle(fileNames.join(', '))
-		dialog.accepted.connect(self.setFilter)
+		dialog.accepted.connect(self.reset)
 		dialog.exec_()
 
 	def itemChecked(self, index):
@@ -632,7 +632,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				""" % ', '.join([str(tagid) for tagid in tagIds]))
 
 		self.model.setFilter('\nAND '.join(queryFilter))
-
+		#print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
 		self.tableView.resizeColumnsToContents()
 		self.displayRecordCount()
 

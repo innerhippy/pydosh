@@ -97,12 +97,18 @@ class ImportModel(QtCore.QAbstractTableModel):
 		while query.next():
 			existingRecords.append(query.value(0).toString())
 
+		recordsLoaded = set()
 		for record in set(records):
 			rec = ImportRecord(*record)
+
+			# Flag record as already imported
 			if rec.valid and rec.checksum in existingRecords:
 				rec.imported = True
 
-			self.__records.append(rec)
+			# Only import unique records or invalid ones (so we can see the error)  
+			if not rec.valid or rec.checksum not in recordsLoaded:
+				recordsLoaded.add(rec.checksum)
+				self.__records.append(rec)
 
 	def canImport(self, index):
 		""" Returns True if the record at index can be imported,
