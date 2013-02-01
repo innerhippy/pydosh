@@ -60,7 +60,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.startDateEdit.dateChanged.connect(self.setFilter)
 		self.endDateEdit.dateChanged.connect(self.setFilter)
 		self.reloadButton.clicked.connect(self.reset)
-		self.tableView.clicked.connect(self.itemChecked)
 		self.tagEditButton.pressed.connect(self.addTagButtonPressed)
 
 		db.connected.connect(self.setConnectionStatus)
@@ -290,18 +289,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		dialog.accepted.connect(self.reset)
 		dialog.exec_()
 
-	def itemChecked(self, index):
-
-		if self.model is None:
-			return
-
-		if index.column() != enum.kRecordColumn_Checked:
-			return
-
-		proxyModel = self.tableView.model()
-		recordId  = self.model.record(proxyModel.mapToSource(index).row()).value(enum.kRecordColumn_RecordId).toPyObject()
-		self.toggleChecked([recordId])
-
 	def activateButtons(self):
 
 		model = self.tableView.selectionModel()
@@ -461,7 +448,21 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 
 	def toggleSelected(self):
-		self.toggleChecked(self.getSelectedRecordIds())
+
+		selectionModel = self.tableView.selectionModel()
+
+		if selectionModel is None:
+			return
+
+		proxyModel = self.tableView.model()
+
+		for proxyIndex in selectionModel.selectedRows():
+			index = self.model.index(proxyModel.mapToSource(proxyIndex).row(), enum.kRecordColumn_Checked) 
+			checkState = index.data(QtCore.Qt.CheckStateRole).toPyObject()
+			newState = QtCore.Qt.Unchecked if checkState == QtCore.Qt.Checked else QtCore.Qt.Checked
+			self.model.setData(index, QtCore.QVariant(newState), QtCore.Qt.CheckStateRole)
+
+#		self.toggleChecked(self.getSelectedRecordIds())
 
 	def reset(self):
 

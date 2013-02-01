@@ -214,6 +214,13 @@ class RecordModel(QtSql.QSqlTableModel):
 			self.fetchMore()
 
 		return status
+	
+	def flags(self, index):
+		flags = super(RecordModel, self).flags(index)
+		if index.column() == enum.kRecordColumn_Checked:
+			return flags | QtCore.Qt.ItemIsUserCheckable
+		return flags
+
 
 	def selectStatement(self):
 		if self.tableName().isEmpty():
@@ -258,9 +265,11 @@ class RecordModel(QtSql.QSqlTableModel):
 
 		if role == QtCore.Qt.ToolTipRole:
 			if item.column() == enum.kRecordColumn_Tags:
+				return super(RecordModel, self).data(self.index(item.row(), enum.kRecordColumn_RecordId))
 				val, ok = super(RecordModel, self).data(item).toInt()
 				if ok and val > 0:
 					# return getTagList(QSqlTableModel::data(index(item.row(), kRecordColumn_RecordId)).toInt())
+					
 					return 'some tags'
 			elif item.column() == enum.kRecordColumn_Checked:
 				if super(RecordModel, self).data(self.index(item.row(), enum.kRecordColumn_Checked)).toBool():
@@ -286,12 +295,12 @@ class RecordModel(QtSql.QSqlTableModel):
 			if ok:
 				return QtGui.QColor("#b6ffac") if val > 0.0 else QtGui.QColor("#ffd3cf")
 
-		if role == QtCore.Qt.DecorationRole:
-			if item.column() == enum.kRecordColumn_Tags:
-				# Show tag icon if we have any
-				val, ok = super(RecordModel, self).data(item).toInt()
-				if ok and val > 0:
-					return QtGui.QIcon(':/icons/tag_yellow.png')
+#		if role == QtCore.Qt.DecorationRole:
+#			if item.column() == enum.kRecordColumn_Tags:
+#				# Show tag icon if we have any
+#				val, ok = super(RecordModel, self).data(item).toInt()
+#				if ok and val > 0:
+#					return QtGui.QIcon(':/icons/tag_yellow.png')
 
 
 		if role == QtCore.Qt.DisplayRole:
@@ -320,6 +329,27 @@ class RecordModel(QtSql.QSqlTableModel):
 
 		return super(RecordModel, self).data(item, role)
 
+	def setData(self, index, value, role=QtCore.Qt.EditRole):
+		""" Save new checkstate role changes in database 
+		"""
+		if role == QtCore.Qt.CheckStateRole and index.column() == enum.kRecordColumn_Checked:
+
+			if value.toPyObject() == QtCore.Qt.Checked:
+				dbvalue = QtCore.QVariant(1)
+				timestamp = QtCore.QVariant(QtCore.QDateTime.currentDateTime())
+			else:
+				dbvalue = QtCore.QVariant(0)
+				timestamp = QtCore.QVariant()
+				
+			txDateIndex = self.index(index.row(), enum.kRecordColumn_CheckDate)
+
+			# Save the new state and timestamp
+			if super(RecordModel, self).setData(index, dbvalue) and \
+				super(RecordModel, self).setData(txDateIndex,timestamp):
+				return self.submitAll()
+
+		return False
+	
 	def headerData (self, section, orientation, role=QtCore.Qt.DisplayRole):
 		""" Set the header labels for the view
 		"""
@@ -398,9 +428,6 @@ class TagModel(QtSql.QSqlTableModel):
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
 		""" Handle checkstate role changes 
 		"""
-		if not index.isValid():
-			return QtCore.QVariant()
-
 		if role == QtCore.Qt.CheckStateRole:
 
 			tagId = self.index(index.row(), enum.kTagsColumn_TagId).data().toInt()[0]
@@ -504,10 +531,6 @@ class AccountModel(QtSql.QSqlTableModel):
 		return super(AccountModel, self).data(item, role)
 
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
-
-		if not index.isValid():
-			return QtCore.QVariant()
-
 		# Don't flag cell as changed when it hasn't
 		if role == QtCore.Qt.EditRole and self.data(index, role) == value:
 			return False

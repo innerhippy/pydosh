@@ -8,7 +8,7 @@ QtCore.pyqtRemoveInputHook()
 def main():
 
 	app = QtGui.QApplication(sys.argv)
-	app.setStyle(QtGui.QStyleFactory.create("Plastique"))
+	#app.setStyle(QtGui.QStyleFactory.create("Plastique"))
 
 	QtCore.QCoreApplication.setApplicationName("doshlogger")
 	QtCore.QCoreApplication.setOrganizationName("innerhippy")
