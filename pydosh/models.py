@@ -251,6 +251,20 @@ class RecordModel(QtSql.QSqlTableModel):
 
 		return query
 
+
+	def __getTagsforRecord(self, recordId):
+		query = QtSql.QSqlQuery("""
+			SELECT t.tagname
+			FROM recordtags rt
+			JOIN tags t ON t.tagid=rt.tagid
+			WHERE rt.recordid=%d""" % recordId)
+		
+		tagNames = []
+		while query.next():
+			tagNames.append(str(query.value(0).toString()))
+			
+		return ', '.join(tagNames)
+
 	def data(self, item, role=QtCore.Qt.DisplayRole):
 		""" Return data from the model, formatted for viewing
 		"""
@@ -265,12 +279,9 @@ class RecordModel(QtSql.QSqlTableModel):
 
 		if role == QtCore.Qt.ToolTipRole:
 			if item.column() == enum.kRecordColumn_Tags:
-				return super(RecordModel, self).data(self.index(item.row(), enum.kRecordColumn_RecordId))
-				val, ok = super(RecordModel, self).data(item).toInt()
-				if ok and val > 0:
-					# return getTagList(QSqlTableModel::data(index(item.row(), kRecordColumn_RecordId)).toInt())
-					
-					return 'some tags'
+				#Show tag names for this record
+				return self.__getTagsforRecord(self.data(self.index(item.row(), enum.kRecordColumn_RecordId)).toPyObject())
+
 			elif item.column() == enum.kRecordColumn_Checked:
 				if super(RecordModel, self).data(self.index(item.row(), enum.kRecordColumn_Checked)).toBool():
 					return "Checked: " + super(RecordModel, self).data(
@@ -403,15 +414,15 @@ class TagModel(QtSql.QSqlTableModel):
 
 		if role == QtCore.Qt.CheckStateRole and item.column() == enum.kTagsColumn_TagName:
 			# Extract tagId for this tag
-			tagId, ok = super(TagModel, self).data(self.index(item.row(), enum.kTagsColumn_TagId)).toInt()
-			if ok:
-				recordIdsForTag = set(self.__getRecordIdsForTag(tagId))
-				if self.__recordIds.issubset(recordIdsForTag):
-					return QtCore.Qt.Checked
-				elif self.__recordIds.intersection(recordIdsForTag):
-					return QtCore.Qt.PartiallyChecked
-				else:
-					return QtCore.Qt.Unchecked
+			tagId = super(TagModel, self).data(self.index(item.row(), enum.kTagsColumn_TagId)).toPyObject()
+			recordIdsForTag = set(self.__getRecordIdsForTag(tagId))
+
+			if self.__recordIds.issubset(recordIdsForTag):
+				return QtCore.Qt.Checked
+			elif self.__recordIds.intersection(recordIdsForTag):
+				return QtCore.Qt.PartiallyChecked
+			else:
+				return QtCore.Qt.Unchecked
 
 		return super(TagModel, self).data(item, role)
 
@@ -446,12 +457,12 @@ class TagModel(QtSql.QSqlTableModel):
 		""" Delete a tag from our records
 		"""
 		for row in reversed(xrange(self.__recordTagModel.rowCount())):
-			recordId, ok = self.__recordTagModel.index(row, enum.kRecordTagsColumn_RecordId).data().toInt()
-			if not ok or recordId not in self.__recordIds:
+			recordId = self.__recordTagModel.index(row, enum.kRecordTagsColumn_RecordId).data().toPyObject()
+			if recordId not in self.__recordIds:
 				continue
 
-			recordTagId, ok = self.__recordTagModel.index(row, enum.kRecordTagsColumn_TagId).data().toInt()
-			if not ok or recordTagId != tagId:
+			recordTagId = self.__recordTagModel.index(row, enum.kRecordTagsColumn_TagId).data().toPyObject()
+			if recordTagId != tagId:
 				continue
 
 			self.__recordTagModel.removeRows(row, 1)
