@@ -1,5 +1,4 @@
 from PyQt4 import QtCore, QtGui, QtSql
-import math
 import pdb
 import enum
 from database import db
@@ -323,7 +322,7 @@ class RecordModel(QtSql.QSqlTableModel):
 				# Display absolute currency values. credit/debit is indicated by background colour
 				val, ok = super(RecordModel, self).data(item).toDouble()
 				if ok:
-					return QtCore.QString.number(math.fabs(val), 'f', 2)
+					return QtCore.QString.number(fabs(val), 'f', 2)
 
 			elif item.column() == enum.kRecordColumn_Description:
 				# Truncate the description field to 30 chars

@@ -1,4 +1,3 @@
-import math
 from contextlib  import contextmanager
 from PyQt4 import QtGui, QtCore, QtSql
 QtCore.pyqtRemoveInputHook()
@@ -514,7 +513,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				if amount > 0.0:
 					inTotal += amount
 				else:
-					outTotal += math.fabs(amount)
+					outTotal += abs(amount)
 
 		self.inTotalLabel.setText(QtCore.QString("%L1").arg(inTotal, 0, 'f', 2))
 		self.outTotalLabel.setText(QtCore.QString("%L1").arg(outTotal, 0, 'f', 2))
@@ -527,7 +526,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		queryFilter = []
 
-#		# Account filter
+		# Account filter
 		accountIds = [index.data(QtCore.Qt.UserRole).toPyObject() for index in self.accountCombo.checkedIndexes()]
 		if accountIds:
 			queryFilter.append('r.accounttypeid in (%s)' % ', '.join(str(acid) for acid in accountIds))
