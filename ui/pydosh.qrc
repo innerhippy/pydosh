@@ -16,6 +16,7 @@
     <file>icons/pydosh.png</file>
     <file>icons/folder.png</file>
     <file>icons/help.png</file>
+    <file>icons/tick.png</file>
     <file>icons/thumb_down.png</file>
     <file>icons/thumb_up.png</file>
     <file>schema/accounttypes_data.sql</file>

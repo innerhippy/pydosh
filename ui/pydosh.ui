@@ -82,7 +82,7 @@
              </sizepolicy>
             </property>
             <property name="toolTip">
-             <string>filter on transaction code</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;filter on money in or out&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
           </item>
@@ -127,7 +127,7 @@
           <item row="0" column="1">
            <widget class="SearchLineEdit" name="descEdit">
             <property name="toolTip">
-             <string>filter by tag</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;filter on description&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
           </item>
@@ -176,7 +176,7 @@
              </sizepolicy>
             </property>
             <property name="toolTip">
-             <string>filter on account</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;filter on tags&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
           </item>
@@ -216,7 +216,11 @@
            </widget>
           </item>
           <item row="0" column="1" colspan="2">
-           <widget class="QDateEdit" name="endDateEdit"/>
+           <widget class="QDateEdit" name="endDateEdit">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;end date&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+           </widget>
           </item>
           <item row="1" column="0">
            <widget class="QLabel" name="label_2">
@@ -232,7 +236,11 @@
            </widget>
           </item>
           <item row="1" column="1" colspan="2">
-           <widget class="QDateEdit" name="startDateEdit"/>
+           <widget class="QDateEdit" name="startDateEdit">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;start date&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+           </widget>
           </item>
           <item row="2" column="1">
            <widget class="QComboBox" name="dateCombo">
@@ -243,7 +251,7 @@
              </sizepolicy>
             </property>
             <property name="toolTip">
-             <string>filter on transaction code</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;set date range&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
           </item>
@@ -305,7 +313,7 @@ p, li { white-space: pre-wrap; }
        <item>
         <widget class="QToolButton" name="deleteButton">
          <property name="toolTip">
-          <string>reload data (Alt-r)</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;delete record&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="text">
           <string>&amp;r</string>

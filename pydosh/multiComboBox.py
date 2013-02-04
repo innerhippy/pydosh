@@ -1,14 +1,12 @@
 import pdb
 from PyQt4 import QtCore, QtGui
-
+import pydosh_rc
 from models import CheckComboModel
 
 class MultiComboBox(QtGui.QComboBox):
 	""" Extension of QComboBox widget that allows for multiple selection
 	"""
 	selectionChanged = QtCore.pyqtSignal()
-	clearAll = QtCore.pyqtSignal()
-	checkAll = QtCore.pyqtSignal()
 
 	def __init__(self, parent=None):
 		super(MultiComboBox, self).__init__(parent=parent)
@@ -26,8 +24,6 @@ class MultiComboBox(QtGui.QComboBox):
 		self.installEventFilter(self)
 
 		self.activated[int].connect(self.__toggleCheckState)
-		self.clearAll.connect(self._clearAllEvent)
-		self.checkAll.connect(self._checkAllEvent)
 
 	def setModel(self, model):
 		super(MultiComboBox, self).setModel(model)
@@ -76,6 +72,16 @@ class MultiComboBox(QtGui.QComboBox):
 		self._defaultText = text
 		self.__updateCheckedItems()
 
+	def clearAll(self):
+		""" Event for clear all check from the list view. 
+		"""
+		self.__checkAll(False)
+
+	def checkAll(self):
+		""" Event for check all from the list view.
+		"""
+		self.__checkAll(True)
+
 	def eventFilter(self, receiver, event):
 		if event.type() in (QtCore.QEvent.KeyPress, QtCore.QEvent.KeyRelease):
 			if receiver == self and event.key() in (QtCore.Qt.Key_Up, QtCore.Qt.Key_Down):
@@ -94,9 +100,6 @@ class MultiComboBox(QtGui.QComboBox):
 		return False
 
 	def __toggleCheckState(self, index):
-		# Can't seem to block signals from lineEdit, so do it the hard way...
-		if self.sender() == self.lineEdit():
-			return
 
 		value = self.itemData(index, QtCore.Qt.CheckStateRole)
 
@@ -119,32 +122,29 @@ class MultiComboBox(QtGui.QComboBox):
 			indexes = self.model().match(currentIndex, QtCore.Qt.CheckStateRole, QtCore.Qt.Checked, -1, QtCore.Qt.MatchExactly)
 		return indexes
 
-	def _clearAllEvent(self):
-		""" Event for clear all check from the list view. 
-		"""
-		self.__checkAll(False)
-
-	def _checkAllEvent(self):
-		""" Event for check all from the list view.
-		"""
-		self.__checkAll(True)
-
 	def contextMenuEvent(self, event):
 		""" Event for create context menu.
 			Args:
-				event (QEvent):		mouse right click event.
+				event (QEvent): mouse right click event.
 		"""
+		quitAction = QtGui.QAction('&Quit', self)
+		quitAction.setShortcut('Alt+q')
+		quitAction.setStatusTip('Exit the program')
+		quitAction.setIcon(QtGui.QIcon(':/icons/exit.png'))
+		
 		signalMap = {}
-		contextMenu = QtGui.QMenu(self)
-
-		clearAllAction = contextMenu.addAction("Clear All")
-		signalMap[clearAllAction] = "clearAll()"
-		checkAllAction = contextMenu.addAction("Check All")
-		signalMap[checkAllAction] = "checkAll()"
+		contextMenu = QtGui.QMenu()
+		
+		clearAllAction = contextMenu.addAction(QtGui.QIcon(':/icons/cross.png'), 'Clear All')
+		clearAllAction.setIconVisibleInMenu(True)
+		signalMap[clearAllAction] = self.clearAll
+		checkAllAction = contextMenu.addAction(QtGui.QIcon(':/icons/tick.png'), 'Check All')
+		checkAllAction.setIconVisibleInMenu(True)
+		signalMap[checkAllAction] = self.checkAll
 
 		contextMenuAction = contextMenu.exec_(QtGui.QCursor.pos())
 		if contextMenuAction and signalMap.has_key(contextMenuAction):
-			self.emit(QtCore.SIGNAL(signalMap[contextMenuAction]))
+			signalMap[contextMenuAction]()
 
 	def __updateCheckedItems(self):
 		items = self.checkedItems()
@@ -173,15 +173,15 @@ def main():
 	from  signaltracer import SignalTracer
 	tracer = SignalTracer()
 	app = QtGui.QApplication(sys.argv)
-	app.setStyle(QtGui.QStyleFactory.create("Plastique"))
+	#app.setStyle(QtGui.QStyleFactory.create("Plastique"))
 	import pdb
 	#pdb.set_trace()
-	lineEdit = SearchLineEdit()
+	#lineEdit = SearchLineEdit()
 	widget = MultiComboBox()
-	tracer.monitor(lineEdit, widget, lineEdit.clearButton)
+	#tracer.monitor(lineEdit, widget, lineEdit.clearButton)
 
-	widget.setLineEdit(lineEdit)
-	lineEdit.clearButtonPressed.connect(widget.clearAll)
+	#widget.setLineEdit(lineEdit)
+	#lineEdit.clearButtonPressed.connect(widget.clearAll)
 	widget.addItems(['item %d' %i for i in xrange(2)])
 #	widget.setDefaultText('all')
 

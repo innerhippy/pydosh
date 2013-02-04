@@ -8,7 +8,6 @@ from csvDecoder import Decoder, DecoderException
 from database import db
 from ui_pydosh import Ui_pydosh
 from dialogs import SettingsDialog, LoginDialog, TagDialog, ImportDialog
-from searchLineEdit import SearchLineEdit
 import enum
 import pydosh_rc
 import pdb
@@ -40,9 +39,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.accountCombo.setDefaultText('all')
 
-		lineEdit = SearchLineEdit()
-		self.tagCombo.setLineEdit(lineEdit)
-		lineEdit.clearButtonPressed.connect(self.tagCombo.clearAll)
 		self.tagCombo.selectionChanged.connect(self.setFilter)
 
 		self.checkedCombo.currentIndexChanged.connect(self.setFilter)
@@ -192,7 +188,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tagCombo.setModelColumn(enum.kTagsColumn_TagName)
 			self.tagCombo.setModel(tagModel)
 
-					
 			self.reset()
 
 	def setConnectionStatus(self, isConnected):
@@ -421,7 +416,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.checkedCombo.setCurrentIndex(enum.kCheckedStatus_All)
 			self.dateCombo.setCurrentIndex(enum.kDate_PreviousYear)
 			self.setDate()
-
+			self.tagCombo.clearAll()
+			self.accountCombo.clearAll()
 			self.inoutCombo.setCurrentIndex(enum.kInOutStatus_All)
 			self.amountEdit.clear()
 			self.descEdit.clear()
