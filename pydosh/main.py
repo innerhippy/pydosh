@@ -208,7 +208,19 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		dialog.exec_()
 
 	def addTagButtonPressed(self):
-		dialog = TagDialog(self.getSelectedRecordIds(), self)
+
+		# Get recordids from all selected rows
+		selectionModel = self.tableView.selectionModel()
+		if selectionModel is None:
+			return []
+
+		proxyModel = self.tableView.model()
+		recordIds = []
+		for proxyIndex in selectionModel.selectedRows():
+			index = self.model.index(proxyModel.mapToSource(proxyIndex).row(), enum.kRecordColumn_RecordId) 
+			recordIds.append(index.data().toPyObject())
+
+		dialog = TagDialog(recordIds, self)
 		dialog.accepted.connect(self.populateTags)
 		dialog.accepted.connect(self.setFilter)
 		dialog.exec_()
@@ -306,7 +318,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		""" control key has been pressed - if we have a single row displayed, then toggle the status
 		"""
 		if self.model and key == QtCore.Qt.Key_Space and self.model.rowCount() == 1:
-			self.toggleChecked([self.model.record(0).value(enum.kRecordColumn_RecordId).toPyObject()])
+			self.tableView.selectAll()
+			self.toggleSelected()
 
 	def deleteRecords(self):
 		""" Delete selected records
@@ -326,48 +339,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		dataModel.submitAll()
 
-	def toggleChecked(self, recordIds):
-		""" QStringList of record IDs to toggle
-		"""
-		if len(recordIds) == 0:
-			return
 
-		query = QtSql.QSqlQuery("""
-			UPDATE records SET checked=abs(checked -1), checkdate='%(checkdate)s'
-			WHERE recordid IN (%(recordids)s)
-			""" % {
-			'checkdate': QtCore.QDateTime.currentDateTime().toString("yyyy-MM-dd hh:mm:ss"),
-			'recordids': ','.join(str(rec) for rec in recordIds)
-		})
-
-		query.next()
-
-		if query.lastError().isValid():
-			QtGui.QMessageBox.critical(self, 'DB Error', query.lastError().text(), QtGui.QMessageBox.Ok)
-			return
-
-		visibleRow = self.tableView.indexAt(QtCore.QPoint(5,5))
-
-		self.model.select()
-
-		# Restore view position
-		if visibleRow.isValid():
-			self.tableView.scrollTo(visibleRow, QtGui.QAbstractItemView.PositionAtTop)
-
-		if self.model.rowCount() == 0:
-			# Smart focus - if we have no records showing then reset the last
-			# search filter and set focus
-			descFilter = self.descEdit.text()
-			amountFilter = self.amountEdit.text()
-
-			if descFilter and not amountFilter:
-				self.descEdit.clear()
-				self.descEdit.setFocus(QtCore.Qt.OtherFocusReason)
-			elif amountFilter and not descFilter:
-				self.amountEdit.clear()
-				self.amountEdit.setFocus(QtCore.Qt.OtherFocusReason)
-
-		self.displayRecordCount()
 
 	@contextmanager
 	def blockAllSignals(self):
@@ -406,8 +378,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.tagCombo.clear()
 
 		query = QtSql.QSqlQuery(
-			"SELECT tagname, tagid FROM tags WHERE userid=%d" % db.userId
-		)
+				"SELECT tagname, tagid FROM tags WHERE userid=%d" % db.userId
+			)
 
 		while query.next():
 			self.tagCombo.addItem(query.value(0).toString(), query.value(1).toPyObject())
@@ -415,11 +387,11 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	def populateDates(self):
 
-		query = QtSql.QSqlQuery('''
-			SELECT MIN(date), MAX(date)
-			FROM records
-			WHERE userid=%d
-		''' % db.userId)
+		query = QtSql.QSqlQuery("""
+				SELECT MIN(date), MAX(date)
+				FROM records
+				WHERE userid=%d
+			""" % db.userId)
 
 		if query.next():
 			startDate = query.value(0).toDate()
@@ -430,22 +402,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 			self.startDateEdit.setDate(startDate)
 			self.endDateEdit.setDate(endDate)
-
-	def getSelectedRecordIds(self):
-
-		# Get recordids from all selected rows
-		selectionModel = self.tableView.selectionModel()
-		if selectionModel is None:
-			return []
-
-		proxyModel = self.tableView.model()
-
-		recordIds = []
-		for index in selectionModel.selectedRows():
-			recordIds.append(self.model.record(proxyModel.mapToSource(index).row()).value(enum.kRecordColumn_RecordId).toPyObject())
-
-		return recordIds
-
 
 	def toggleSelected(self):
 
@@ -461,8 +417,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			checkState = index.data(QtCore.Qt.CheckStateRole).toPyObject()
 			newState = QtCore.Qt.Unchecked if checkState == QtCore.Qt.Checked else QtCore.Qt.Checked
 			self.model.setData(index, QtCore.QVariant(newState), QtCore.Qt.CheckStateRole)
-
-#		self.toggleChecked(self.getSelectedRecordIds())
+			
+		self.displayRecordCount()
 
 	def reset(self):
 
@@ -566,7 +522,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	@showWaitCursor
 	def setFilter(self, *args):
-
 		if self.model is None or not db.isConnected:
 			return
 
