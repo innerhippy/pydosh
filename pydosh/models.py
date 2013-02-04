@@ -305,12 +305,11 @@ class RecordModel(QtSql.QSqlTableModel):
 			if ok:
 				return QtGui.QColor("#b6ffac") if val > 0.0 else QtGui.QColor("#ffd3cf")
 
-#		if role == QtCore.Qt.DecorationRole:
-#			if item.column() == enum.kRecordColumn_Tags:
-#				# Show tag icon if we have any
-#				val, ok = super(RecordModel, self).data(item).toInt()
-#				if ok and val > 0:
-#					return QtGui.QIcon(':/icons/tag_yellow.png')
+		if role == QtCore.Qt.DecorationRole:
+			if item.column() == enum.kRecordColumn_Tags:
+				# Show tag icon if we have any
+				if super(RecordModel, self).data(item).toPyObject() > 0:
+					return QtGui.QIcon(':/icons/tag_yellow.png')
 
 
 		if role == QtCore.Qt.DisplayRole:
@@ -340,7 +339,7 @@ class RecordModel(QtSql.QSqlTableModel):
 		return super(RecordModel, self).data(item, role)
 
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
-		""" Save new checkstate role changes in database 
+		""" Save new checkstate role changes in database
 		"""
 		if role == QtCore.Qt.CheckStateRole and index.column() == enum.kRecordColumn_Checked:
 
@@ -350,7 +349,7 @@ class RecordModel(QtSql.QSqlTableModel):
 			else:
 				dbvalue = QtCore.QVariant(0)
 				timestamp = QtCore.QVariant()
-				
+
 			txDateIndex = self.index(index.row(), enum.kRecordColumn_CheckDate)
 
 			# Save the new state and timestamp
@@ -359,7 +358,7 @@ class RecordModel(QtSql.QSqlTableModel):
 				return self.submitAll()
 
 		return False
-	
+
 	def headerData (self, section, orientation, role=QtCore.Qt.DisplayRole):
 		""" Set the header labels for the view
 		"""
@@ -567,30 +566,50 @@ class AccountModel(QtSql.QSqlTableModel):
 
 		return QtCore.QVariant()
 
-class CheckComboModel(QtGui.QStandardItemModel):
+class CheckComboModel(QtSql.QSqlTableModel):
 
 	checkStateChanged = QtCore.pyqtSignal()
 	dataChanged = QtCore.pyqtSignal('QModelIndex, QModelIndex)')
 
 	def __init__(self, parent=None):
-		super(CheckComboModel, self).__init__(0, 1, parent=parent)
+		super(CheckComboModel, self).__init__(parent=parent)
+		self._checkedItems = set()
+		self.__userRoleColumn = None
+
+	def setUserRoleColumn(self, column):
+		""" Set the database table colum to use for UserRole data
+		"""
+		self.__userRoleColumn = column
 
 	def flags(self, index):
 		return super(CheckComboModel, self).flags(index) | QtCore.Qt.ItemIsUserCheckable
 
-
 	def data(self, index, role):
-		value = super(CheckComboModel, self).data(index, role)
+		if not index.isValid():
+			return QtCore.QVariant()
 
-		if index.isValid() and role == QtCore.Qt.CheckStateRole and not value.isValid():
-			value = QtCore.Qt.Unchecked
+		if role == QtCore.Qt.CheckStateRole:
+			if index in self._checkedItems:
+				return QtCore.Qt.Checked
+			else:
+				return QtCore.Qt.Unchecked
 
-		return value
+		if role == QtCore.Qt.UserRole and self.__userRoleColumn is not None:
+			return self.record(index.row()).value(self.__userRoleColumn).toPyObject()
+
+		return super(CheckComboModel, self).data(index, role)
 
 	def setData(self, index, value, role):
-		ok = super(CheckComboModel, self).setData(index, value, role)
-		if ok and role == QtCore.Qt.CheckStateRole:
+		if role == QtCore.Qt.CheckStateRole:
+
+			if value.toPyObject() == QtCore.Qt.Checked:
+				self._checkedItems.add(index)
+			else:
+				self._checkedItems.remove(index)
+
 			self.emit(QtCore.SIGNAL('dataChanged(QModelIndex, QModelIndex)'), index, index)
 			self.emit(QtCore.SIGNAL('checkStateChanged()'))
 
-		return ok
+			return True
+
+		return False

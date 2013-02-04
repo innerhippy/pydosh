@@ -48,6 +48,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.checkedCombo.currentIndexChanged.connect(self.setFilter)
 		self.inoutCombo.currentIndexChanged.connect(self.setFilter)
 		self.accountCombo.selectionChanged.connect(self.setFilter)
+		self.tagCombo.selectionChanged.connect(self.setFilter)
 		self.descEdit.textChanged.connect(self.setFilter)
 		self.amountEdit.textChanged.connect(self.setFilter)
 		self.amountEdit.controlKeyPressed.connect(self.controlKeyPressed)
@@ -167,6 +168,31 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.horizontalHeader().setStretchLastSection(True)
 			self.tableView.selectionModel().selectionChanged.connect(self.activateButtons)
 
+			# Set sql data model for account types
+			accountModel = CheckComboModel()
+			accountModel.setTable('accounttypes')
+			accountModel.setFilter("""
+				accounttypeid IN (
+					SELECT distinct accounttypeid 
+					FROM records 
+					WHERE userid=%d)
+				""" % db.userId)
+			accountModel.select()
+			accountModel.setUserRoleColumn(enum.kAccountTypeColumn_AccountTypeId)
+			self.accountCombo.setModelColumn(enum.kAccountTypeColumn_AccountName)
+			self.accountCombo.setModel(accountModel)
+
+
+			# Set tag model
+			tagModel = CheckComboModel()
+			tagModel.setTable('tags')
+			tagModel.setFilter('userid=%d' % db.userId)
+			tagModel.select()
+			tagModel.setUserRoleColumn(enum.kTagsColumn_TagId)
+			self.tagCombo.setModelColumn(enum.kTagsColumn_TagName)
+			self.tagCombo.setModel(tagModel)
+
+					
 			self.reset()
 
 	def setConnectionStatus(self, isConnected):
@@ -220,9 +246,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			recordIds.append(index.data().toPyObject())
 
 		dialog = TagDialog(recordIds, self)
-		dialog.accepted.connect(self.populateTags)
-		dialog.accepted.connect(self.setFilter)
-		dialog.exec_()
+		if dialog.exec_():
+			self.tagCombo.model().select()
 
 	def importDialog(self):
 		if not db.isConnected:
@@ -351,39 +376,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				widget.blockSignals(False)
 
 
-	def populateAccounts(self):
-		""" Extract account names from database and populate account combo
-		"""
-		self.accountCombo.clear()
-
-		# Only pull in account types used by this user
-		query = QtSql.QSqlQuery()
-		query.prepare("""
-			SELECT DISTINCT at.accountname, at.accounttypeid
-			FROM accounttypes at
-			INNER JOIN records r ON r.accounttypeid=at.accounttypeid
-			WHERE r.userid=?
-			ORDER BY at.accountname
-		""")
-
-		query.addBindValue(db.userId)
-		query.exec_()
-
-		while query.next():
-			# Store the accounttypeid in the userData field
-			self.accountCombo.addItem(query.value(0).toString(), query.value(1).toPyObject())
-
-	def populateTags(self):
-		self.tagCombo.clear()
-
-		query = QtSql.QSqlQuery(
-				"SELECT tagname, tagid FROM tags WHERE userid=%d" % db.userId
-			)
-
-		while query.next():
-			self.tagCombo.addItem(query.value(0).toString(), query.value(1).toPyObject())
-
-
 	def populateDates(self):
 
 		query = QtSql.QSqlQuery("""
@@ -425,9 +417,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			return
 
 		with self.blockAllSignals():
-			self.populateAccounts()
 			self.populateDates()
-			self.populateTags()
 			self.checkedCombo.setCurrentIndex(enum.kCheckedStatus_All)
 			self.dateCombo.setCurrentIndex(enum.kDate_PreviousYear)
 			self.setDate()
@@ -578,6 +568,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		# tag filter
 		tagIds = [index.data(QtCore.Qt.UserRole).toPyObject() for index in self.tagCombo.checkedIndexes()]
+
 		if tagIds:
 			queryFilter.append("""
 				r.recordid IN (

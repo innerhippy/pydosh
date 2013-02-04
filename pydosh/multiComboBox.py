@@ -1,3 +1,4 @@
+import pdb
 from PyQt4 import QtCore, QtGui
 
 from models import CheckComboModel
@@ -17,17 +18,25 @@ class MultiComboBox(QtGui.QComboBox):
 
 		self.setLineEdit(QtGui.QLineEdit())
 		self.setInsertPolicy(QtGui.QComboBox.NoInsert)
+		self.lineEdit().blockSignals(True)
 
 		self.view().installEventFilter(self)
 		self.view().window().installEventFilter(self)
 		self.view().viewport().installEventFilter(self)
 		self.installEventFilter(self)
 
-		self.setModel(CheckComboModel())
 		self.activated[int].connect(self.__toggleCheckState)
 		self.clearAll.connect(self._clearAllEvent)
 		self.checkAll.connect(self._checkAllEvent)
 
+	def setModel(self, model):
+		super(MultiComboBox, self).setModel(model)
+		# This is a bit odd, but seem to need it
+		self.setModelColumn(self.modelColumn())
+		model.rowsInserted.connect(self.__updateCheckedItems)
+		model.rowsRemoved.connect(self.__updateCheckedItems)
+		model.checkStateChanged.connect(self.__updateCheckedItems)
+		self.__updateCheckedItems()
 
 	def __checkAll(self, check=False):
 		""" Function to set all the items as checked or unchecked based on the argument.
@@ -36,7 +45,7 @@ class MultiComboBox(QtGui.QComboBox):
 				check(bool):		check state
 		"""
 		searchState = QtCore.Qt.Unchecked if check else QtCore.Qt.Checked
-		assignState = QtCore.Qt.Checked if check else QtCore.Qt.Unchecked 
+		assignState = QtCore.Qt.Checked if check else QtCore.Qt.Unchecked
 
 		modelIndex = self.model().index(0, self.modelColumn(), self.rootModelIndex())
 		modelIndexList = self.model().match(modelIndex, QtCore.Qt.CheckStateRole, searchState, -1, QtCore.Qt.MatchExactly)
@@ -49,12 +58,6 @@ class MultiComboBox(QtGui.QComboBox):
 		edit.setReadOnly(True)
 		edit.installEventFilter(self)
 		super(MultiComboBox, self).setLineEdit(edit)
-
-	def setModel(self, model):
-		super(MultiComboBox, self).setModel(model)
-		model.checkStateChanged.connect(self.__updateCheckedItems)
-		model.rowsInserted.connect(self.__updateCheckedItems)
-		model.rowsRemoved.connect(self.__updateCheckedItems)
 
 	def defaultText(self):
 		""" Function to get the default text of ComboBox.
@@ -122,12 +125,12 @@ class MultiComboBox(QtGui.QComboBox):
 		self.__checkAll(False)
 
 	def _checkAllEvent(self):
-		""" Event for check all from the list view. 
+		""" Event for check all from the list view.
 		"""
 		self.__checkAll(True)
 
 	def contextMenuEvent(self, event):
-		""" Event for create context menu. 
+		""" Event for create context menu.
 			Args:
 				event (QEvent):		mouse right click event.
 		"""
