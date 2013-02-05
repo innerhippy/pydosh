@@ -383,10 +383,12 @@ class RecordModel(QtSql.QSqlTableModel):
 class TagModel(QtSql.QSqlTableModel):
 	def __init__(self, recordIds, parent=None):
 		super(TagModel, self).__init__(parent=parent)
+
 		self.__recordIds = set(recordIds)
 		model = QtSql.QSqlTableModel(self)
 		model.setTable('recordtags')
 		model.select()
+
 		self.__recordTagModel = model
 
 	def __contains__(self, tagName):
@@ -415,12 +417,14 @@ class TagModel(QtSql.QSqlTableModel):
 			tagId = super(TagModel, self).data(self.index(item.row(), enum.kTagsColumn_TagId)).toPyObject()
 			recordIdsForTag = set(self.__getRecordIdsForTag(tagId))
 
-			if self.__recordIds.issubset(recordIdsForTag):
+			if len(recordIdsForTag) == 0:
+				return QtCore.Qt.Unchecked
+			elif self.__recordIds.issubset(recordIdsForTag):
 				return QtCore.Qt.Checked
 			elif self.__recordIds.intersection(recordIdsForTag):
 				return QtCore.Qt.PartiallyChecked
 			else:
-				return QtCore.Qt.Unchecked
+				raise Exception('Bad logic, dude')
 
 		return super(TagModel, self).data(item, role)
 
@@ -428,10 +432,10 @@ class TagModel(QtSql.QSqlTableModel):
 		""" Generator to get all recordIds assigned to a given tag (id)
 		"""
 		for row in xrange(self.__recordTagModel.rowCount()):
-			recordId, ok = self.__recordTagModel.index(row, enum.kRecordTagsColumn_RecordId).data().toInt()
-			recordTagId, ok = self.__recordTagModel.index(row, enum.kRecordTagsColumn_TagId).data().toInt()
+			recordId = self.__recordTagModel.index(row, enum.kRecordTagsColumn_RecordId).data().toPyObject()
+			recordTagId = self.__recordTagModel.index(row, enum.kRecordTagsColumn_TagId).data().toPyObject()
 
-			if ok and tagId == recordTagId:
+			if tagId == recordTagId:
 				yield recordId
 
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
@@ -589,7 +593,7 @@ class CheckComboModel(QtSql.QSqlTableModel):
 			return QtCore.QVariant()
 
 		if role == QtCore.Qt.CheckStateRole:
-			if index in self._checkedItems:
+			if index.row() in self._checkedItems:
 				return QtCore.Qt.Checked
 			else:
 				return QtCore.Qt.Unchecked
@@ -603,9 +607,9 @@ class CheckComboModel(QtSql.QSqlTableModel):
 		if role == QtCore.Qt.CheckStateRole:
 
 			if value.toPyObject() == QtCore.Qt.Checked:
-				self._checkedItems.add(index)
+				self._checkedItems.add(index.row())
 			else:
-				self._checkedItems.remove(index)
+				self._checkedItems.remove(index.row())
 
 			self.emit(QtCore.SIGNAL('dataChanged(QModelIndex, QModelIndex)'), index, index)
 			self.emit(QtCore.SIGNAL('checkStateChanged()'))

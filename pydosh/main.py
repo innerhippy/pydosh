@@ -33,7 +33,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.dateCombo.addItem('Last 12 months', userData=enum.kDate_PreviousYear)
 		self.dateCombo.addItem('Last month', userData=enum.kDate_PreviousMonth)
 
-		self.tagEditButton.setEnabled(False)
 		self.toggleCheckButton.setEnabled(False)
 		self.deleteButton.setEnabled(False)
 
@@ -328,7 +327,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		if model:
 			enable = len(model.selectedRows()) > 0
 
-		self.tagEditButton.setEnabled(enable)
 		self.toggleCheckButton.setEnabled(enable)
 		self.deleteButton.setEnabled(enable)
 

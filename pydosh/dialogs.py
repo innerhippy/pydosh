@@ -278,13 +278,13 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 		self.setupUi(self)
+
 		QtSql.QSqlDatabase.database().transaction()
 		self.tagView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 		self.tagView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
 		self.tagView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
 		self.deleteTagButton.setEnabled(False)
-		# TODO: remove!
-		#model = TagModel([4000,5819], self)
+
 		model = TagModel(recordIds, self)
 		model.setTable('tags')
 		model.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
@@ -324,8 +324,8 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 			self.model.addTag(tagName)
 
 	def deleteTags(self):
-		for index in self.tagView.selectionModel().selectedIndexes():
-			self.model.removeRows(index.row(), 1)
+		for index in reversed(self.tagView.selectionModel().selectedRows()):
+			self.model.removeRows(index.row(), 1, QtCore.QModelIndex())
 
 	@showWaitCursor
 	def saveChanges(self):
