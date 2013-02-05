@@ -286,11 +286,6 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 		self.deleteTagButton.setEnabled(False)
 
 		model = TagModel(recordIds, self)
-		model.setTable('tags')
-		model.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
-		model.setFilter('userid=%d' % db.userId)
-		model.select()
-
 		self.tagView.setModel(model)
 		self.tagView.setModelColumn(enum.kTagsColumn_TagName)
 

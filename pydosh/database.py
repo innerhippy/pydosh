@@ -232,6 +232,7 @@ class _Database(QtCore.QObject):
 			raise ConnectionException('Failed to run command %r: %r' % (query, sql.lastError().text()))
 
 	def __isDatabaseInitialised(self):
+		return True
 
 		query = QtSql.QSqlQuery()
 

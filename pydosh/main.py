@@ -1,4 +1,5 @@
 from contextlib  import contextmanager
+from version import __VERSION__
 from PyQt4 import QtGui, QtCore, QtSql
 QtCore.pyqtRemoveInputHook()
 from utils import showWaitCursor
@@ -37,9 +38,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.deleteButton.setEnabled(False)
 
 		self.accountCombo.setDefaultText('all')
-
 		self.tagCombo.selectionChanged.connect(self.setFilter)
-
 		self.checkedCombo.currentIndexChanged.connect(self.setFilter)
 		self.inoutCombo.currentIndexChanged.connect(self.setFilter)
 		self.accountCombo.selectionChanged.connect(self.setFilter)
@@ -77,26 +76,15 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				self.accountCombo,
 				self.checkedCombo,
 				self.inoutCombo,
-				self.tagCombo,	
+				self.tagCombo,
 				self.dateCombo,
 				self.descEdit,
 				self.amountEdit,
 				self.startDateEdit,
 				self.endDateEdit,
 		)
-		
+
 		self.loadData()
-
-
-	def show(self):
-		""" I'm sure there's a better way of doing this..
-		need to call resizeColumnsToContents after show() so that the
-		viewport height can be used to determine which rows to consider.
-		Otherwise every row in the model will be used to calculate the
-		column width (it seems) which is ugly.
-		"""
-		super(PydoshWindow, self).show()
-		self.tableView.resizeColumnsToContents()
 
 
 	def showHelp(self):
@@ -104,28 +92,19 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		browser = HelpBrowser(self)
 		browser.showPage("main.html")
 
-#	def showAbout(self):
-#
-#		QtGui.QMessageBox.about(self,
-#			'About doshLogger',
-#			"<html><p><h2>doshlogger</h2></p>"
-#			"<p>version "
-#			APPLICATION_VERSION
-#			"</p>"
-#			"<p>by Will Hall <a href=\"mailto:dev@innerhippy.com\">dev@innerhippy.com</a><br>"
-#			"Copywrite (c) 2010. Will Hall </p>"
-#			"<p>Written using Qt"
-#			QT_VERSION_STR
-#			"<br>"
-##if defined(__GNUC__)
-#			"Compiled using GCC"
-#			__VERSION__
-#			"<p>"
-#			"<a href=\"http://www.innerhippy.com\">www.innerhippy.com</a></p>"
-#			"enjoy!</html>"
-##endif
-#			));
-#}
+	def showAbout(self):
+
+		QtGui.QMessageBox.about(self,
+			'About pydosh',
+			"<html><p><h2>pydosh</h2></p>"
+			"<p>version %s</p>"
+			"<p>by Will Hall <a href=\"mailto:dev@innerhippy.com\">dev@innerhippy.com</a><br>"
+			"Copywrite (c) 2013. Will Hall</p>"
+			"<p>Written using PyQt %s</p>"
+			"<br>"
+			"<p><a href=\"http://www.innerhippy.com\">www.innerhippy.com</a></p>"
+			"enjoy!</html>" % (__VERSION__, QtCore.QT_VERSION_STR)
+			)
 
 
 	@showWaitCursor
@@ -168,8 +147,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			accountModel.setTable('accounttypes')
 			accountModel.setFilter("""
 				accounttypeid IN (
-					SELECT distinct accounttypeid 
-					FROM records 
+					SELECT distinct accounttypeid
+					FROM records
 					WHERE userid=%d)
 				""" % db.userId)
 			accountModel.select()
@@ -181,7 +160,17 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			# Set tag model
 			tagModel = CheckComboModel()
 			tagModel.setTable('tags')
-			tagModel.setFilter('userid=%d' % db.userId)
+
+			# Only display tags that have been set on the current records
+			tagModel.setFilter("""
+				userid=%d
+				AND tagid IN (
+					SELECT DISTINCT tagid
+					FROM recordtags rt
+					INNER JOIN records r
+					ON r.recordid=rt.recordid
+					)
+				""" % db.userId)
 			tagModel.select()
 			tagModel.setUserRoleColumn(enum.kTagsColumn_TagId)
 			self.tagCombo.setModelColumn(enum.kTagsColumn_TagName)
@@ -356,8 +345,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		dataModel.submitAll()
 
-
-
 	@contextmanager
 	def blockAllSignals(self):
 		try:
@@ -370,7 +357,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 
 	def populateDates(self):
-
 		query = QtSql.QSqlQuery("""
 				SELECT MIN(date), MAX(date)
 				FROM records
@@ -387,7 +373,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.startDateEdit.setDate(startDate)
 			self.endDateEdit.setDate(endDate)
 
-	def toggleSelected(self):
+	@showWaitCursor
+	def toggleSelected(self, *args):
 
 		selectionModel = self.tableView.selectionModel()
 
@@ -401,7 +388,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			checkState = index.data(QtCore.Qt.CheckStateRole).toPyObject()
 			newState = QtCore.Qt.Unchecked if checkState == QtCore.Qt.Checked else QtCore.Qt.Checked
 			self.model.setData(index, QtCore.QVariant(newState), QtCore.Qt.CheckStateRole)
-			
+
 		self.displayRecordCount()
 
 	def reset(self):
@@ -452,7 +439,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		aboutAction = QtGui.QAction('&About', self)
 		aboutAction.setStatusTip('About')
 		aboutAction.setIcon(QtGui.QIcon(':/icons/help.png'))
-#		aboutAction.triggered.connect(self.showAbout)
+		aboutAction.triggered.connect(self.showAbout)
 
 		helpAction = QtGui.QAction('&Help', self)
 		helpAction.setStatusTip('Help')
@@ -508,6 +495,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		if self.model is None or not db.isConnected:
 			return
 
+		print 'setFilter'
 		queryFilter = []
 
 		# Account filter

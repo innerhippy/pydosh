@@ -213,7 +213,7 @@ class RecordModel(QtSql.QSqlTableModel):
 			self.fetchMore()
 
 		return status
-	
+
 	def flags(self, index):
 		flags = super(RecordModel, self).flags(index)
 		if index.column() == enum.kRecordColumn_Checked:
@@ -229,20 +229,20 @@ class RecordModel(QtSql.QSqlTableModel):
 		queryFilter = 'AND ' + queryFilter if queryFilter else ''
 
 		query = """
-			SELECT 
-				r.recordid, 
+			SELECT
+				r.recordid,
 				r.checked,
-				(select count(*) from recordtags rt where rt.recordid=r.recordid), 
-				r.checkdate, 
-				r.date, 
-				accounttypes.accountname, 
-				r.description, 
-				r.txdate, 
-				r.amount, 
-				r.insertdate, 
-				r.rawdata 
+				(select count(*) from recordtags rt where rt.recordid=r.recordid),
+				r.checkdate,
+				r.date,
+				accounttypes.accountname,
+				r.description,
+				r.txdate,
+				r.amount,
+				r.insertdate,
+				r.rawdata
 			FROM records r
-			INNER JOIN accounttypes ON accounttypes.accounttypeid=r.accounttypeid 
+			INNER JOIN accounttypes ON accounttypes.accounttypeid=r.accounttypeid
 			WHERE r.userid=%(userid)s
 			%(filter)s
 			ORDER BY r.date, r.description, r.txdate, r.recordid
@@ -257,11 +257,11 @@ class RecordModel(QtSql.QSqlTableModel):
 			FROM recordtags rt
 			JOIN tags t ON t.tagid=rt.tagid
 			WHERE rt.recordid=%d""" % recordId)
-		
+
 		tagNames = []
 		while query.next():
 			tagNames.append(str(query.value(0).toString()))
-			
+
 		return ', '.join(tagNames)
 
 	def data(self, item, role=QtCore.Qt.DisplayRole):
@@ -342,7 +342,6 @@ class RecordModel(QtSql.QSqlTableModel):
 		""" Save new checkstate role changes in database
 		"""
 		if role == QtCore.Qt.CheckStateRole and index.column() == enum.kRecordColumn_Checked:
-
 			if value.toPyObject() == QtCore.Qt.Checked:
 				dbvalue = QtCore.QVariant(1)
 				timestamp = QtCore.QVariant(QtCore.QDateTime.currentDateTime())
@@ -350,11 +349,11 @@ class RecordModel(QtSql.QSqlTableModel):
 				dbvalue = QtCore.QVariant(0)
 				timestamp = QtCore.QVariant()
 
-			txDateIndex = self.index(index.row(), enum.kRecordColumn_CheckDate)
+			checkDateIndex = self.index(index.row(), enum.kRecordColumn_CheckDate)
 
 			# Save the new state and timestamp
 			if super(RecordModel, self).setData(index, dbvalue) and \
-				super(RecordModel, self).setData(txDateIndex,timestamp):
+				super(RecordModel, self).setData(checkDateIndex, timestamp):
 				return self.submitAll()
 
 		return False
@@ -385,6 +384,11 @@ class TagModel(QtSql.QSqlTableModel):
 		super(TagModel, self).__init__(parent=parent)
 
 		self.__recordIds = set(recordIds)
+		self.setTable('tags')
+		self.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
+		self.setFilter('userid=%d' % db.userId)
+		self.select()
+
 		model = QtSql.QSqlTableModel(self)
 		model.setTable('recordtags')
 		model.select()
