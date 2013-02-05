@@ -169,7 +169,7 @@ class MultiComboBox(QtGui.QComboBox):
 
 
 def main():
-	from searchLineEdit import SearchLineEdit
+	from searchlineedit import SearchLineEdit
 	from  signaltracer import SignalTracer
 	tracer = SignalTracer()
 	app = QtGui.QApplication(sys.argv)

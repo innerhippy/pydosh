@@ -462,12 +462,12 @@ p, li { white-space: pre-wrap; }
   <customwidget>
    <class>SearchLineEdit</class>
    <extends>QLineEdit</extends>
-   <header>searchLineEdit</header>
+   <header>searchlineedit</header>
   </customwidget>
   <customwidget>
    <class>MultiComboBox</class>
    <extends>QComboBox</extends>
-   <header>multiComboBox</header>
+   <header>multicombobox</header>
   </customwidget>
  </customwidgets>
  <resources>

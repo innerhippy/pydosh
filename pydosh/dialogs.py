@@ -1,5 +1,5 @@
 from PyQt4 import QtCore, QtGui, QtSql
-from helpBrowser import HelpBrowser
+from helpbrowser import HelpBrowser
 from ui_settings import Ui_Settings
 from ui_login import Ui_Login
 from ui_tags import Ui_Tags

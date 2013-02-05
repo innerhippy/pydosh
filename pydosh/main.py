@@ -4,8 +4,8 @@ from PyQt4 import QtGui, QtCore, QtSql
 QtCore.pyqtRemoveInputHook()
 from utils import showWaitCursor
 from models import RecordModel, SortProxyModel, CheckComboModel
-from helpBrowser import HelpBrowser
-from csvDecoder import Decoder, DecoderException
+from helpbrowser import HelpBrowser
+from csvdecoder import Decoder, DecoderException
 from database import db
 from ui_pydosh import Ui_pydosh
 from dialogs import SettingsDialog, LoginDialog, TagDialog, ImportDialog
