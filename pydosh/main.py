@@ -181,11 +181,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def setConnectionStatus(self, isConnected):
 		if isConnected:
 			self.connectionStatusText.setText('connected to %s@%s' % (db.database, db.hostname))
-			self.connectionStatusIcon.setPixmap(QtGui.QPixmap(':/icons/thumb_up.png'))
 
 		else:
 			self.connectionStatusText.setText('not connected')
-			self.connectionStatusIcon.setPixmap(QtGui.QPixmap(':/icons/thumb_down.png'))
 			self.model = None
 
 			self.tableView.setModel(None)
