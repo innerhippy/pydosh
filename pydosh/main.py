@@ -493,7 +493,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		if self.model is None or not db.isConnected:
 			return
 
-		print 'setFilter'
 		queryFilter = []
 
 		# Account filter

@@ -1,9 +1,19 @@
-.build
-.project
-.pydevproject
+# Compiled python modules.
 *.pyc
+
+# Editors
 *.swp
 *.*~
 .settings
+.project
+.pydevproject
+
+# Dynamic PyQt files
 pydosh/ui_*.py
 pydosh/pydosh_rc.py
+
+# Setuptools distribution folder.
+/dist/
+
+# Python egg metadata, regenerated from source files by setuptools.
+/*.egg-info
