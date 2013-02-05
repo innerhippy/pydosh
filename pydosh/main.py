@@ -2,7 +2,7 @@ from contextlib  import contextmanager
 from version import __VERSION__
 from PyQt4 import QtGui, QtCore, QtSql
 QtCore.pyqtRemoveInputHook()
-from utils import showWaitCursor
+from utils import showWaitCursorDecorator, showWaitCursor
 from models import RecordModel, SortProxyModel, CheckComboModel
 from helpbrowser import HelpBrowser
 from csvdecoder import Decoder, DecoderException
@@ -98,16 +98,15 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			'About pydosh',
 			"<html><p><h2>pydosh</h2></p>"
 			"<p>version %s</p>"
-			"<p>by Will Hall <a href=\"mailto:dev@innerhippy.com\">dev@innerhippy.com</a><br>"
-			"Copywrite (c) 2013. Will Hall</p>"
+			"<p>by Will Hall <a href=\"mailto:will@innerhippy.com\">will@innerhippy.com</a></p>"
+			"<p>Copywrite (c) 2013.</p>"
 			"<p>Written using PyQt %s</p>"
-			"<br>"
 			"<p><a href=\"http://www.innerhippy.com\">www.innerhippy.com</a></p>"
 			"enjoy!</html>" % (__VERSION__, QtCore.QT_VERSION_STR)
 			)
 
 
-	@showWaitCursor
+	@showWaitCursorDecorator
 	def loadData(self):
 
 		if not db.isConnected:
@@ -143,6 +142,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.selectionModel().selectionChanged.connect(self.activateButtons)
 
 			# Set sql data model for account types
+			self.accountCombo.clear()
+	
 			accountModel = CheckComboModel()
 			accountModel.setTable('accounttypes')
 			accountModel.setFilter("""
@@ -151,16 +152,16 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 					FROM records
 					WHERE userid=%d)
 				""" % db.userId)
+
 			accountModel.select()
 			accountModel.setUserRoleColumn(enum.kAccountTypeColumn_AccountTypeId)
 			self.accountCombo.setModelColumn(enum.kAccountTypeColumn_AccountName)
 			self.accountCombo.setModel(accountModel)
 
-
 			# Set tag model
 			tagModel = CheckComboModel()
 			tagModel.setTable('tags')
-
+	
 			# Only display tags that have been set on the current records
 			tagModel.setFilter("""
 				userid=%d
@@ -210,11 +211,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	def loginDialog(self):
 		dialog = LoginDialog(self)
-		dialog.accepted.connect(self.loadData)
-		dialog.exec_()
+		if dialog.exec_():
+			self.loadData()
 
 	def addTagButtonPressed(self):
-
 		# Get recordids from all selected rows
 		selectionModel = self.tableView.selectionModel()
 		if selectionModel is None:
@@ -279,10 +279,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		fileNames = QtCore.QStringList([QtCore.QFileInfo(f).fileName() for f in dialog.selectedFiles()]) 
 		dateField = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DateField).data()
 		descriptionField = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DescriptionField).data()
-		creditField =  combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_CreditField).data()
-		debitField =  combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DebitField).data()
-		currencySign =  combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_CurrencySign).data()
-		dateFormat =  combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DateFormat).data()
+		creditField = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_CreditField).data()
+		debitField = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DebitField).data()
+		currencySign = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_CurrencySign).data()
+		dateFormat = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DateFormat).data()
 
 		# Save the settings for next time
 		settings.setValue('options/importaccounttype', combo.currentText())
@@ -303,8 +303,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		dialog = ImportDialog(decoder.records, accountId, self)
 		dialog.setWindowTitle(fileNames.join(', '))
-		dialog.accepted.connect(self.reset)
-		dialog.exec_()
+
+		if dialog.exec_():
+			self.accountCombo.model().select()
+			self.reset()
 
 	def activateButtons(self):
 
@@ -338,10 +340,13 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				QtGui.QMessageBox.Yes|QtGui.QMessageBox.No) != QtGui.QMessageBox.Yes:
 			return
 
-		for index in selectionModel.selectedRows():
-			dataModel.removeRow(proxyModel.mapToSource(index).row())
-
-		dataModel.submitAll()
+		with showWaitCursor():
+			for index in selectionModel.selectedRows():
+				dataModel.removeRow(proxyModel.mapToSource(index).row())
+	
+			dataModel.submitAll()
+			self.accountCombo.model().select()
+			self.tagCombo.model().select()
 
 	@contextmanager
 	def blockAllSignals(self):
@@ -371,7 +376,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.startDateEdit.setDate(startDate)
 			self.endDateEdit.setDate(endDate)
 
-	@showWaitCursor
+	@showWaitCursorDecorator
 	def toggleSelected(self, *args):
 
 		selectionModel = self.tableView.selectionModel()
@@ -390,7 +395,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.displayRecordCount()
 
 	def reset(self):
-
 		if self.model is None or not db.isConnected:
 			return
 
@@ -488,7 +492,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.outTotalLabel.setText(QtCore.QString("%L1").arg(outTotal, 0, 'f', 2))
 		self.recordCountLabel.setText('%d / %d' % (numRecords, totalRecords))
 
-	@showWaitCursor
+	@showWaitCursorDecorator
 	def setFilter(self, *args):
 		if self.model is None or not db.isConnected:
 			return

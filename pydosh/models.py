@@ -512,9 +512,6 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 	def lessThan(self, left, right):
 		""" Define the comparison to ensure column data is sorted correctly
 		"""
-		leftData = self.sourceModel().data(left)
-		rightData = self.sourceModel().data(right)
-
 		if left.column() == enum.kRecordColumn_Tags:
 			return self.sourceModel().data(left, QtCore.Qt.UserRole) < self.sourceModel().data(right, QtCore.Qt.UserRole)
 
@@ -522,8 +519,8 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 			return self.sourceModel().data(left, QtCore.Qt.CheckStateRole) < self.sourceModel().data(right, QtCore.Qt.CheckStateRole)
 
 		elif left.column() == enum.kRecordColumn_Amount:
-			leftVal, leftOk = self.sourceModel().data(left).toDouble()
-			rightVal, rightOk = self.sourceModel().data(right).toDouble()
+			leftVal, leftOk = self.sourceModel().record(left.row()).value(enum.kRecordColumn_Amount).toDouble()
+			rightVal, rightOk = self.sourceModel().record(right.row()).value(enum.kRecordColumn_Amount).toDouble()
 			if leftOk and rightOk:
 				return leftVal < rightVal
 
@@ -535,10 +532,8 @@ class AccountModel(QtSql.QSqlTableModel):
 		super(AccountModel, self).__init__(parent=parent)
 
 	def data(self, item, role=QtCore.Qt.DisplayRole):
-
 		if not item.isValid():
 			return QtCore.QVariant()
-
 
 		if role == QtCore.Qt.BackgroundColorRole and self.isDirty(item):
 				return QtGui.QColor(255,156,126)
@@ -552,7 +547,7 @@ class AccountModel(QtSql.QSqlTableModel):
 
 		return super(AccountModel, self).setData(index, value, role)
 
-	def headerData (self, section, orientation, role=QtCore.Qt.DisplayRole):
+	def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
 
 		if role == QtCore.Qt.DisplayRole:
 			if section == enum.kAccountTypeColumn_AccountName:

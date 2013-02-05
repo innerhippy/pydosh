@@ -4,7 +4,7 @@ from ui_settings import Ui_Settings
 from ui_login import Ui_Login
 from ui_tags import Ui_Tags
 from ui_import import Ui_Import
-from utils import showWaitCursor
+from utils import showWaitCursorDecorator
 import enum
 from database import db, DatabaseNotInitialisedException, ConnectionException
 from delegates import AccountDelegate
@@ -37,7 +37,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
 		self.view.resizeColumnsToContents()
 		self.view.horizontalHeader().setStretchLastSection(True)
-		self.view.sortByColumn(1, QtCore.Qt.DescendingOrder)
+		self.view.sortByColumn(1, QtCore.Qt.AscendingOrder)
 
 		self.closeButton.clicked.connect(self.__close)
 		self.view.selectionModel().selectionChanged.connect(self.__recordsSelected)
@@ -124,7 +124,7 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 
 		self.enableCommit(False)
 
-		model = QtSql.QSqlTableModel(self)
+		model = AccountModel(self)
 		model.setTable('accounttypes')
 		model.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
 		model.select()
@@ -322,10 +322,10 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 		for index in reversed(self.tagView.selectionModel().selectedRows()):
 			self.model.removeRows(index.row(), 1, QtCore.QModelIndex())
 
-	@showWaitCursor
+	@showWaitCursorDecorator
 	def saveChanges(self):
 		QtSql.QSqlDatabase.database().commit()
 
-	@showWaitCursor
+	@showWaitCursorDecorator
 	def cancelChanges(self):
 		QtSql.QSqlDatabase.database().rollback()
