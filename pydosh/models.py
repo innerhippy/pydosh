@@ -417,14 +417,12 @@ class TagModel(QtSql.QSqlTableModel):
 			tagId = super(TagModel, self).data(self.index(item.row(), enum.kTagsColumn_TagId)).toPyObject()
 			recordIdsForTag = set(self.__getRecordIdsForTag(tagId))
 
-			if len(recordIdsForTag) == 0:
-				return QtCore.Qt.Unchecked
-			elif self.__recordIds.issubset(recordIdsForTag):
+			if recordIdsForTag and self.__recordIds.issubset(recordIdsForTag):
 				return QtCore.Qt.Checked
-			elif self.__recordIds.intersection(recordIdsForTag):
+			elif recordIdsForTag and self.__recordIds.intersection(recordIdsForTag):
 				return QtCore.Qt.PartiallyChecked
 			else:
-				raise Exception('Bad logic, dude')
+				return QtCore.Qt.Unchecked
 
 		return super(TagModel, self).data(item, role)
 
