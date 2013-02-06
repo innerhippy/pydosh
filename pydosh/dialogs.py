@@ -95,9 +95,9 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 
 			# Wrap the import in a transaction
 			with db.transaction():
-				for num, index in enumerate(indexes):
+				for num, index in enumerate(indexes, 1):
 					dataModel.saveRecord(self.__accountId, proxyModel.mapToSource(index))
-					self.view.scrollTo(index, QtGui.QAbstractItemView.PositionAtBottom)
+					self.view.scrollTo(index, QtGui.QAbstractItemView.EnsureVisible)
 					self.view.resizeColumnsToContents()
 					self.__setCounters()
 					QtCore.QCoreApplication.processEvents()
@@ -113,7 +113,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			self.importButton.setEnabled(bool(dataModel.numRecordsToImport))
 
 		except UserCancelledException:
-			pass
+			dataModel.reset()
 		except Exception, exc:
 			QtGui.QMessageBox.critical(self, 'Import Error', str(exc), QtGui.QMessageBox.Ok)
 		finally:

@@ -1,3 +1,4 @@
+from copy import deepcopy
 from PyQt4 import QtCore, QtGui, QtSql
 import pdb
 import enum
@@ -43,6 +44,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 	def __init__(self, parent=None):
 		super(ImportModel, self).__init__(parent=parent)
 		self.__records = []
+		self.__recordsRollback = None
 		self.dataSaved = False
 
 	def saveRecord(self, accountId, index):
@@ -79,6 +81,9 @@ class ImportModel(QtCore.QAbstractTableModel):
 		# Tell the view our data has changed
 		self.dataChanged.emit(self.createIndex(index.row(), 0), self.createIndex(index.row(), self.columnCount() - 1))
 
+	def reset(self):
+		self.__records = deepcopy(self.__recordsRollback)
+		
 	def loadRecords(self, records):
 		""" Import the records into our model
 			An input record is a tuple containing 
@@ -108,6 +113,9 @@ class ImportModel(QtCore.QAbstractTableModel):
 			if not rec.valid or rec.checksum not in recordsLoaded:
 				recordsLoaded.add(rec.checksum)
 				self.__records.append(rec)
+
+		# Take a copy of the records in case we want to rollback
+		self.__recordsRollback = deepcopy(self.__records)
 
 	def canImport(self, index):
 		""" Returns True if the record at index can be imported,
