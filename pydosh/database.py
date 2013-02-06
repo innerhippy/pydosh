@@ -110,15 +110,15 @@ class _Database(QtCore.QObject):
 			raised in the 'with' block will cause a rollback. Otherwise commit.
 		"""
 		try:
-		#	print 'Start transaction'
+			print 'Start transaction'
 			QtSql.QSqlDatabase.database().transaction()
 			yield
 		except:
-		#	print 'Rollback'
+			print 'Rollback'
 			QtSql.QSqlDatabase.database().rollback()
 			raise
 		else:
-		#	print 'Commit transaction'
+			print 'Commit transaction'
 			QtSql.QSqlDatabase.database().commit()
 
 	@property

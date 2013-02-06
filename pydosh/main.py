@@ -562,6 +562,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.model.setFilter('\nAND '.join(queryFilter))
 		#print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
+
 		self.tableView.resizeColumnsToContents()
 		self.displayRecordCount()
 

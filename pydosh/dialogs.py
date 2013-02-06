@@ -93,7 +93,6 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 				# Wrap the import in a transaction
 				for index in indexes:
 					dataModel.saveRecord(self.__accountId, proxyModel.mapToSource(index))
-
 					self.view.scrollTo(index, QtGui.QAbstractItemView.PositionAtBottom)
 					self.view.resizeColumnsToContents()
 					self.__setCounters()
@@ -226,9 +225,6 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 		self.usernameEdit.setText(db.username)
 		self.passwordEdit.setText(db.password)
 		self.portSpinBox.setValue(db.port)
-
-		#TODO: remove!
-		#self.activateConnection()
 
 		self.setConnectionStatus()
 
