@@ -47,11 +47,11 @@ class ImportModel(QtCore.QAbstractTableModel):
 
 	def saveRecord(self, accountId, index):
 		""" Saves the import record to the database
-			Raises ImportException on error	
+			Raises ImportException on error
 		"""
 		rec = self.__records[index.row()]
 
-		query = QtSql.QSqlQuery() 
+		query = QtSql.QSqlQuery()
 		query.prepare("""
 				INSERT INTO records
 				(date, userid, accounttypeid, description, txdate, amount, insertdate, rawdata, checksum)

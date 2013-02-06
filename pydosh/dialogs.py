@@ -10,6 +10,10 @@ from database import db, DatabaseNotInitialisedException, ConnectionException
 from delegates import AccountDelegate
 from models import AccountModel, TagModel, ImportModel
 
+class UserCancelledException(Exception):
+	""" Exception to indicate user has cancelled the current operation
+	"""
+
 import pdb
 
 class ImportDialog(Ui_Import, QtGui.QDialog):
@@ -89,9 +93,9 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			self.progressBar.setMaximum(len(indexes))
 			self.view.clearSelection()
 
+			# Wrap the import in a transaction
 			with db.transaction():
-				# Wrap the import in a transaction
-				for index in indexes:
+				for num, index in enumerate(indexes):
 					dataModel.saveRecord(self.__accountId, proxyModel.mapToSource(index))
 					self.view.scrollTo(index, QtGui.QAbstractItemView.PositionAtBottom)
 					self.view.resizeColumnsToContents()
@@ -99,8 +103,17 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 					QtCore.QCoreApplication.processEvents()
 					self.progressBar.setValue(self.progressBar.value() +1)
 
+				if num:
+					if QtGui.QMessageBox.question(
+						self, 'Import', 'Imported %d records successfully' % num,
+						QtGui.QMessageBox.Save|QtGui.QMessageBox.Cancel) != QtGui.QMessageBox.Save:
+						# By raising here we will rollback the database transaction
+						raise UserCancelledException
+
 			self.importButton.setEnabled(bool(dataModel.numRecordsToImport))
 
+		except UserCancelledException:
+			pass
 		except Exception, exc:
 			QtGui.QMessageBox.critical(self, 'Import Error', str(exc), QtGui.QMessageBox.Ok)
 		finally:
