@@ -22,6 +22,9 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 		self.setupUi(self)
 		self.__accountId = accountId
+		self.__importer = Importer(accountId)
+		self.__importer.recordImported.connect(self.__recordImported)
+		self.__importer.finished.connect(self.__importFinished)
 
 		self.progressBar.setVisible(False)
 		model = ImportModel(self)
@@ -94,23 +97,26 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			self.view.clearSelection()
 
 			# Wrap the import in a transaction
-			with db.transaction():
-				for num, index in enumerate(indexes, 1):
-					dataModel.saveRecord(self.__accountId, proxyModel.mapToSource(index))
-					self.view.scrollTo(index, QtGui.QAbstractItemView.EnsureVisible)
-					self.view.resizeColumnsToContents()
-					self.__setCounters()
-					QtCore.QCoreApplication.processEvents()
-					self.progressBar.setValue(self.progressBar.value() +1)
-
-				if num:
-					if QtGui.QMessageBox.question(
-						self, 'Import', 'Imported %d records successfully' % num,
-						QtGui.QMessageBox.Save|QtGui.QMessageBox.Cancel) != QtGui.QMessageBox.Save:
-						# By raising here we will rollback the database transaction
-						raise UserCancelledException
-
-			self.importButton.setEnabled(bool(dataModel.numRecordsToImport))
+			self.__importer.setIndexes(indexes)
+			self.__importer.start()
+			#pdb.set_trace()
+#			with db.transaction():
+#				for num, index in enumerate(indexes, 1):
+#					dataModel.saveRecord(self.__accountId, proxyModel.mapToSource(index))
+#					self.view.scrollTo(index, QtGui.QAbstractItemView.EnsureVisible)
+#					self.view.resizeColumnsToContents()
+#					self.__setCounters()
+#					QtCore.QCoreApplication.processEvents()
+#					self.progressBar.setValue(self.progressBar.value() +1)
+#
+#				if num:
+#					if QtGui.QMessageBox.question(
+#						self, 'Import', 'Imported %d records successfully' % num,
+#						QtGui.QMessageBox.Save|QtGui.QMessageBox.Cancel) != QtGui.QMessageBox.Save:
+#						# By raising here we will rollback the database transaction
+#						raise UserCancelledException
+#
+#			self.importButton.setEnabled(bool(dataModel.numRecordsToImport))
 
 		except UserCancelledException:
 			dataModel.reset()
@@ -118,6 +124,42 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			QtGui.QMessageBox.critical(self, 'Import Error', str(exc), QtGui.QMessageBox.Ok)
 		finally:
 			self.progressBar.setVisible(False)
+
+	def __recordImported(self, index):
+		self.view.scrollTo(index, QtGui.QAbstractItemView.EnsureVisible)
+		self.view.resizeColumnsToContents()
+		self.__setCounters()
+#		QtCore.QCoreApplication.processEvents()
+		self.progressBar.setValue(self.progressBar.value() +1)	
+
+	def __importFinished(self):
+		print 'done'
+		if self.__importer.num:
+			if QtGui.QMessageBox.question(
+				self, 'Import', 'Imported %d records successfully' % self.__importer.num,
+				QtGui.QMessageBox.Save|QtGui.QMessageBox.Cancel) != QtGui.QMessageBox.Save:
+				proxyModel = self.view.model()
+				proxyModel.sourceModel().reset()
+
+class Importer(QtCore.QThread):
+	recordImported = QtCore.pyqtSignal(QtCore.QModelIndex)
+
+	def __init__(self, accountId, parent=None):
+		super(Importer, self).__init__(parent=parent)
+		self.__accountId = accountId
+		self.__indexes = []
+		self.num = 0
+
+	def setIndexes(self, indexes):
+		self.__indexes = indexes
+
+	def run(self):
+		for index in self.__indexes:
+			model = index.model().sourceModel()
+			model.saveRecord(self.__accountId, index.model().mapToSource(index))
+			self.recordImported.emit(index)
+			self.num += 1
+#		self.exec_()
 
 
 class SettingsDialog(Ui_Settings, QtGui.QDialog):
