@@ -255,7 +255,6 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 		self.passwordEdit.setEchoMode(QtGui.QLineEdit.Password)
 
 		self.connectionButton.clicked.connect(self.activateConnection)
-		db.connected.connect(self.setConnectionStatus)
 		self.closeButton.clicked.connect(self.reject)
 		self.helpButton.clicked.connect(self.showHelp)
 
@@ -265,47 +264,36 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 		self.passwordEdit.setText(db.password)
 		self.portSpinBox.setValue(db.port)
 
-		self.setConnectionStatus()
-
-	def setConnectionStatus(self):
-		self.connectionButton.setText('Disconnect' if db.isConnected else 'Connect')
-
 	def activateConnection(self):
+		db.database = self.databaseEdit.text()
+		db.hostname = self.hostnameEdit.text()
+		db.username = self.usernameEdit.text()
+		db.password = self.passwordEdit.text()
+		db.port = self.portSpinBox.value()
 
-		if db.isConnected:
-			db.disconnect()
-		else:
-			db.database = self.databaseEdit.text()
-			db.hostname = self.hostnameEdit.text()
-			db.username = self.usernameEdit.text()
-			db.password = self.passwordEdit.text()
-			db.port = self.portSpinBox.value()
-
-			try:
-				db.connect()
-			except DatabaseNotInitialisedException:
-				if QtGui.QMessageBox.question(
-						self, 'Database', 
-						'Database %s is empty, do you want to initialise it?' % db.database, 
-						QtGui.QMessageBox.Yes|QtGui.QMessageBox.No) == QtGui.QMessageBox.Yes:
-					try:
-						db.initialise()
-					except ConnectionException, err:
-						QtGui.QMessageBox.critical(self, 'Database ', str(err))
-					else:
-						QtGui.QMessageBox.information(self, 'Database', 'Database initialised successfully')
+		try:
+			db.connect()
+		except DatabaseNotInitialisedException:
+			if QtGui.QMessageBox.question(
+					self, 'Database', 
+					'Database %s is empty, do you want to initialise it?' % db.database, 
+					QtGui.QMessageBox.Yes|QtGui.QMessageBox.No) == QtGui.QMessageBox.Yes:
+				try:
+					db.initialise()
+				except ConnectionException, err:
+					QtGui.QMessageBox.critical(self, 'Database ', str(err))
 				else:
-					return
-			except ConnectionException, err:
-				QtGui.QMessageBox.warning(self, 'Database', 'Failed to connect: %r' % str(err))
+					QtGui.QMessageBox.information(self, 'Database', 'Database initialised successfully')
 			else:
-				self.accept()
+				return
+		except ConnectionException, err:
+			QtGui.QMessageBox.warning(self, 'Database', 'Failed to connect: %r' % str(err))
+		else:
+			self.accept()
 
 	def showHelp(self):
 		browser = HelpBrowser(self)
 		browser.showPage('login.html')
-
-
 
 class TagDialog(Ui_Tags, QtGui.QDialog):
 	def __init__(self, recordIds, parent=None):

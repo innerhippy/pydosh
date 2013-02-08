@@ -2,7 +2,6 @@
   <qresource prefix="/">
     <file>icons/cross.png</file>
     <file>icons/clearsearch.png</file>
-    <file>icons/disconnect.png</file>
     <file>icons/tag_yellow.png</file>
     <file>icons/search.png</file>
     <file>icons/import.png</file>

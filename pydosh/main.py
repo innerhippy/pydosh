@@ -8,7 +8,7 @@ from helpbrowser import HelpBrowser
 from csvdecoder import Decoder, DecoderException
 from database import db
 from ui_pydosh import Ui_pydosh
-from dialogs import SettingsDialog, LoginDialog, TagDialog, ImportDialog
+from dialogs import SettingsDialog, TagDialog, ImportDialog
 import enum
 import pydosh_rc
 import pdb
@@ -84,34 +84,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				self.endDateEdit,
 		)
 
-		self.loadData()
-
-
-	def showHelp(self):
-
-		browser = HelpBrowser(self)
-		browser.showPage("main.html")
-
-	def showAbout(self):
-
-		QtGui.QMessageBox.about(self,
-			'About pydosh',
-			"<html><p><h2>pydosh</h2></p>"
-			"<p>version %s</p>"
-			"<p>by Will Hall <a href=\"mailto:will@innerhippy.com\">will@innerhippy.com</a></p>"
-			"<p>Copywrite (c) 2013.</p>"
-			"<p>Written using PyQt %s</p>"
-			"<p><a href=\"http://www.innerhippy.com\">www.innerhippy.com</a></p>"
-			"enjoy!</html>" % (__VERSION__, QtCore.QT_VERSION_STR)
-			)
-
-
-	@showWaitCursorDecorator
-	def loadData(self):
-
-		if not db.isConnected:
-			return
-
 		with self.blockAllSignals():
 
 			self.model = None
@@ -179,6 +151,24 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 			self.reset()
 
+	def showHelp(self):
+
+		browser = HelpBrowser(self)
+		browser.showPage("main.html")
+
+	def showAbout(self):
+
+		QtGui.QMessageBox.about(self,
+			'About pydosh',
+			"<html><p><h2>pydosh</h2></p>"
+			"<p>version %s</p>"
+			"<p>by Will Hall <a href=\"mailto:will@innerhippy.com\">will@innerhippy.com</a></p>"
+			"<p>Copywrite (c) 2013.</p>"
+			"<p>Written using PyQt %s</p>"
+			"<p><a href=\"http://www.innerhippy.com\">www.innerhippy.com</a></p>"
+			"enjoy!</html>" % (__VERSION__, QtCore.QT_VERSION_STR)
+			)
+
 	def setConnectionStatus(self, isConnected):
 		if isConnected:
 			self.connectionStatusText.setText('connected to %s@%s' % (db.database, db.hostname))
@@ -208,11 +198,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		dialog = SettingsDialog(self)
 		dialog.exec_()
 		self.setFilter()
-
-	def loginDialog(self):
-		dialog = LoginDialog(self)
-		if dialog.exec_():
-			self.loadData()
 
 	def addTagButtonPressed(self):
 		# Get recordids from all selected rows
@@ -427,12 +412,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		settingsAction.setIcon(QtGui.QIcon(':/icons/wrench.png'))
 		settingsAction.triggered.connect(self.settingsDialog)
 
-		loginAction = QtGui.QAction('&Login', self)
-		loginAction.setShortcut('Alt+l')
-		loginAction.setStatusTip('Login')
-		loginAction.setIcon(QtGui.QIcon(':/icons/disconnect.png'))
-		loginAction.triggered.connect(self.loginDialog)
-
 		importAction = QtGui.QAction('&Import', self)
 		importAction.setShortcut('Alt+i')
 		importAction.setStatusTip('Import Bank statements')
@@ -454,11 +433,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.addAction(quitAction)
 		self.addAction(aboutAction)
 		self.addAction(helpAction)
-		self.addAction(loginAction)
 
 		# File menu
 		fileMenu = self.menuBar().addMenu('&Tools')
-		fileMenu.addAction(loginAction)
 		fileMenu.addAction(settingsAction)
 		fileMenu.addAction(importAction)
 		fileMenu.addAction(quitAction)
@@ -562,7 +539,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				""" % ', '.join([str(tagid) for tagid in tagIds]))
 
 		self.model.setFilter('\nAND '.join(queryFilter))
-		#print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
+		print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
 
 		self.tableView.resizeColumnsToContents()
 		self.displayRecordCount()

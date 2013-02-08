@@ -112,7 +112,7 @@ class _Database(QtCore.QObject):
 			raised in the 'with' block will cause a rollback. Otherwise commit.
 		"""
 		try:
-			#print 'Start transaction'
+			print 'Start transaction'
 			QtSql.QSqlDatabase.database().transaction()
 			yield
 		except:
@@ -132,17 +132,7 @@ class _Database(QtCore.QObject):
 		names = QtSql.QSqlDatabase.connectionNames()
 		return len(names) and QtSql.QSqlDatabase.database(names[0], False).isOpen()
 
-	def disconnect(self):
-		for name in QtSql.QSqlDatabase.connectionNames():
-			QtSql.QSqlDatabase.removeDatabase(name)
-
-		self.__userId = None
-		self.connected.emit(False)
-
 	def connect(self):
-		if self.isConnected:
-			self.disconnect()
-
 		db = QtSql.QSqlDatabase.addDatabase(self.driver)
 		db.setDatabaseName(self.database)
 		db.setHostName(self.hostname)
