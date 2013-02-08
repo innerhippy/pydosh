@@ -13,6 +13,8 @@ class DatabaseNotInitialisedException(Exception):
 
 class _Database(QtCore.QObject):
 	connected = QtCore.pyqtSignal(bool)
+	commit = QtCore.pyqtSignal()
+	rollback = QtCore.pyqtSignal()
 
 	def __init__(self):
 		super(_Database, self).__init__()
@@ -110,16 +112,18 @@ class _Database(QtCore.QObject):
 			raised in the 'with' block will cause a rollback. Otherwise commit.
 		"""
 		try:
-			print 'Start transaction'
+			#print 'Start transaction'
 			QtSql.QSqlDatabase.database().transaction()
 			yield
 		except:
-			print 'Rollback'
+			#print 'Rollback'
 			QtSql.QSqlDatabase.database().rollback()
+			self.rollback.emit()
 			raise
 		else:
-			print 'Commit transaction'
+			#print 'Commit transaction'
 			QtSql.QSqlDatabase.database().commit()
+			self.commit.emit()
 
 	@property
 	def isConnected(self):

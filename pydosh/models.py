@@ -82,8 +82,17 @@ class ImportModel(QtCore.QAbstractTableModel):
 		self.dataChanged.emit(self.createIndex(index.row(), 0), self.createIndex(index.row(), self.columnCount() - 1))
 
 	def reset(self):
+		""" Slot to cancel all changes and revert to original records
+		"""
 		self.__records = deepcopy(self.__recordsRollback)
-		
+		self.dataSaved = False
+		self.dataChanged.emit(self.createIndex(0, 0), self.createIndex(self.rowCount() -1, self.columnCount() - 1))
+	
+	def save(self):
+		""" Slot to persist changes to records 
+		"""
+		self.__recordsRollback = deepcopy(self.__records)
+
 	def loadRecords(self, records):
 		""" Import the records into our model
 			An input record is a tuple containing 
@@ -115,7 +124,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 				self.__records.append(rec)
 
 		# Take a copy of the records in case we want to rollback
-		self.__recordsRollback = deepcopy(self.__records)
+		self.save()
 
 	def canImport(self, index):
 		""" Returns True if the record at index can be imported,

@@ -22,12 +22,16 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 		self.setupUi(self)
 		self.__accountId = accountId
+		self.__importInProgress = False
+		self.__cancelImport = False
 
 		self.progressBar.setVisible(False)
 		model = ImportModel(self)
 		model.loadRecords(records)
+		db.commit.connect(model.save)
+		db.rollback.connect(model.reset)
 
-		self.importButton.clicked.connect(self.__importRecords)
+		self.importCancelButton.clicked.connect(self.__importCancelPressed)
 		self.selectAllButton.clicked.connect(self.view.selectAll)
 
 		proxy = QtGui.QSortFilterProxyModel(model)
@@ -46,9 +50,15 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.closeButton.clicked.connect(self.__close)
 		self.view.selectionModel().selectionChanged.connect(self.__recordsSelected)
 
-		self.importButton.setEnabled(False)
+		self.importCancelButton.setEnabled(False)
 
 		self.__setCounters()
+
+	def __importCancelPressed(self):
+		if self.__importInProgress:
+			self.__cancelImport = True
+		else:
+			self.__importRecords()
 
 	def __setCounters(self):
 		model = self.view.model().sourceModel()
@@ -70,8 +80,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		# get the new selection
 		numSelected = len(selectionModel.selectedRows())
 		self.selectedCounter.setNum(numSelected)
-		self.importButton.setEnabled(bool(numSelected))
-
+		self.importCancelButton.setEnabled(bool(numSelected))
 		selectionModel.blockSignals(False)
 
 	def __close(self):
@@ -93,6 +102,12 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			self.progressBar.setMaximum(len(indexes))
 			self.view.clearSelection()
 
+			self.__importInProgress = True
+			self.closeButton.setEnabled(False)
+			self.selectAllButton.setEnabled(False)
+			self.importCancelButton.setEnabled(True)
+			self.importCancelButton.setText('Cancel')
+			
 			# Wrap the import in a transaction
 			with db.transaction():
 				for num, index in enumerate(indexes, 1):
@@ -102,6 +117,9 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 					self.__setCounters()
 					QtCore.QCoreApplication.processEvents()
 					self.progressBar.setValue(self.progressBar.value() +1)
+					
+					if self.__cancelImport:
+						raise UserCancelledException
 
 				if num:
 					if QtGui.QMessageBox.question(
@@ -110,13 +128,21 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 						# By raising here we will rollback the database transaction
 						raise UserCancelledException
 
-			self.importButton.setEnabled(bool(dataModel.numRecordsToImport))
+			self.importCancelButton.setEnabled(bool(dataModel.numRecordsToImport))
 
 		except UserCancelledException:
 			dataModel.reset()
+
 		except Exception, exc:
 			QtGui.QMessageBox.critical(self, 'Import Error', str(exc), QtGui.QMessageBox.Ok)
+
 		finally:
+			self.__cancelImport = False
+			self.__importInProgress = False
+			self.closeButton.setEnabled(True)
+			self.importCancelButton.setEnabled(False)
+			self.selectAllButton.setEnabled(True)
+			self.importCancelButton.setText('Import')
 			self.progressBar.setVisible(False)
 
 

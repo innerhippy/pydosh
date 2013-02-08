@@ -288,21 +288,22 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		settings.setValue('options/importaccounttype', combo.currentText())
 		settings.setValue('options/importdirectory', dialog.directory().absolutePath())
 
-		try:
-			decoder = Decoder(
-					dateField,
-					descriptionField,
-					creditField,
-					debitField,
-					currencySign,
-					dateFormat,
-					dialog.selectedFiles())
-		except DecoderException, exc:
-			QtGui.QMessageBox.critical(self, 'Import Error', str(exc), QtGui.QMessageBox.Ok)
-			return
+		with showWaitCursor():
+			try:
+				decoder = Decoder(
+						dateField,
+						descriptionField,
+						creditField,
+						debitField,
+						currencySign,
+						dateFormat,
+						dialog.selectedFiles())
+			except DecoderException, exc:
+				QtGui.QMessageBox.critical(self, 'Import Error', str(exc), QtGui.QMessageBox.Ok)
+				return
 
-		dialog = ImportDialog(decoder.records, accountId, self)
-		dialog.setWindowTitle(fileNames.join(', '))
+			dialog = ImportDialog(decoder.records, accountId, self)
+			dialog.setWindowTitle(fileNames.join(', '))
 
 		if dialog.exec_():
 			self.accountCombo.model().select()

@@ -12,7 +12,7 @@ def main():
 	app.setWindowIcon(QtGui.QIcon(":/icons/pydosh.png"))
 	#app.setStyle(QtGui.QStyleFactory.create("Plastique"))
 
-	QtCore.QCoreApplication.setApplicationName("doshlogger")
+	QtCore.QCoreApplication.setApplicationName("pydosh")
 	QtCore.QCoreApplication.setOrganizationName("innerhippy")
 	QtCore.QCoreApplication.setOrganizationDomain("innerhippy.com")
 
