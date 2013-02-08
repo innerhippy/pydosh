@@ -1,4 +1,3 @@
-import pdb
 from PyQt4 import QtCore, QtSql
 from contextlib  import contextmanager
 import pydosh_rc

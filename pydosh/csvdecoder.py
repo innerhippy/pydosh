@@ -1,4 +1,3 @@
-import pdb
 import operator
 import csv
 from PyQt4 import QtCore

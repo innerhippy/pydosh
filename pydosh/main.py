@@ -1,7 +1,6 @@
 from contextlib  import contextmanager
 from version import __VERSION__
 from PyQt4 import QtGui, QtCore, QtSql
-QtCore.pyqtRemoveInputHook()
 from utils import showWaitCursorDecorator, showWaitCursor
 from models import RecordModel, SortProxyModel, CheckComboModel
 from helpbrowser import HelpBrowser
@@ -11,7 +10,6 @@ from ui_pydosh import Ui_pydosh
 from dialogs import SettingsDialog, TagDialog, ImportDialog
 import enum
 import pydosh_rc
-import pdb
 
 
 class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
@@ -33,6 +31,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.dateCombo.addItem('All', userData=enum.kDate_All)
 		self.dateCombo.addItem('Last 12 months', userData=enum.kDate_PreviousYear)
 		self.dateCombo.addItem('Last month', userData=enum.kDate_PreviousMonth)
+		self.dateCombo.addItem('Last import', userData=enum.kdate_LastImport)
 
 		self.toggleCheckButton.setEnabled(False)
 		self.deleteButton.setEnabled(False)
@@ -193,6 +192,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		elif selected == enum.kDate_PreviousYear:
 			self.startDateEdit.setDate(self.endDateEdit.date().addYears(-1))
 			self.startDateEdit.setEnabled(True)
+		elif selected == enum.kdate_LastImport:
+			self.setFilter()
 
 	def settingsDialog(self):
 		dialog = SettingsDialog(self)
@@ -483,12 +484,19 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			queryFilter.append('r.accounttypeid in (%s)' % ', '.join(str(acid) for acid in accountIds))
 
 		# Date filter
-		startDate = self.startDateEdit.date()
-		endDate = self.endDateEdit.date()
-
-		if startDate.isValid() and endDate.isValid():
-			queryFilter.append("r.date >= '%s'" % startDate.toString(QtCore.Qt.ISODate))
-			queryFilter.append("r.date <= '%s'" % endDate.toString(QtCore.Qt.ISODate))
+		if self.dateCombo.currentIndex() == enum.kdate_LastImport:
+			queryFilter.append("""
+				r.insertdate = (
+					SELECT MAX(insertdate) 
+					FROM records)
+			""")
+		else:
+			startDate = self.startDateEdit.date()
+			endDate = self.endDateEdit.date()
+	
+			if startDate.isValid() and endDate.isValid():
+				queryFilter.append("r.date >= '%s'" % startDate.toString(QtCore.Qt.ISODate))
+				queryFilter.append("r.date <= '%s'" % endDate.toString(QtCore.Qt.ISODate))
 
 		# checked state filter
 		state, ok = self.checkedCombo.itemData(self.checkedCombo.currentIndex(), QtCore.Qt.UserRole).toInt()
@@ -539,7 +547,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				""" % ', '.join([str(tagid) for tagid in tagIds]))
 
 		self.model.setFilter('\nAND '.join(queryFilter))
-		print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
+		#print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
 
 		self.tableView.resizeColumnsToContents()
 		self.displayRecordCount()

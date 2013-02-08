@@ -14,8 +14,6 @@ class UserCancelledException(Exception):
 	""" Exception to indicate user has cancelled the current operation
 	"""
 
-import pdb
-
 class ImportDialog(Ui_Import, QtGui.QDialog):
 	def __init__(self, records, accountId, parent=None):
 		super(ImportDialog, self).__init__(parent=parent)

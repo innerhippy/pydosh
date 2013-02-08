@@ -1,6 +1,5 @@
 from copy import deepcopy
 from PyQt4 import QtCore, QtGui, QtSql
-import pdb
 import enum
 from database import db
 import pydosh_rc
@@ -46,12 +45,16 @@ class ImportModel(QtCore.QAbstractTableModel):
 		self.__records = []
 		self.__recordsRollback = None
 		self.dataSaved = False
+		self.__currentTimestamp = None
 
 	def saveRecord(self, accountId, index):
 		""" Saves the import record to the database
 			Raises ImportException on error
 		"""
 		rec = self.__records[index.row()]
+		
+		# Ensure we record the same timestamp for this import
+		self.__currentTimestamp = self.__currentTimestamp or QtCore.QDateTime.currentDateTime()
 
 		query = QtSql.QSqlQuery()
 		query.prepare("""
@@ -66,7 +69,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 		query.addBindValue(rec.desc)
 		query.addBindValue(rec.txdate)
 		query.addBindValue(rec.credit or rec.debit)
-		query.addBindValue(QtCore.QDateTime.currentDateTime())
+		query.addBindValue(self.__currentTimestamp)
 		query.addBindValue(QtCore.QString.fromUtf8(rec.data))
 		query.addBindValue(rec.checksum)
 
@@ -87,11 +90,13 @@ class ImportModel(QtCore.QAbstractTableModel):
 		self.__records = deepcopy(self.__recordsRollback)
 		self.dataSaved = False
 		self.dataChanged.emit(self.createIndex(0, 0), self.createIndex(self.rowCount() -1, self.columnCount() - 1))
+		self.__currentTimestamp = None
 	
 	def save(self):
 		""" Slot to persist changes to records 
 		"""
 		self.__recordsRollback = deepcopy(self.__records)
+		self.__currentTimestamp = None
 
 	def loadRecords(self, records):
 		""" Import the records into our model
@@ -438,9 +443,9 @@ class TagModel(QtSql.QSqlTableModel):
 			tagId = super(TagModel, self).data(self.index(item.row(), enum.kTagsColumn_TagId)).toPyObject()
 			recordIdsForTag = set(self.__getRecordIdsForTag(tagId))
 
-			if recordIdsForTag and self.__recordIds.issubset(recordIdsForTag):
+			if self.__recordIds and self.__recordIds.issubset(recordIdsForTag):
 				return QtCore.Qt.Checked
-			elif recordIdsForTag and self.__recordIds.intersection(recordIdsForTag):
+			elif self.__recordIds and self.__recordIds.intersection(recordIdsForTag):
 				return QtCore.Qt.PartiallyChecked
 			else:
 				return QtCore.Qt.Unchecked

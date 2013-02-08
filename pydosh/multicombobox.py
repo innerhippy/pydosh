@@ -1,4 +1,3 @@
-import pdb
 from PyQt4 import QtCore, QtGui
 import pydosh_rc
 from models import CheckComboModel
@@ -174,7 +173,6 @@ def main():
 	tracer = SignalTracer()
 	app = QtGui.QApplication(sys.argv)
 	#app.setStyle(QtGui.QStyleFactory.create("Plastique"))
-	import pdb
 	#pdb.set_trace()
 	#lineEdit = SearchLineEdit()
 	widget = MultiComboBox()
