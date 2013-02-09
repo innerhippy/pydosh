@@ -185,14 +185,19 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		if selected == enum.kDate_All:
 			self.startDateEdit.setDate(self.startDateEdit.minimumDate())
 			self.endDateEdit.setDate(self.endDateEdit.maximumDate())
+			self.startDateEdit.setEnabled(True)
 			self.endDateEdit.setEnabled(True)
 		elif selected == enum.kDate_PreviousMonth:
 			self.startDateEdit.setDate(self.endDateEdit.date().addMonths(-1))
+			self.endDateEdit.setEnabled(True)
 			self.startDateEdit.setEnabled(False)
 		elif selected == enum.kDate_PreviousYear:
 			self.startDateEdit.setDate(self.endDateEdit.date().addYears(-1))
 			self.startDateEdit.setEnabled(True)
+			self.endDateEdit.setEnabled(True)
 		elif selected == enum.kdate_LastImport:
+			self.startDateEdit.setEnabled(False)
+			self.endDateEdit.setEnabled(False)
 			self.setFilter()
 
 	def settingsDialog(self):
