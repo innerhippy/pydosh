@@ -3,7 +3,6 @@ from version import __VERSION__
 from PyQt4 import QtGui, QtCore, QtSql
 from utils import showWaitCursorDecorator, showWaitCursor
 from models import RecordModel, SortProxyModel, CheckComboModel
-from helpbrowser import HelpBrowser
 from csvdecoder import Decoder, DecoderException
 from database import db
 from ui_pydosh import Ui_pydosh
@@ -149,11 +148,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tagCombo.setModel(tagModel)
 
 			self.reset()
-
-	def showHelp(self):
-
-		browser = HelpBrowser(self)
-		browser.showPage("main.html")
 
 	def showAbout(self):
 
@@ -406,39 +400,29 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.setFilter()
 
 	def addActions(self):
-		quitAction = QtGui.QAction('&Quit', self)
+		quitAction = QtGui.QAction(QtGui.QIcon(':/icons/exit.png'), '&Quit', self)
 		quitAction.setShortcut('Alt+q')
 		quitAction.setStatusTip('Exit the program')
-		quitAction.setIcon(QtGui.QIcon(':/icons/exit.png'))
 		quitAction.triggered.connect(self.close)
 
-		settingsAction = QtGui.QAction('&Settings', self)
+		settingsAction = QtGui.QAction(QtGui.QIcon(':/icons/wrench.png'), '&Settings', self)
 		settingsAction.setShortcut('Alt+s')
 		settingsAction.setStatusTip('Change the settings')
-		settingsAction.setIcon(QtGui.QIcon(':/icons/wrench.png'))
 		settingsAction.triggered.connect(self.settingsDialog)
 
-		importAction = QtGui.QAction('&Import', self)
+		importAction = QtGui.QAction(QtGui.QIcon(':/icons/import.png'), '&Import', self)
 		importAction.setShortcut('Alt+i')
 		importAction.setStatusTip('Import Bank statements')
-		importAction.setIcon(QtGui.QIcon(':/icons/import.png'))
 		importAction.triggered.connect(self.importDialog)
 
-		aboutAction = QtGui.QAction('&About', self)
+		aboutAction = QtGui.QAction(QtGui.QIcon(':/icons/help.png'), '&About', self)
 		aboutAction.setStatusTip('About')
-		aboutAction.setIcon(QtGui.QIcon(':/icons/help.png'))
 		aboutAction.triggered.connect(self.showAbout)
-
-		helpAction = QtGui.QAction('&Help', self)
-		helpAction.setStatusTip('Help')
-		helpAction.setIcon(QtGui.QIcon(':/icons/help.png'))
-		helpAction.triggered.connect(self.showHelp)
 
 		self.addAction(settingsAction)
 		self.addAction(importAction)
 		self.addAction(quitAction)
 		self.addAction(aboutAction)
-		self.addAction(helpAction)
 
 		# File menu
 		fileMenu = self.menuBar().addMenu('&Tools')
@@ -446,10 +430,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		fileMenu.addAction(importAction)
 		fileMenu.addAction(quitAction)
 
-		# Help menu
 		helpMenu = self.menuBar().addMenu('&Help')
 		helpMenu.addAction(aboutAction)
-		helpMenu.addAction(helpAction)
 
 
 	def displayRecordCount(self):

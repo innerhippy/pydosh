@@ -1,5 +1,4 @@
 from PyQt4 import QtCore, QtGui, QtSql
-from helpbrowser import HelpBrowser
 from ui_settings import Ui_Settings
 from ui_login import Ui_Login
 from ui_tags import Ui_Tags
@@ -156,7 +155,6 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 		self.closeButton.clicked.connect(self.close)
 		self.addButton.clicked.connect(self.addAccount)
 		self.deleteButton.clicked.connect(self.deleteAccount)
-		self.helpButton.clicked.connect(self.showHelp)
 
 		self.enableCommit(False)
 
@@ -183,10 +181,6 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 
 	def __dataChanged(self, left, right):
 		self.enableCommit(True)
-
-	def showHelp(self):
-		browser = HelpBrowser(self)
-		browser.showPage('options.htm')
 
 	def validateNewAccount(self, record):
 		error = ''
@@ -254,7 +248,6 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 
 		self.connectionButton.clicked.connect(self.activateConnection)
 		self.closeButton.clicked.connect(self.reject)
-		self.helpButton.clicked.connect(self.showHelp)
 
 		self.hostnameEdit.setText(db.hostname)
 		self.databaseEdit.setText(db.database)
@@ -289,10 +282,6 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 		else:
 			self.accept()
 
-	def showHelp(self):
-		browser = HelpBrowser(self)
-		browser.showPage('login.html')
-
 class TagDialog(Ui_Tags, QtGui.QDialog):
 	def __init__(self, recordIds, parent=None):
 		super(TagDialog, self).__init__(parent=parent)
@@ -316,13 +305,7 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 		self.deleteTagButton.pressed.connect(self.deleteTags)
 		self.tagView.selectionModel().selectionChanged.connect(self.activateDeleteTagButton)
 
-		self.helpButton.pressed.connect(self.showHelp)
 		self.model = model
-
-
-	def showHelp(self):
-		browser = HelpBrowser(self)
-		browser.showPage('main.html#Tags')
 
 	def activateDeleteTagButton(self, selected):
 		self.deleteTagButton.setEnabled(len(selected) > 0)
