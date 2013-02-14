@@ -69,7 +69,7 @@
              </sizepolicy>
             </property>
             <property name="toolTip">
-             <string>filter on account</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;filter on account type&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
           </item>
@@ -127,7 +127,7 @@
           <item row="0" column="1">
            <widget class="SearchLineEdit" name="descEdit">
             <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;filter on description&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;filter on description field&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
           </item>
@@ -156,7 +156,7 @@
              </sizepolicy>
             </property>
             <property name="toolTip">
-             <string>filter by amount (Alt-a)</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;filter by amount (Alt-a)&lt;/p&gt;&lt;p&gt;Eg &amp;quot;234&amp;quot; will filter records where amount is 123.00, -1123.00, 412,345.01&lt;/p&gt;&lt;p&gt;You can specify the following operators at the beginning of the field&lt;/p&gt;&lt;p&gt;= excat amount&lt;/p&gt;&lt;p&gt;&amp;gt; greater than&lt;/p&gt;&lt;p&gt;&amp;gt;= greater or equal to&lt;/p&gt;&lt;p&gt;&amp;lt; less than&lt;/p&gt;&lt;p&gt;&amp;lt;= less or equal to&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
           </item>
@@ -218,7 +218,7 @@
           <item row="0" column="1" colspan="2">
            <widget class="QDateEdit" name="endDateEdit">
             <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;end date&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the end date filter&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
           </item>
@@ -238,7 +238,7 @@
           <item row="1" column="1" colspan="2">
            <widget class="QDateEdit" name="startDateEdit">
             <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;start date&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the start date filter&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
           </item>
@@ -251,7 +251,7 @@
              </sizepolicy>
             </property>
             <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;set date range&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select a date filter&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
           </item>
