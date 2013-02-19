@@ -317,9 +317,7 @@ class RecordModel(QtSql.QSqlTableModel):
 
 		if role == QtCore.Qt.UserRole and item.column() == enum.kRecordColumn_Tags:
 			# Return the number of tags
-			val, ok = super(RecordModel, self).data(item).toInt()
-			if ok:
-				return val
+			return super(RecordModel, self).data(item).toPyObject()
 
 		if role == QtCore.Qt.BackgroundColorRole:
 			# Indicate credit/debit with row colour
@@ -346,8 +344,8 @@ class RecordModel(QtSql.QSqlTableModel):
 					return QtCore.QString.number(abs(val), 'f', 2)
 
 			elif item.column() == enum.kRecordColumn_Description:
-				# Truncate the description field to 30 chars
-				return super(RecordModel, self).data(item).toString().left(30)
+				# Truncate the description field to 30 chars, and replace multiple spaces with single
+				return super(RecordModel, self).data(item).toString().replace(QtCore.QRegExp('[ ]+'), ' ').left(30)
 
 			elif item.column() == enum.kRecordColumn_Date:
 				return super(RecordModel, self).data(item).toDate()
@@ -467,9 +465,9 @@ class TagModel(QtSql.QSqlTableModel):
 		"""
 		if role == QtCore.Qt.CheckStateRole:
 
-			tagId = self.index(index.row(), enum.kTagsColumn_TagId).data().toInt()[0]
+			tagId = self.index(index.row(), enum.kTagsColumn_TagId).data().toPyObject()
 
-			if value.toInt()[0] == QtCore.Qt.Unchecked:
+			if value.toPyObject() == QtCore.Qt.Unchecked:
 				self.__removeTagsFromRecords(tagId)
 			else:
 				self.__addTagsToRecords(tagId)
@@ -522,9 +520,8 @@ class TagModel(QtSql.QSqlTableModel):
 		self.setData(self.index(rowCount, enum.kTagsColumn_UserId), QtCore.QVariant(db.userId))
 		self.submit()
 
-		tagId, ok = self.data(self.index(rowCount, enum.kTagsColumn_TagId)).toInt()
-		if ok:
-			self.__addTagsToRecords(tagId)
+		tagId = self.data(self.index(rowCount, enum.kTagsColumn_TagId)).toPyObject()
+		self.__addTagsToRecords(tagId)
 
 
 class SortProxyModel(QtGui.QSortFilterProxyModel):

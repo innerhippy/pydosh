@@ -486,20 +486,18 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				queryFilter.append("r.date <= '%s'" % endDate.toString(QtCore.Qt.ISODate))
 
 		# checked state filter
-		state, ok = self.checkedCombo.itemData(self.checkedCombo.currentIndex(), QtCore.Qt.UserRole).toInt()
-		if ok:
-			if state == enum.kCheckedStatus_Checked:
-				queryFilter.append('r.checked=1')
-			elif state == enum.kCheckedStatus_UnChecked:
-				queryFilter.append('r.checked=0')
+		state = self.checkedCombo.itemData(self.checkedCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
+		if state == enum.kCheckedStatus_Checked:
+			queryFilter.append('r.checked=1')
+		elif state == enum.kCheckedStatus_UnChecked:
+			queryFilter.append('r.checked=0')
 
 		# money in/out filter
-		state, ok = self.inoutCombo.itemData(self.inoutCombo.currentIndex(), QtCore.Qt.UserRole).toInt()
-		if ok:
-			if state == enum.kInOutStatus_In:
-				queryFilter.append('r.amount > 0')
-			elif state == enum.kInOutStatus_Out:
-				queryFilter.append('r.amount < 0')
+		state = self.inoutCombo.itemData(self.inoutCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
+		if state == enum.kInOutStatus_In:
+			queryFilter.append('r.amount > 0')
+		elif state == enum.kInOutStatus_Out:
+			queryFilter.append('r.amount < 0')
 
 		# description filter
 		if self.descEdit.text():
@@ -534,7 +532,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				""" % ', '.join([str(tagid) for tagid in tagIds]))
 
 		self.model.setFilter('\nAND '.join(queryFilter))
-		#print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
+#		print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
 
 		self.tableView.resizeColumnsToContents()
 		self.displayRecordCount()

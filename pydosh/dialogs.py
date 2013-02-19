@@ -184,14 +184,13 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 
 	def validateNewAccount(self, record):
 		error = ''
-		currencySign, ok = record.value(enum.kAccountTypeColumn_CurrencySign).toInt()
 		if not record.value(enum.kAccountTypeColumn_AccountName).toString():
 			error = "Account name cannot be empty!"
 		elif record.value(enum.kAccountTypeColumn_DateField).isNull():
 			error = "Date field must be set!"
 		elif record.value(enum.kAccountTypeColumn_DescriptionField).isNull():
 			error = "Description field must be set!"
-		elif ok and abs(currencySign) != 1:
+		elif record.value(enum.kAccountTypeColumn_CurrencySign).toPyObject() not in (1, -1):
 			error = "Current sign value must be 1 or -1"
 		elif not record.value(enum.kAccountTypeColumn_DateFormat).toString():
 			error = "Date format cannot be empty!"
