@@ -10,12 +10,12 @@ setup(name='pydosh',
 	long_description=readme(),
 	url='http://github.com/innerhippy/pydosh',
 	author='Will Hall',
-	author_email='dev@innerhippy.com',
+	author_email='will@innerhippy.com',
 	license='GPL',
 	packages=['pydosh'],
 	install_requires=[
-		python-qt4,
-		libqt4-sql,
-		libqt4-sql-psql,
-	]
+		'python-qt4',
+		'libqt4-sql',
+		'libqt4-sql-psql',
+	],
 	zip_safe=False)
