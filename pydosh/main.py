@@ -307,11 +307,19 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 
 	def controlKeyPressed(self, key):
-		""" control key has been pressed - if we have a single row displayed, then toggle the status
+		""" Control key has been pressed
+		
+			If we have a single row displayed, then toggle the status
+			If this results in the model having no records then
+			reset the QLineEdit that triggered the call.
 		"""
-		if self.model and key == QtCore.Qt.Key_Space and self.model.rowCount() == 1:
-			self.tableView.selectAll()
-			self.toggleSelected()
+		if self.model and key == QtCore.Qt.Key_Space:
+			if self.model.rowCount() == 1:
+				self.tableView.selectAll()
+				self.toggleSelected()
+
+			if self.model.rowCount() == 0 and isinstance(self.sender(), QtGui.QLineEdit):
+					self.sender().clear()
 
 	def deleteRecords(self):
 		""" Delete selected records
@@ -517,7 +525,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			else:
 				# No operator supplied - treat amount as a string
 				queryFilter.append(
-					"CAST(r.amount AS char(10)) LIKE '%s%%' OR CAST(r.amount AS char(10)) LIKE '-%s%%'" %
+					"(CAST(r.amount AS char(10)) LIKE '%s%%' OR CAST(r.amount AS char(10)) LIKE '-%s%%')" %
 					(amountFilter, amountFilter))
 
 		# tag filter
