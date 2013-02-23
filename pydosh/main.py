@@ -49,8 +49,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.toggleCheckButton.clicked.connect(self.toggleSelected)
 		self.deleteButton.clicked.connect(self.deleteRecords)
 		self.dateCombo.currentIndexChanged.connect(self.setDate)
-		self.startDateEdit.dateChanged.connect(self.setFilter)
-		self.endDateEdit.dateChanged.connect(self.setFilter)
+		self.startDateEdit.dateChanged.connect(self.setDate)
+		self.endDateEdit.dateChanged.connect(self.setDate)
 		self.reloadButton.clicked.connect(self.reset)
 		self.tagEditButton.pressed.connect(self.addTagButtonPressed)
 
@@ -192,7 +192,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		elif selected == enum.kdate_LastImport:
 			self.startDateEdit.setEnabled(False)
 			self.endDateEdit.setEnabled(False)
-			self.setFilter()
+
+		self.setFilter()
 
 	def settingsDialog(self):
 		dialog = SettingsDialog(self)
