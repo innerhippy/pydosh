@@ -381,7 +381,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		proxyModel = self.tableView.model()
 
-		for proxyIndex in selectionModel.selectedRows():
+		for proxyIndex in reversed(selectionModel.selectedRows()):
 			index = self.model.index(proxyModel.mapToSource(proxyIndex).row(), enum.kRecordColumn_Checked) 
 			checkState = index.data(QtCore.Qt.CheckStateRole).toPyObject()
 			newState = QtCore.Qt.Unchecked if checkState == QtCore.Qt.Checked else QtCore.Qt.Checked
