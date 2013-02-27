@@ -18,6 +18,10 @@ setup(name='pydosh',
 #		'libqt4-sql',
 #		'libqt4-sql-psql',
 #	],
+#    data_files=[
+#       ('share/applications', ['pydosh.desktop']),
+#      ('share/pixmaps', ['ui/icons/pydosh.png', 'ui/icons/pydosh.xpm']),
+#   ],
     scripts = ['scripts/pydosh'],
     requires=['PyQt4'],
 	zip_safe=False)

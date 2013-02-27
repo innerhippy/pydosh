@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+X-KDE-StartupNotify=false
+Name=pydosh
+Comment=Simple bank statement utility for checking transactions
+GenericName=Bank Statement Viewer
+Exec=pydosh
+Terminal=false
+Icon=doshlogger
+Categories=Qt;Office;
