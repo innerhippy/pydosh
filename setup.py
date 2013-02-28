@@ -1,11 +1,12 @@
 from setuptools import setup
+from pydosh import version
 
 def readme():
     with open('README.rst') as f:
         return f.read()
 
 setup(name='pydosh',
-	version='0.1',
+	version=version.__VERSION__,
 	description='Bank statement transaction manager, written in PyQt',
 	long_description=readme(),
 	url='http://github.com/innerhippy/pydosh',
@@ -13,15 +14,9 @@ setup(name='pydosh',
 	author_email='will@innerhippy.com',
 	license='LICENSE.txt',
 	packages=['pydosh'],
-#	install_requires=[
-#		'python-qt',
-#		'libqt4-sql',
-#		'libqt4-sql-psql',
-#	],
     data_files=[
         ('share/applications', ['pydosh.desktop']),
         ('share/pixmaps', ['ui/icons/pydosh.png', 'ui/icons/pydosh.xpm']),
     ],
     scripts = ['scripts/pydosh'],
-    requires=['PyQt4'],
 	zip_safe=False)
