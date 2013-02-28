@@ -22,7 +22,8 @@ deb: clean all
 #	python setup.py --command-packages=stdeb.command -x deb.cfg bdist_deb 
 #	python setup.py --command-packages=stdeb.command sdist_dsc --mime-desktop-files=pydosh.desktop
 #	python setup.py --command-packages=stdeb.command sdist_dsc --mime-desktop-files=pydosh.desktop bdist_deb
-	python setup.py --command-packages=stdeb.command sdist_dsc --extra-cfg-file=deb.cfg  bdist_deb
+#	python setup.py --command-packages=stdeb.command sdist_dsc --extra-cfg-file=deb.cfg  bdist_deb
+	python setup.py --command-packages=stdeb.command sdist_dsc bdist_deb
 #	--mime-desktop-files=pydosh.desktop
 #	(cd deb_dist/pydosh* && dpkg-buildpackage -rfakeroot -uc -us)
 #	(cd deb_dist/pydosh-* && debuild)
