@@ -108,6 +108,15 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>connectionButton</tabstop>
+  <tabstop>closeButton</tabstop>
+  <tabstop>usernameEdit</tabstop>
+  <tabstop>passwordEdit</tabstop>
+  <tabstop>hostnameEdit</tabstop>
+  <tabstop>databaseEdit</tabstop>
+  <tabstop>portSpinBox</tabstop>
+ </tabstops>
  <resources>
   <include location="pydosh.qrc"/>
  </resources>

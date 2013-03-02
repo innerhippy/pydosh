@@ -77,7 +77,7 @@ class _Database(QtCore.QObject):
 	@property
 	def port(self):
 		settings = QtCore.QSettings()
-		port, ok = settings.value('options/port', 3306).toInt()
+		port, ok = settings.value('options/port', 5432).toInt()
 		if ok:
 			return port
 
@@ -91,7 +91,6 @@ class _Database(QtCore.QObject):
 	def userId(self):
 		""" Return the cached value or get from database if not set yet
 		"""
-
 		if self.__userId is None and self.isConnected:
 			self.__userId = self.__getCurrentUserId()
 

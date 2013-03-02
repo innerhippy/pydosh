@@ -6,5 +6,5 @@ Comment=Simple bank statement utility for checking transactions
 GenericName=Bank Statement Viewer
 Exec=pydosh
 Terminal=false
-Icon=doshlogger
+Icon=pydosh
 Categories=Qt;Office;
