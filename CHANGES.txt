@@ -1,4 +1,7 @@
-Feb 28th, 2013 -- pydosh 0.1
+v1.0, Feb 28th 2013
+  - Initial release.
 
-Initial release:
+v1.1, Mar 1st 2013
+  - new docs (simpler)
+  - changed default port 5432
 
