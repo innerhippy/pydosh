@@ -13,7 +13,8 @@ if sys.platform == 'darwin':
 		options = dict(
 			py2app = dict(
 				argv_emulation=True, 
-				includes=['sip', 'PyQt4']
+				includes=['sip', 'PyQt4'],
+				iconfile='ui/icons/pydosh.icns'
 			)
 		)
 	)
