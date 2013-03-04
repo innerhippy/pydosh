@@ -169,8 +169,8 @@ class MultiComboBox(QtGui.QComboBox):
 
 def main():
 	from searchlineedit import SearchLineEdit
-	from  signaltracer import SignalTracer
-	tracer = SignalTracer()
+#	from  signaltracer import SignalTracer
+#	tracer = SignalTracer()
 	app = QtGui.QApplication(sys.argv)
 	#app.setStyle(QtGui.QStyleFactory.create("Plastique"))
 	#pdb.set_trace()

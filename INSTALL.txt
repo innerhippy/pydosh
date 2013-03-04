@@ -1,0 +1,27 @@
+Installation notes
+------------------
+
+Ubuntu
+======
+
+To build a debian package type:
+
+$ make deb
+
+or:
+
+$ python setup.py --command-packages=stdeb.command sdist_dsc bdist_deb
+
+Upload changes to PyPi:
+
+$ python setup.py sdist upload
+$ python setup.py bdist upload
+
+OSX
+===
+
+Generate app:
+
+$ python setup.py -v py2app
+
+
