@@ -14,8 +14,7 @@ $ python setup.py --command-packages=stdeb.command sdist_dsc bdist_deb
 
 Upload changes to PyPi:
 
-$ python setup.py sdist upload
-$ python setup.py bdist upload
+$ python setup.py sdist bdist upload
 
 OSX
 ===
