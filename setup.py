@@ -7,22 +7,22 @@ def readme():
         return f.read()
 
 if sys.platform == 'darwin':
-	extra_options = {
+	extra_options = dict(
 		setup_requires=['py2app'],
 		app=['pydosh/pydosh.py'],
-		options={
-			py2app: {
-				'argv_emulation': True,
-				'includes': ['sip', 'PyQt4']
-			},
-		},
-	}
+		options = dict(
+			py2app = dict(
+				argv_emulation=True, 
+				includes=['sip', 'PyQt4']
+			)
+		)
+	)
 elif sys.platform == 'win32':
 	raise Exception('Sorry, Windows is not supported. Please upgrade to Unix')
 else: # Unix
-	extra_options = {
+	extra_options = dict(
 		scripts=['scripts/pydosh'],
-	}
+	)
 
 setup(name='pydosh',
 	version=version.__VERSION__,
@@ -37,6 +37,5 @@ setup(name='pydosh',
         ('share/applications', ['pydosh.desktop']),
         ('share/pixmaps', ['ui/icons/pydosh.png', 'ui/icons/pydosh.xpm']),
     ],
-    scripts = ['scripts/pydosh'],
 	zip_safe=False,
 	**extra_options)
