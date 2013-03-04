@@ -5,3 +5,5 @@ v1.1, Mar 1st 2013
   - new docs (simpler)
   - changed default port 5432
 
+v1.2, Mar 4th 2013
+  - added Mac OSX installer
