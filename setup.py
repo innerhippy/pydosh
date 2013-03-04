@@ -14,7 +14,7 @@ if sys.platform == 'darwin':
 			py2app = dict(
 				argv_emulation=True, 
 				includes=['sip', 'PyQt4'],
-				iconfile='ui/icons/pydosh.icns'
+				iconfile='icons/pydosh.icns'
 			)
 		)
 	)
@@ -25,7 +25,7 @@ else: # Unix
 		scripts=['scripts/pydosh'],
         data_files=[
             ('share/applications', ['pydosh.desktop']),
-            ('share/pixmaps', ['ui/icons/pydosh.png', 'ui/icons/pydosh.xpm']),
+            ('share/pixmaps', ['icons/pydosh.png', 'icons/pydosh.xpm']),
         ],
 	)
 

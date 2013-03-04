@@ -1,7 +1,7 @@
 This package was debianized by Will Hall <dev@innerhippy.com> on
 Thu, 22 Jan 2009 20:43:12 +0000.
 
-It was downloaded from http://www.innerhippy.com/doshlogger
+It was downloaded from http://www.innerhippy.com/pydosh
 
 Upstream Author(s): 
 
