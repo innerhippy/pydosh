@@ -22,6 +22,10 @@ elif sys.platform == 'win32':
 else: # Unix
 	extra_options = dict(
 		scripts=['scripts/pydosh'],
+        data_files=[
+            ('share/applications', ['pydosh.desktop']),
+            ('share/pixmaps', ['ui/icons/pydosh.png', 'ui/icons/pydosh.xpm']),
+        ],
 	)
 
 setup(name='pydosh',
@@ -31,11 +35,7 @@ setup(name='pydosh',
 	url='http://github.com/innerhippy/pydosh',
 	author='Will Hall',
 	author_email='will@innerhippy.com',
-	license='GPL3',
+	license='GPLv3',
 	packages=['pydosh'],
-    data_files=[
-        ('share/applications', ['pydosh.desktop']),
-        ('share/pixmaps', ['ui/icons/pydosh.png', 'ui/icons/pydosh.xpm']),
-    ],
 	zip_safe=False,
 	**extra_options)
