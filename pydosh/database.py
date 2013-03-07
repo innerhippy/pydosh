@@ -91,7 +91,6 @@ class _Database(QtCore.QObject):
 	def userId(self):
 		""" Return the cached value or get from database if not set yet
 		"""
-		return 1
 		if self.__userId is None and self.isConnected:
 			self.__userId = self.__getCurrentUserId()
 
@@ -191,8 +190,6 @@ class _Database(QtCore.QObject):
 
 		return userId
 
-
-
 	def __runCommandsFromFile(self, filename):
 
 		cmdfile = QtCore.QFile(filename)
@@ -225,8 +222,6 @@ class _Database(QtCore.QObject):
 			raise ConnectionException('Failed to run command %r: %r' % (query, sql.lastError().text()))
 
 	def __isDatabaseInitialised(self):
-		return True
-
 		query = QtSql.QSqlQuery()
 
 		query.prepare("""

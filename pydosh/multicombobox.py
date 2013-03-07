@@ -153,6 +153,7 @@ class MultiComboBox(QtGui.QComboBox):
 		else:
 			self.setEditText(self._defaultText)
 
+		print 'emitting selectionChanged from __updateCheckedItems', self.sender(), items
 		self.selectionChanged.emit()
 
 	def showPopup(self):

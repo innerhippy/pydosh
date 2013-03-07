@@ -36,21 +36,21 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.deleteButton.setEnabled(False)
 
 		self.accountCombo.setDefaultText('all')
-		self.tagCombo.selectionChanged.connect(self.setFilter)
-		self.checkedCombo.currentIndexChanged.connect(self.setFilter)
-		self.inoutCombo.currentIndexChanged.connect(self.setFilter)
 		self.accountCombo.selectionChanged.connect(self.setFilter)
 		self.tagCombo.selectionChanged.connect(self.setFilter)
+		self.tagEditButton.pressed.connect(self.addTagButtonPressed)
+		self.checkedCombo.currentIndexChanged.connect(self.setFilter)
+		self.inoutCombo.currentIndexChanged.connect(self.setFilter)
 		self.descEdit.textChanged.connect(self.setFilter)
 		self.amountEdit.textChanged.connect(self.setFilter)
 		self.amountEdit.controlKeyPressed.connect(self.controlKeyPressed)
 		self.toggleCheckButton.clicked.connect(self.toggleSelected)
 		self.deleteButton.clicked.connect(self.deleteRecords)
 		self.dateCombo.currentIndexChanged.connect(self.selectDateRange)
+		self.dateCombo.currentIndexChanged.connect(self.setFilter)
 		self.startDateEdit.dateChanged.connect(self.setFilter)
 		self.endDateEdit.dateChanged.connect(self.setFilter)
 		self.reloadButton.clicked.connect(self.reset)
-		self.tagEditButton.pressed.connect(self.addTagButtonPressed)
 
 		db.connected.connect(self.setConnectionStatus)
 
@@ -73,9 +73,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				self.checkedCombo,
 				self.inoutCombo,
 				self.tagCombo,
-				self.dateCombo,
 				self.descEdit,
 				self.amountEdit,
+				self.dateCombo,
 				self.startDateEdit,
 				self.endDateEdit,
 		)
@@ -85,7 +85,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.model = None
 			recordsModel = RecordModel(db.userId, self)
 			recordsModel.setTable("records")
-			#recordsModel.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
 			recordsModel.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
 			recordsModel.select()
 			self.model = recordsModel
@@ -147,6 +146,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tagCombo.setModel(tagModel)
 
 			self.reset()
+			from signaltracer import SignalTracer
+			self.tracer = SignalTracer()
+			self.tracer.monitor(self, self.tableView, self.tagCombo)
 
 	def showAbout(self):
 
@@ -192,7 +194,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.startDateEdit.setEnabled(False)
 			self.endDateEdit.setEnabled(False)
 
-		self.setFilter()
+#		self.setFilter()
 
 	def settingsDialog(self):
 		dialog = SettingsDialog(self)
@@ -200,10 +202,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.setFilter()
 
 	def addTagButtonPressed(self):
-		# Get recordids from all selected rows
 		selectionModel = self.tableView.selectionModel()
 		if selectionModel is None:
-			return []
+			return
 
 		proxyModel = self.tableView.model()
 		recordIds = []
@@ -326,7 +327,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		"""
 		selectionModel = self.tableView.selectionModel()
 		proxyModel = self.tableView.model()
-		dataModel = proxyModel.sourceModel()
 
 		if QtGui.QMessageBox.question(
 				self, 'Delete Records',
@@ -335,12 +335,13 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			return
 
 		with showWaitCursor():
-			for index in selectionModel.selectedRows():
-				dataModel.removeRow(proxyModel.mapToSource(index).row())
-	
-#			dataModel.submitAll()
-			self.accountCombo.model().select()
-			self.tagCombo.model().select()
+			indexes = [proxyModel.mapToSource(index) for index in selectionModel.selectedRows()] 
+			if self.model.deleteRecords(indexes):
+				self.accountCombo.model().select()
+				self.tagCombo.model().select()
+			else:
+				QtGui.QMessageBox.critical(self, 'Database Error', 
+						self.model.lastError().text(), QtGui.QMessageBox.Ok)
 
 	@contextmanager
 	def blockAllSignals(self):
@@ -375,7 +376,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		
 		""" Toggle checked status on all selected rows in view.
 		"""
-
 		# Get recordids from all selected rows
 		selectionModel = self.tableView.selectionModel()
 		if selectionModel is None:
@@ -383,7 +383,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		proxyModel = self.tableView.model()
 		indexes = [proxyModel.mapToSource(proxyIndex) for proxyIndex in selectionModel.selectedRows()]
-		self.model.setItemsChecked(indexes)
+		if not self.model.setItemsChecked(indexes):
+			QtGui.QMessageBox.critical(self, 'Database Error', 
+					self.model.lastError().text(), QtGui.QMessageBox.Ok)
 
 #		self.displayRecordCount()
 
@@ -469,7 +471,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def setFilter(self, *args):
 		if self.model is None or not db.isConnected:
 			return
-
+		print 'filtering...', self.sender()
 		queryFilter = []
 
 		# Account filter

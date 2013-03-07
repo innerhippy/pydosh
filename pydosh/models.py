@@ -294,28 +294,26 @@ class RecordModel(QtSql.QSqlTableModel):
 			It's more efficient to make a bulk update query than
 			set every row via the model
 		"""
-		for index in indexes:
-			print 'before', self.index(index.row(), enum.kRecordColumn_Checked).data().toInt()
-
 		recordIds = [self.index(index.row(), enum.kRecordColumn_RecordId).data().toPyObject() for index in indexes]
-		query = QtSql.QSqlQuery()
-		query.prepare("""
+		query = QtSql.QSqlQuery("""
 			UPDATE records
-               SET checkdate = CASE WHEN checked=1 THEN NULL ELSE ? END,
+               SET checkdate = CASE WHEN checked=1 THEN NULL ELSE current_timestamp END,
 			       checked = CASE WHEN checked=1 THEN 0 ELSE 1 END
-			 WHERE recordid in (?)
-			""")
+			 WHERE recordid in (%s)
+			""" % ','.join(str(rec) for rec in recordIds))
 
-		query.addBindValue(QtCore.QDateTime.currentDateTime())
-		query.addBindValue(','.join(str(rec) for rec in recordIds))
-		print query.exec_()
-#		print query.next()
+		self.select()
+		return query.lastError().isValid()
 
-		startIndex = self.createIndex(indexes[0].row(), 0)
-		endIndex = self.createIndex(indexes[-1].row(), self.columnCount() - 1)
-		self.dataChanged.emit(startIndex, endIndex)
-		for index in indexes:
-			print 'after', self.index(index.row(), enum.kRecordColumn_Checked).data().toPyObject()
+	def deleteRecords(self, indexes):
+		recordIds = [self.index(index.row(), enum.kRecordColumn_RecordId).data().toPyObject() for index in indexes]
+		query = QtSql.QSqlQuery("""
+			DELETE FROM records 
+			      WHERE recordid in (%s)
+		""" % ','.join(str(rec) for rec in recordIds))
+		
+		self.select()
+		return query.lastError().isValid()
 
 	def data(self, item, role=QtCore.Qt.DisplayRole):
 		""" Return data from the model, formatted for viewing
@@ -393,18 +391,19 @@ class RecordModel(QtSql.QSqlTableModel):
 		""" Save new checkstate role changes in database
 		"""
 		if role == QtCore.Qt.CheckStateRole and index.column() == enum.kRecordColumn_Checked:
+			return self.setItemsChecked([index])
 
-			checkDateIndex = self.index(index.row(), enum.kRecordColumn_CheckDate)
-
-			if value.toPyObject() == QtCore.Qt.Checked:
-				super(RecordModel, self).setData(index, QtCore.QVariant(1))
-				super(RecordModel, self).setData(checkDateIndex, QtCore.QVariant(QtCore.QDateTime.currentDateTime()))
-			else:
-				# If we're unchecking, clear the timestamp
-				print super(RecordModel, self).setData(index, QtCore.QVariant(0))
-				print super(RecordModel, self).setData(checkDateIndex, QtCore.QVariant())
-
-			return True
+#			checkDateIndex = self.index(index.row(), enum.kRecordColumn_CheckDate)
+#
+#			if value.toPyObject() == QtCore.Qt.Checked:
+#				super(RecordModel, self).setData(index, QtCore.QVariant(1))
+#				super(RecordModel, self).setData(checkDateIndex, QtCore.QVariant(QtCore.QDateTime.currentDateTime()))
+#			else:
+#				# If we're unchecking, clear the timestamp
+#				print super(RecordModel, self).setData(index, QtCore.QVariant(0))
+#				print super(RecordModel, self).setData(checkDateIndex, QtCore.QVariant())
+#
+#			return True
 
 		return False
 
