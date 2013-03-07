@@ -374,8 +374,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def toggleSelected(self, *args):
 		
 		""" Toggle checked status on all selected rows in view.
-			It's more efficient to make a bulk update query than
-			set every row via the model
 		"""
 
 		# Get recordids from all selected rows
@@ -384,29 +382,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			return
 
 		proxyModel = self.tableView.model()
-		recordIds = []
-		for proxyIndex in selectionModel.selectedRows():
-			index = self.model.index(proxyModel.mapToSource(proxyIndex).row(), enum.kRecordColumn_RecordId)
-			recordIds.append(index.data().toPyObject())
+		indexes = [proxyModel.mapToSource(proxyIndex) for proxyIndex in selectionModel.selectedRows()]
+		self.model.setItemsChecked(indexes)
 
-		query = QtSql.QSqlQuery()
-		query.prepare("""
-			UPDATE records 
-               SET checkdate = CASE WHEN checked=1 THEN NULL ELSE ? END,
-			       checked = CASE WHEN checked=1 THEN 0 ELSE 1 END
-			 WHERE recordid in (?)
-			""")
-
-		query.addBindValue(QtCore.QDateTime.currentDateTime())
-		query.addBindValue(','.join(str(rec) for rec in recordIds))
-		query.exec_()
-		query.next()
-
-		if query.lastError().isValid():
-			QtGui.QMessageBox.critical(self, 'Database Error', query.lastError().text(), QtGui.QMessageBox.Ok)
-			return
-
-		self.displayRecordCount()
+#		self.displayRecordCount()
 
 	def reset(self):
 		if self.model is None or not db.isConnected:

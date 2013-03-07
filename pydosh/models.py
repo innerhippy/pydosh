@@ -286,6 +286,37 @@ class RecordModel(QtSql.QSqlTableModel):
 
 		return ', '.join(tagNames)
 
+	def setItemsChecked(self, indexes):
+		""" Toggles the checked status on a list of model indexes
+			The checkdate column is set to the current timestamp is
+			checked, otherwise NULL is inserted
+
+			It's more efficient to make a bulk update query than
+			set every row via the model
+		"""
+		for index in indexes:
+			print 'before', self.index(index.row(), enum.kRecordColumn_Checked).data().toInt()
+
+		recordIds = [self.index(index.row(), enum.kRecordColumn_RecordId).data().toPyObject() for index in indexes]
+		query = QtSql.QSqlQuery()
+		query.prepare("""
+			UPDATE records
+               SET checkdate = CASE WHEN checked=1 THEN NULL ELSE ? END,
+			       checked = CASE WHEN checked=1 THEN 0 ELSE 1 END
+			 WHERE recordid in (?)
+			""")
+
+		query.addBindValue(QtCore.QDateTime.currentDateTime())
+		query.addBindValue(','.join(str(rec) for rec in recordIds))
+		print query.exec_()
+#		print query.next()
+
+		startIndex = self.createIndex(indexes[0].row(), 0)
+		endIndex = self.createIndex(indexes[-1].row(), self.columnCount() - 1)
+		self.dataChanged.emit(startIndex, endIndex)
+		for index in indexes:
+			print 'after', self.index(index.row(), enum.kRecordColumn_Checked).data().toPyObject()
+
 	def data(self, item, role=QtCore.Qt.DisplayRole):
 		""" Return data from the model, formatted for viewing
 		"""
