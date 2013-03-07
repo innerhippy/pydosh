@@ -44,13 +44,11 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.descEdit.textChanged.connect(self.setFilter)
 		self.amountEdit.textChanged.connect(self.setFilter)
 		self.amountEdit.controlKeyPressed.connect(self.controlKeyPressed)
-		self.startDateEdit.dateChanged.connect(self.setFilter)
-		self.endDateEdit.dateChanged.connect(self.setFilter)
 		self.toggleCheckButton.clicked.connect(self.toggleSelected)
 		self.deleteButton.clicked.connect(self.deleteRecords)
-		self.dateCombo.currentIndexChanged.connect(self.setDate)
-		self.startDateEdit.dateChanged.connect(self.setDate)
-		self.endDateEdit.dateChanged.connect(self.setDate)
+		self.dateCombo.currentIndexChanged.connect(self.selectDateRange)
+		self.startDateEdit.dateChanged.connect(self.setFilter)
+		self.endDateEdit.dateChanged.connect(self.setFilter)
 		self.reloadButton.clicked.connect(self.reset)
 		self.tagEditButton.pressed.connect(self.addTagButtonPressed)
 
@@ -87,7 +85,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.model = None
 			recordsModel = RecordModel(db.userId, self)
 			recordsModel.setTable("records")
-			recordsModel.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
+			#recordsModel.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
+			recordsModel.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
 			recordsModel.select()
 			self.model = recordsModel
 
@@ -173,7 +172,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.setModel(None)
 			self.displayRecordCount()
 
-	def setDate(self):
+	def selectDateRange(self):
 		selected = self.dateCombo.itemData(self.dateCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
 
 		if selected == enum.kDate_All:
@@ -339,7 +338,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			for index in selectionModel.selectedRows():
 				dataModel.removeRow(proxyModel.mapToSource(index).row())
 	
-			dataModel.submitAll()
+#			dataModel.submitAll()
 			self.accountCombo.model().select()
 			self.tagCombo.model().select()
 
@@ -373,19 +372,39 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	@showWaitCursorDecorator
 	def toggleSelected(self, *args):
+		
+		""" Toggle checked status on all selected rows in view.
+			It's more efficient to make a bulk update query than
+			set every row via the model
+		"""
 
+		# Get recordids from all selected rows
 		selectionModel = self.tableView.selectionModel()
-
 		if selectionModel is None:
 			return
 
 		proxyModel = self.tableView.model()
+		recordIds = []
+		for proxyIndex in selectionModel.selectedRows():
+			index = self.model.index(proxyModel.mapToSource(proxyIndex).row(), enum.kRecordColumn_RecordId)
+			recordIds.append(index.data().toPyObject())
 
-		for proxyIndex in reversed(selectionModel.selectedRows()):
-			index = self.model.index(proxyModel.mapToSource(proxyIndex).row(), enum.kRecordColumn_Checked) 
-			checkState = index.data(QtCore.Qt.CheckStateRole).toPyObject()
-			newState = QtCore.Qt.Unchecked if checkState == QtCore.Qt.Checked else QtCore.Qt.Checked
-			self.model.setData(index, QtCore.QVariant(newState), QtCore.Qt.CheckStateRole)
+		query = QtSql.QSqlQuery()
+		query.prepare("""
+			UPDATE records 
+               SET checkdate = CASE WHEN checked=1 THEN NULL ELSE ? END,
+			       checked = CASE WHEN checked=1 THEN 0 ELSE 1 END
+			 WHERE recordid in (?)
+			""")
+
+		query.addBindValue(QtCore.QDateTime.currentDateTime())
+		query.addBindValue(','.join(str(rec) for rec in recordIds))
+		query.exec_()
+		query.next()
+
+		if query.lastError().isValid():
+			QtGui.QMessageBox.critical(self, 'Database Error', query.lastError().text(), QtGui.QMessageBox.Ok)
+			return
 
 		self.displayRecordCount()
 
@@ -397,7 +416,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.populateDates()
 			self.checkedCombo.setCurrentIndex(enum.kCheckedStatus_All)
 			self.dateCombo.setCurrentIndex(enum.kDate_PreviousYear)
-			self.setDate()
+			self.selectDateRange()
 			self.tagCombo.clearAll()
 			self.accountCombo.clearAll()
 			self.inoutCombo.setCurrentIndex(enum.kInOutStatus_All)
@@ -480,7 +499,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			queryFilter.append('r.accounttypeid in (%s)' % ', '.join(str(acid) for acid in accountIds))
 
 		# Date filter
-		if self.dateCombo.currentIndex() == enum.kdate_LastImport:
+		if self.dateCombo.itemData(self.dateCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject() == enum.kdate_LastImport:
 			queryFilter.append("""
 				r.insertdate = (
 					SELECT MAX(insertdate) 
@@ -489,7 +508,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		else:
 			startDate = self.startDateEdit.date()
 			endDate = self.endDateEdit.date()
-	
+
 			if startDate.isValid() and endDate.isValid():
 				queryFilter.append("r.date >= '%s'" % startDate.toString(QtCore.Qt.ISODate))
 				queryFilter.append("r.date <= '%s'" % endDate.toString(QtCore.Qt.ISODate))

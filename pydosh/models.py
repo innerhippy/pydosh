@@ -362,19 +362,18 @@ class RecordModel(QtSql.QSqlTableModel):
 		""" Save new checkstate role changes in database
 		"""
 		if role == QtCore.Qt.CheckStateRole and index.column() == enum.kRecordColumn_Checked:
-			if value.toPyObject() == QtCore.Qt.Checked:
-				dbvalue = QtCore.QVariant(1)
-				timestamp = QtCore.QVariant(QtCore.QDateTime.currentDateTime())
-			else:
-				dbvalue = QtCore.QVariant(0)
-				timestamp = QtCore.QVariant()
 
 			checkDateIndex = self.index(index.row(), enum.kRecordColumn_CheckDate)
 
-			# Save the new state and timestamp
-			if super(RecordModel, self).setData(index, dbvalue) and \
-				super(RecordModel, self).setData(checkDateIndex, timestamp):
-				return self.submitAll()
+			if value.toPyObject() == QtCore.Qt.Checked:
+				super(RecordModel, self).setData(index, QtCore.QVariant(1))
+				super(RecordModel, self).setData(checkDateIndex, QtCore.QVariant(QtCore.QDateTime.currentDateTime()))
+			else:
+				# If we're unchecking, clear the timestamp
+				print super(RecordModel, self).setData(index, QtCore.QVariant(0))
+				print super(RecordModel, self).setData(checkDateIndex, QtCore.QVariant())
+
+			return True
 
 		return False
 

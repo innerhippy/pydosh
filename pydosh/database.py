@@ -91,6 +91,7 @@ class _Database(QtCore.QObject):
 	def userId(self):
 		""" Return the cached value or get from database if not set yet
 		"""
+		return 1
 		if self.__userId is None and self.isConnected:
 			self.__userId = self.__getCurrentUserId()
 
