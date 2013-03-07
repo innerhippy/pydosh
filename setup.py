@@ -7,14 +7,26 @@ def readme():
         return f.read()
 
 if sys.platform == 'darwin':
+#	from PyQt4 import QtCore
+#	import os
+#	driver='libqsqlpsql.dylib'
+#	frameworkPath = os.path.join(str(QtCore.QLibraryInfo.location(QtCore.QLibraryInfo.PluginsPath)), 'sqldrivers', driver)
+#	print 'detected framework path %r' % frameworkPath
+	
+
 	extra_options = dict(
 		setup_requires=['py2app'],
-		app=['pydosh/pydosh.py'],
+		app=['pydosh.py'],
+		data_files=['pydosh'],
 		options = dict(
 			py2app = dict(
 				argv_emulation=True, 
 				includes=['sip', 'PyQt4'],
-				iconfile='icons/pydosh.icns'
+#				excludes=['PyQt4.QtDesigner', 'PyQt4.QtDeclarative', 'PyQt4.QtHelp', 'PyQt4.QtMultimedia'],
+				iconfile='icons/pydosh.icns',
+				qt_plugins=['sqldrivers'],
+#				frameworks=[frameworkPath],
+#				packages=['pydosh'],
 			)
 		)
 	)
@@ -23,10 +35,10 @@ elif sys.platform == 'win32':
 else: # Unix
 	extra_options = dict(
 		scripts=['scripts/pydosh'],
-        data_files=[
-            ('share/applications', ['pydosh.desktop']),
-            ('share/pixmaps', ['icons/pydosh.png', 'icons/pydosh.xpm']),
-        ],
+        	data_files=[
+			('share/applications', ['pydosh.desktop']),
+			('share/pixmaps', ['icons/pydosh.png', 'icons/pydosh.xpm']),
+		],
 	)
 
 setup(name='pydosh',

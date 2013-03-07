@@ -19,3 +19,7 @@ pydosh/pydosh_rc.py
 /*.egg-info
 
 /deb_dist/
+
+/build/
+
+/*.dmg

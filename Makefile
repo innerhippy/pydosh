@@ -7,7 +7,7 @@ pydosh/pydosh_rc.py: ui/pydosh.qrc
 	pyrcc4 $? -o $@
 
 clean:
-	rm -rf $(ALL_TARGETS) pydosh/*.pyc dist/ pydosh.egg-info/ deb_dist/ build/
+	rm -rf $(ALL_TARGETS) pydosh/*.pyc dist/ pydosh.egg-info/ deb_dist/ build/ pydosh*.dmg
 
 $(UI_TARGETS): pydosh/ui_%.py: ui/%.ui
 	pyuic4 $< -o $@
@@ -27,4 +27,12 @@ deb: clean all
 #	--mime-desktop-files=pydosh.desktop
 #	(cd deb_dist/pydosh* && dpkg-buildpackage -rfakeroot -uc -us)
 #	(cd deb_dist/pydosh-* && debuild)
+
+dmg: clean all
+	python setup.py -v py2app
+#	cp qt.conf dist/pydosh.app/Contents/Resources/
+#	mkdir -p dist/pydosh.app/Contents/qt_plugins/sqldrivers/
+#	cp /usr/local//Cellar/qt/4.8.4/plugins/sqldrivers/libqsqlpsql.dylib dist/pydosh.app/Contents/qt_plugins/sqldrivers/
+#	cp /usr/local//Cellar/qt/4.8.4/plugins/sqldrivers/libqsqlpsql.dylib dist/pydosh.app/Contents/qt_plugins
+#	hdiutil create -srcfolder dist/pydosh.app pydosh.dmg
 

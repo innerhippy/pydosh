@@ -23,4 +23,6 @@ Generate app:
 
 $ python setup.py -v py2app
 
+Create dmg file
+$ hdiutil create -srcfolder dist/pydosh.app pydosh.dmg
 
