@@ -46,8 +46,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.amountEdit.controlKeyPressed.connect(self.controlKeyPressed)
 		self.toggleCheckButton.clicked.connect(self.toggleSelected)
 		self.deleteButton.clicked.connect(self.deleteRecords)
-		self.dateCombo.currentIndexChanged.connect(self.selectDateRange)
-		self.dateCombo.currentIndexChanged.connect(self.setFilter)
+		self.dateCombo.currentIndexChanged.connect(self.__dateRangeSelected)
 		self.startDateEdit.dateChanged.connect(self.setFilter)
 		self.endDateEdit.dateChanged.connect(self.setFilter)
 		self.reloadButton.clicked.connect(self.reset)
@@ -86,6 +85,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			recordsModel = RecordModel(db.userId, self)
 			recordsModel.setTable("records")
 			recordsModel.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
+			recordsModel.dataChanged.connect(self.displayRecordCount)
 			recordsModel.select()
 			self.model = recordsModel
 
@@ -148,7 +148,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.reset()
 			from signaltracer import SignalTracer
 			self.tracer = SignalTracer()
-			self.tracer.monitor(self, self.tableView, self.tagCombo)
+			self.tracer.monitor(self, self.tagCombo)
 
 	def showAbout(self):
 
@@ -408,6 +408,12 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.setFilter()
 
+	def __dateRangeSelected(self):
+		""" Date combo has been changed. Set the date fields and refresh the records model
+		"""
+		self.selectDateRange()
+		self.setFilter()
+		
 	def addActions(self):
 		quitAction = QtGui.QAction(QtGui.QIcon(':/icons/exit.png'), '&Quit', self)
 		quitAction.setShortcut('Alt+q')
@@ -471,7 +477,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def setFilter(self, *args):
 		if self.model is None or not db.isConnected:
 			return
-		print 'filtering...', self.sender()
+		sender = self.sender()
+		print 'filtering...', self.sender().objectName()
 		queryFilter = []
 
 		# Account filter

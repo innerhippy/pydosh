@@ -302,8 +302,13 @@ class RecordModel(QtSql.QSqlTableModel):
 			 WHERE recordid in (%s)
 			""" % ','.join(str(rec) for rec in recordIds))
 
+		if query.lastError().isValid():
+			return False
+
 		self.select()
-		return query.lastError().isValid()
+		self.dataChanged.emit(indexes[0], indexes[-1])
+
+		return True
 
 	def deleteRecords(self, indexes):
 		recordIds = [self.index(index.row(), enum.kRecordColumn_RecordId).data().toPyObject() for index in indexes]
@@ -312,8 +317,13 @@ class RecordModel(QtSql.QSqlTableModel):
 			      WHERE recordid in (%s)
 		""" % ','.join(str(rec) for rec in recordIds))
 		
+		if query.lastError().isValid():
+			return False
+
 		self.select()
-		return query.lastError().isValid()
+		self.dataChanged.emit(indexes[0], indexes[-1])
+
+		return True
 
 	def data(self, item, role=QtCore.Qt.DisplayRole):
 		""" Return data from the model, formatted for viewing
@@ -392,18 +402,6 @@ class RecordModel(QtSql.QSqlTableModel):
 		"""
 		if role == QtCore.Qt.CheckStateRole and index.column() == enum.kRecordColumn_Checked:
 			return self.setItemsChecked([index])
-
-#			checkDateIndex = self.index(index.row(), enum.kRecordColumn_CheckDate)
-#
-#			if value.toPyObject() == QtCore.Qt.Checked:
-#				super(RecordModel, self).setData(index, QtCore.QVariant(1))
-#				super(RecordModel, self).setData(checkDateIndex, QtCore.QVariant(QtCore.QDateTime.currentDateTime()))
-#			else:
-#				# If we're unchecking, clear the timestamp
-#				print super(RecordModel, self).setData(index, QtCore.QVariant(0))
-#				print super(RecordModel, self).setData(checkDateIndex, QtCore.QVariant())
-#
-#			return True
 
 		return False
 
