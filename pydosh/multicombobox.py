@@ -33,6 +33,13 @@ class MultiComboBox(QtGui.QComboBox):
 		model.checkStateChanged.connect(self.__updateCheckedItems)
 		self.__updateCheckedItems()
 
+
+	def dataChanged(self):
+		""" Indicates if the underlying data has been updated. 
+		"""
+		print 'calling select on model'
+		self.model().select()
+
 	def __checkAll(self, check=False):
 		""" Function to set all the items as checked or unchecked based on the argument.
 
@@ -130,10 +137,10 @@ class MultiComboBox(QtGui.QComboBox):
 		quitAction.setShortcut('Alt+q')
 		quitAction.setStatusTip('Exit the program')
 		quitAction.setIcon(QtGui.QIcon(':/icons/exit.png'))
-		
+
 		signalMap = {}
 		contextMenu = QtGui.QMenu()
-		
+
 		clearAllAction = contextMenu.addAction(QtGui.QIcon(':/icons/cross.png'), 'Clear All')
 		clearAllAction.setIconVisibleInMenu(True)
 		signalMap[clearAllAction] = self.clearAll
@@ -147,14 +154,15 @@ class MultiComboBox(QtGui.QComboBox):
 
 	def __updateCheckedItems(self):
 		items = self.checkedItems()
+		previousText = self.currentText()
 
 		if items:
 			self.setEditText(', '.join([str(item) for item in items]))
 		else:
 			self.setEditText(self._defaultText)
 
-		print 'emitting selectionChanged from __updateCheckedItems', self.sender(), items
-		self.selectionChanged.emit()
+		if previousText != self.currentText():
+			self.selectionChanged.emit()
 
 	def showPopup(self):
 		self.__persistDropdown = QtGui.QApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier

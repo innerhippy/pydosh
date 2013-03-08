@@ -38,7 +38,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.accountCombo.setDefaultText('all')
 		self.accountCombo.selectionChanged.connect(self.setFilter)
 		self.tagCombo.selectionChanged.connect(self.setFilter)
-		self.tagEditButton.pressed.connect(self.addTagButtonPressed)
+		self.tagEditButton.pressed.connect(self.editTagButtonPressed)
 		self.checkedCombo.currentIndexChanged.connect(self.setFilter)
 		self.inoutCombo.currentIndexChanged.connect(self.setFilter)
 		self.descEdit.textChanged.connect(self.setFilter)
@@ -146,9 +146,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tagCombo.setModel(tagModel)
 
 			self.reset()
-			from signaltracer import SignalTracer
-			self.tracer = SignalTracer()
-			self.tracer.monitor(self, self.tagCombo)
+#			from signaltracer import SignalTracer
+#			self.tracer = SignalTracer()
+#			self.tracer.monitor(self, self.tagCombo, self.tagCombo.model())
 
 	def showAbout(self):
 
@@ -201,20 +201,40 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		dialog.exec_()
 		self.setFilter()
 
-	def addTagButtonPressed(self):
+	def editTagButtonPressed(self):
+		""" Tag edit button pressed - this can add/delete tags or assign tags to records
+		"""
 		selectionModel = self.tableView.selectionModel()
+
 		if selectionModel is None:
 			return
 
 		proxyModel = self.tableView.model()
 		recordIds = []
+
 		for proxyIndex in selectionModel.selectedRows():
 			index = self.model.index(proxyModel.mapToSource(proxyIndex).row(), enum.kRecordColumn_RecordId) 
 			recordIds.append(index.data().toPyObject())
 
 		dialog = TagDialog(recordIds, self)
-		if dialog.exec_():
-			self.tagCombo.model().select()
+
+		# Tell the tag combo the data has been changed
+		dialog.dataChanged.connect(self.tagCombo.dataChanged)
+
+		# Call select on the record model whenever a tag assignment changes
+		dialog.model.dataChanged.connect(self.model.select)
+
+		# Save current selection as this will get trashed when we call select 
+		currentSelection = selectionModel.selectedRows()
+
+		# Block the signals on the record model to preserve selection
+		self.model.blockSignals(True)
+		dialog.exec_()
+		self.model.blockSignals(False)
+
+		# Restore selection
+		for index in currentSelection:
+			selectionModel.select(index, QtGui.QItemSelectionModel.Rows)
 
 	def importDialog(self):
 		if not db.isConnected:
@@ -320,7 +340,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				self.toggleSelected()
 
 			if self.model.rowCount() == 0 and isinstance(self.sender(), QtGui.QLineEdit):
-					self.sender().clear()
+				self.sender().clear()
 
 	def deleteRecords(self):
 		""" Delete selected records
@@ -373,7 +393,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	@showWaitCursorDecorator
 	def toggleSelected(self, *args):
-		
+
 		""" Toggle checked status on all selected rows in view.
 		"""
 		# Get recordids from all selected rows
@@ -477,8 +497,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def setFilter(self, *args):
 		if self.model is None or not db.isConnected:
 			return
-		sender = self.sender()
-		print 'filtering...', self.sender().objectName()
+		print 'filtering...', self.sender().objectName() if self.sender() else ''
 		queryFilter = []
 
 		# Account filter
@@ -552,4 +571,5 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.tableView.resizeColumnsToContents()
 		self.displayRecordCount()
+		print 'done setFilter'
 

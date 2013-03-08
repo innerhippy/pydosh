@@ -3,7 +3,6 @@ from ui_settings import Ui_Settings
 from ui_login import Ui_Login
 from ui_tags import Ui_Tags
 from ui_import import Ui_Import
-from utils import showWaitCursorDecorator
 import enum
 from database import db, DatabaseNotInitialisedException, ConnectionException
 from delegates import AccountDelegate
@@ -282,13 +281,16 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 			self.accept()
 
 class TagDialog(Ui_Tags, QtGui.QDialog):
+
+	# Emitted when the TagModel data has changed (tag added or removed)
+	dataChanged= QtCore.pyqtSignal()
+
 	def __init__(self, recordIds, parent=None):
 		super(TagDialog, self).__init__(parent=parent)
 
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 		self.setupUi(self)
 
-		QtSql.QSqlDatabase.database().transaction()
 		self.tagView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 		self.tagView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
 		self.tagView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
@@ -298,8 +300,6 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 		self.tagView.setModel(model)
 		self.tagView.setModelColumn(enum.kTagsColumn_TagName)
 
-		self.accepted.connect(self.saveChanges)
-		self.rejected.connect(self.cancelChanges)
 		self.addTagButton.pressed.connect(self.addTag)
 		self.deleteTagButton.pressed.connect(self.deleteTags)
 		self.tagView.selectionModel().selectionChanged.connect(self.activateDeleteTagButton)
@@ -320,15 +320,12 @@ class TagDialog(Ui_Tags, QtGui.QDialog):
 				return
 
 			self.model.addTag(tagName)
+			self.dataChanged.emit()
 
 	def deleteTags(self):
-		for index in reversed(self.tagView.selectionModel().selectedRows()):
-			self.model.removeRows(index.row(), 1, QtCore.QModelIndex())
+		rows = self.tagView.selectionModel().selectedRows()
+		if rows:
+			for index in reversed(rows):
+				self.model.removeRows(index.row(), 1, QtCore.QModelIndex())
+			self.dataChanged.emit()
 
-	@showWaitCursorDecorator
-	def saveChanges(self):
-		QtSql.QSqlDatabase.database().commit()
-
-	@showWaitCursorDecorator
-	def cancelChanges(self):
-		QtSql.QSqlDatabase.database().rollback()
