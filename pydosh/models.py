@@ -248,42 +248,31 @@ class RecordModel(QtSql.QSqlTableModel):
 			return QtCore.QString()
 
 		queryFilter = self.filter()
-		queryFilter = 'AND ' + queryFilter if queryFilter else ''
+		queryFilter = 'WHERE ' + queryFilter if queryFilter else ''
 
 		query = """
-			SELECT
-				r.recordid,
-				r.checked,
-				(select count(*) from recordtags rt where rt.recordid=r.recordid),
-				r.checkdate,
-				r.date,
-				accounttypes.accountname,
-				r.description,
-				r.txdate,
-				r.amount,
-				r.insertdate,
-				r.rawdata
-			FROM records r
-			INNER JOIN accounttypes ON accounttypes.accounttypeid=r.accounttypeid
-			WHERE r.userid=%(userid)s
-			%(filter)s
-			ORDER BY r.date, r.description, r.txdate, r.recordid
+			SELECT	   r.recordid,
+					   r.checked,
+					   array_to_string(array_agg(t.tagname ORDER BY t.tagname), ','),
+					   r.checkdate,
+					   r.date,
+					   at.accountname,
+					   r.description,
+					   r.txdate,
+					   r.amount,
+					   r.insertdate,
+					   r.rawdata
+			      FROM records r
+			INNER JOIN accounttypes at ON at.accounttypeid=r.accounttypeid
+						AND r.userid=%(userid)s
+			 LEFT JOIN recordtags rt ON rt.recordid=r.recordid 
+			 LEFT JOIN tags t ON rt.tagid=t.tagid
+					   %(filter)s
+			  GROUP BY r.recordid, at.accountname
+			  ORDER BY r.date, r.description, r.txdate, r.recordid
 		""" % {'userid': self.__userId, 'filter': queryFilter}
 
 		return query
-
-	def __getTagsforRecord(self, recordId):
-		query = QtSql.QSqlQuery("""
-			SELECT t.tagname
-			FROM recordtags rt
-			JOIN tags t ON t.tagid=rt.tagid
-			WHERE rt.recordid=%d""" % recordId)
-
-		tagNames = []
-		while query.next():
-			tagNames.append(str(query.value(0).toString()))
-
-		return ', '.join(tagNames)
 
 	def setItemsChecked(self, indexes):
 		""" Toggles the checked status on a list of model indexes
@@ -338,7 +327,7 @@ class RecordModel(QtSql.QSqlTableModel):
 		if role == QtCore.Qt.ToolTipRole:
 			if item.column() == enum.kRecordColumn_Tags:
 				#Show tag names for this record
-				return self.__getTagsforRecord(self.data(self.index(item.row(), enum.kRecordColumn_RecordId)).toPyObject())
+				return self.record(item.row()).value(enum.kRecordColumn_Tags).toString()
 
 			elif item.column() == enum.kRecordColumn_Checked:
 				if super(RecordModel, self).data(self.index(item.row(), enum.kRecordColumn_Checked)).toBool():
@@ -365,7 +354,7 @@ class RecordModel(QtSql.QSqlTableModel):
 		if role == QtCore.Qt.DecorationRole:
 			if item.column() == enum.kRecordColumn_Tags:
 				# Show tag icon if we have any
-				if super(RecordModel, self).data(item).toPyObject() > 0:
+				if super(RecordModel, self).data(item).toPyObject():
 					return QtGui.QIcon(':/icons/tag_yellow.png')
 
 		if role == QtCore.Qt.DisplayRole:
