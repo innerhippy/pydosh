@@ -51,7 +51,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.endDateEdit.dateChanged.connect(self.setFilter)
 		self.reloadButton.clicked.connect(self.reset)
 
-		db.connected.connect(self.setConnectionStatus)
+		self.connectionStatusText.setText('connected to %s@%s' % (db.database, db.hostname))
 
 		amountValidator = QtGui.QRegExpValidator(QtCore.QRegExp("[<>=0-9.]*"), self)
 		self.amountEdit.setValidator(amountValidator)
@@ -64,8 +64,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.inTotalLabel.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Sunken)
 		self.outTotalLabel.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Sunken)
 		self.recordCountLabel.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Sunken)
-
-		self.setConnectionStatus(db.isConnected)
 
 		self.__signalsToBlock = (
 				self.accountCombo,
@@ -83,9 +81,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 			self.model = None
 			recordsModel = RecordModel(db.userId, self)
-			recordsModel.setTable("records")
+			recordsModel.setTable('records')
 			recordsModel.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
-			recordsModel.dataChanged.connect(self.displayRecordCount)
+			recordsModel.dataChanged.connect(self.setFilter)
 			recordsModel.select()
 			self.model = recordsModel
 
@@ -138,7 +136,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 					FROM recordtags rt
 					INNER JOIN records r
 					ON r.recordid=rt.recordid
-					)
+				)
 				""" % db.userId)
 			tagModel.select()
 			tagModel.setUserRoleColumn(enum.kTagsColumn_TagId)
@@ -146,9 +144,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tagCombo.setModel(tagModel)
 
 			self.reset()
-#			from signaltracer import SignalTracer
-#			self.tracer = SignalTracer()
-#			self.tracer.monitor(self, self.tagCombo, self.tagCombo.model())
 
 	def showAbout(self):
 
@@ -162,17 +157,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			"<p><a href=\"http://www.innerhippy.com\">www.innerhippy.com</a></p>"
 			"enjoy!</html>" % (__VERSION__, QtCore.QT_VERSION_STR)
 			)
-
-	def setConnectionStatus(self, isConnected):
-		if isConnected:
-			self.connectionStatusText.setText('connected to %s@%s' % (db.database, db.hostname))
-
-		else:
-			self.connectionStatusText.setText('not connected')
-			self.model = None
-
-			self.tableView.setModel(None)
-			self.displayRecordCount()
 
 	def selectDateRange(self):
 		selected = self.dateCombo.itemData(self.dateCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
@@ -193,8 +177,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		elif selected == enum.kdate_LastImport:
 			self.startDateEdit.setEnabled(False)
 			self.endDateEdit.setEnabled(False)
-
-#		self.setFilter()
 
 	def settingsDialog(self):
 		dialog = SettingsDialog(self)
@@ -220,26 +202,11 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		# Tell the tag combo the data has been changed
 		dialog.dataChanged.connect(self.tagCombo.dataChanged)
+		dialog.model.dataChanged.connect(self.tagCombo.dataChanged)
 
-		# Call select on the record model whenever a tag assignment changes
-		dialog.model.dataChanged.connect(self.model.select)
-
-		# Save current selection as this will get trashed when we call select 
-		currentSelection = selectionModel.selectedRows()
-
-		# Block the signals on the record model to preserve selection
-		self.model.blockSignals(True)
 		dialog.exec_()
-		self.model.blockSignals(False)
-
-		# Restore selection
-		for index in currentSelection:
-			selectionModel.select(index, QtGui.QItemSelectionModel.Rows)
 
 	def importDialog(self):
-		if not db.isConnected:
-			return
-
 		combo = QtGui.QComboBox(self)
 		model = QtSql.QSqlTableModel(self)
 		model.setTable('accounttypes')
@@ -373,6 +340,39 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			for widget in self.__signalsToBlock:
 				widget.blockSignals(False)
 
+	@contextmanager
+	def keepSelection(self):
+		""" Context manager to preserve table selection. This is usually required
+			when calling select on the model - as this causes a reset of the model.
+			
+			There should be a better way of doing this, but the only accurate means 
+			of determining what rows were selected is by saving the recordIds before
+			the yield, and then restoring them with a call to match.
+			"""
+		try:
+			# Save selection
+			proxyModel = self.tableView.model()
+
+			selectionModel = self.tableView.selectionModel()
+			indexes = [proxyModel.mapToSource(proxyIndex) for proxyIndex in selectionModel.selectedRows()]
+			
+			selectedRecords = [
+				self.model.index(index.row(), enum.kRecordColumn_RecordId).data().toPyObject() 
+				for index in indexes
+			]
+			selectionMode = self.tableView.selectionMode()
+			yield
+		finally:
+			# Set this temporarily so that we can select more than one row
+			self.tableView.setSelectionMode(QtGui.QAbstractItemView.MultiSelection)
+
+			for recordId in selectedRecords:
+				currentIndex = self.model.index(0, enum.kRecordColumn_RecordId)
+				match = self.model.match(currentIndex, QtCore.Qt.DisplayRole, recordId, 1, QtCore.Qt.MatchExactly)
+				if match:
+					self.tableView.selectRow(proxyModel.mapFromSource(match[0]).row())
+
+			self.tableView.setSelectionMode(selectionMode)
 
 	def populateDates(self):
 		query = QtSql.QSqlQuery("""
@@ -407,10 +407,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			QtGui.QMessageBox.critical(self, 'Database Error', 
 					self.model.lastError().text(), QtGui.QMessageBox.Ok)
 
-#		self.displayRecordCount()
-
 	def reset(self):
-		if self.model is None or not db.isConnected:
+		if self.model is None:
 			return
 
 		with self.blockAllSignals():
@@ -495,9 +493,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	@showWaitCursorDecorator
 	def setFilter(self, *args):
-		if self.model is None or not db.isConnected:
+		if self.model is None:
 			return
-		print 'filtering...', self.sender().objectName() if self.sender() else ''
+
 		queryFilter = []
 
 		# Account filter
@@ -566,10 +564,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 					WHERE tagid in (%s))
 				""" % ', '.join([str(tagid) for tagid in tagIds]))
 
-		self.model.setFilter('\nAND '.join(queryFilter))
-#		print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
+		with self.keepSelection():
+			self.model.setFilter('\nAND '.join(queryFilter))
+		#print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
 
 		self.tableView.resizeColumnsToContents()
 		self.displayRecordCount()
-		print 'done setFilter'
 

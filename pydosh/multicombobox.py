@@ -33,6 +33,9 @@ class MultiComboBox(QtGui.QComboBox):
 		model.checkStateChanged.connect(self.__updateCheckedItems)
 		self.__updateCheckedItems()
 
+		from signaltracer import SignalTracer
+		self.tracer = SignalTracer()
+#		self.tracer.monitor(self, model, self.lineEdit())
 
 	def dataChanged(self):
 		""" Indicates if the underlying data has been updated. 
@@ -44,15 +47,20 @@ class MultiComboBox(QtGui.QComboBox):
 		""" Function to set all the items as checked or unchecked based on the argument.
 
 			Args:
-				check(bool):		check state
+				check(bool): check state
 		"""
 		searchState = QtCore.Qt.Unchecked if check else QtCore.Qt.Checked
 		assignState = QtCore.Qt.Checked if check else QtCore.Qt.Unchecked
 
 		modelIndex = self.model().index(0, self.modelColumn(), self.rootModelIndex())
 		modelIndexList = self.model().match(modelIndex, QtCore.Qt.CheckStateRole, searchState, -1, QtCore.Qt.MatchExactly)
+
+		self.model().blockSignals(True)
+
 		for index in modelIndexList:
 			self.setItemData(index.row(), assignState, QtCore.Qt.CheckStateRole)
+
+		self.model().blockSignals(False)
 
 		self.__updateCheckedItems()
 
@@ -154,15 +162,13 @@ class MultiComboBox(QtGui.QComboBox):
 
 	def __updateCheckedItems(self):
 		items = self.checkedItems()
-		previousText = self.currentText()
 
 		if items:
 			self.setEditText(', '.join([str(item) for item in items]))
 		else:
 			self.setEditText(self._defaultText)
 
-		if previousText != self.currentText():
-			self.selectionChanged.emit()
+		self.selectionChanged.emit()
 
 	def showPopup(self):
 		self.__persistDropdown = QtGui.QApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier

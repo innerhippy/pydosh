@@ -4,6 +4,7 @@ from ui_login import Ui_Login
 from ui_tags import Ui_Tags
 from ui_import import Ui_Import
 import enum
+from utils import showWaitCursor
 from database import db, DatabaseNotInitialisedException, ConnectionException
 from delegates import AccountDelegate
 from models import AccountModel, TagModel, ImportModel
@@ -261,7 +262,8 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 		db.port = self.portSpinBox.value()
 
 		try:
-			db.connect()
+			with showWaitCursor():
+				db.connect()
 		except DatabaseNotInitialisedException:
 			if QtGui.QMessageBox.question(
 					self, 'Database', 
@@ -276,7 +278,7 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 			else:
 				return
 		except ConnectionException, err:
-			QtGui.QMessageBox.warning(self, 'Database', 'Failed to connect: %r' % str(err))
+			QtGui.QMessageBox.warning(self, 'Database', 'Failed to connect: %s' % str(err))
 		else:
 			self.accept()
 

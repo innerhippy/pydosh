@@ -52,7 +52,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 			Raises ImportException on error
 		"""
 		rec = self.__records[index.row()]
-		
+
 		# Ensure we record the same timestamp for this import
 		self.__currentTimestamp = self.__currentTimestamp or QtCore.QDateTime.currentDateTime()
 
@@ -91,7 +91,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 		self.dataSaved = False
 		self.dataChanged.emit(self.createIndex(0, 0), self.createIndex(self.rowCount() -1, self.columnCount() - 1))
 		self.__currentTimestamp = None
-	
+
 	def save(self):
 		""" Slot to persist changes to records 
 		"""
@@ -272,7 +272,6 @@ class RecordModel(QtSql.QSqlTableModel):
 
 		return query
 
-
 	def __getTagsforRecord(self, recordId):
 		query = QtSql.QSqlQuery("""
 			SELECT t.tagname
@@ -305,7 +304,6 @@ class RecordModel(QtSql.QSqlTableModel):
 		if query.lastError().isValid():
 			return False
 
-		self.select()
 		self.dataChanged.emit(indexes[0], indexes[-1])
 
 		return True
@@ -316,7 +314,7 @@ class RecordModel(QtSql.QSqlTableModel):
 			DELETE FROM records 
 			      WHERE recordid in (%s)
 		""" % ','.join(str(rec) for rec in recordIds))
-		
+
 		if query.lastError().isValid():
 			return False
 
@@ -369,7 +367,6 @@ class RecordModel(QtSql.QSqlTableModel):
 				# Show tag icon if we have any
 				if super(RecordModel, self).data(item).toPyObject() > 0:
 					return QtGui.QIcon(':/icons/tag_yellow.png')
-
 
 		if role == QtCore.Qt.DisplayRole:
 			if item.column() in (enum.kRecordColumn_Checked, enum.kRecordColumn_Tags):
@@ -439,6 +436,7 @@ class TagModel(QtSql.QSqlTableModel):
 		model = QtSql.QSqlTableModel(self)
 		model.setTable('recordtags')
 		model.select()
+		self.__tagCache = {}
 
 		self.__recordTagModel = model
 
@@ -478,14 +476,19 @@ class TagModel(QtSql.QSqlTableModel):
 		return super(TagModel, self).data(item, role)
 
 	def __getRecordIdsForTag(self, tagId):
-		""" Generator to get all recordIds assigned to a given tag (id)
+		""" Returns all recordIds assigned to a given tag (id)
 		"""
-		for row in xrange(self.__recordTagModel.rowCount()):
-			recordId = self.__recordTagModel.index(row, enum.kRecordTagsColumn_RecordId).data().toPyObject()
-			recordTagId = self.__recordTagModel.index(row, enum.kRecordTagsColumn_TagId).data().toPyObject()
+		if tagId not in self.__tagCache:
+			recordIds = []
+			for row in xrange(self.__recordTagModel.rowCount()):
+				recordId = self.__recordTagModel.index(row, enum.kRecordTagsColumn_RecordId).data().toPyObject()
+				recordTagId = self.__recordTagModel.index(row, enum.kRecordTagsColumn_TagId).data().toPyObject()
 
-			if tagId == recordTagId:
-				yield recordId
+				if tagId == recordTagId:
+					recordIds.append(recordId)
+			self.__tagCache[tagId] = recordIds
+
+		return self.__tagCache[tagId]
 
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
 		""" Handle checkstate role changes 
@@ -519,6 +522,11 @@ class TagModel(QtSql.QSqlTableModel):
 			self.__recordTagModel.removeRows(row, 1)
 			self.__recordTagModel.submit()
 
+		self.__removeTagFromCache(tagId)
+
+	def __removeTagFromCache(self, tagId):
+		if tagId in self.__tagCache:
+			self.__tagCache.pop(tagId)
 
 	def __addTagsToRecords(self, tagId):
 		""" Assign the tag to our records
@@ -527,16 +535,15 @@ class TagModel(QtSql.QSqlTableModel):
 		newRecordIds = self.__recordIds - currentIds
 
 		row = self.__recordTagModel.rowCount()
-		self.__recordTagModel.insertRows(row, 1)
 
 		for recordId in newRecordIds:
 			# Only one row at a time can be inserted when using the OnFieldChange or OnRowChange update strategies.
 			self.__recordTagModel.insertRows(row, 1)
 			self.__recordTagModel.setData(self.__recordTagModel.index(row, enum.kRecordTagsColumn_RecordId), QtCore.QVariant(recordId))
 			self.__recordTagModel.setData(self.__recordTagModel.index(row, enum.kRecordTagsColumn_TagId), QtCore.QVariant(tagId))
-
 			self.__recordTagModel.submit()
 
+		self.__removeTagFromCache(tagId)
 
 	def addTag(self, tagName):
 		""" Add a new tag and assign to our current records
@@ -624,7 +631,7 @@ class CheckComboModel(QtSql.QSqlTableModel):
 		self.__userRoleColumn = None
 
 	def setUserRoleColumn(self, column):
-		""" Set the database table colum to use for UserRole data
+		""" Set the database table column to use for UserRole data
 		"""
 		self.__userRoleColumn = column
 

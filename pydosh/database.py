@@ -11,7 +11,6 @@ class DatabaseNotInitialisedException(Exception):
 	"""
 
 class _Database(QtCore.QObject):
-	connected = QtCore.pyqtSignal(bool)
 	commit = QtCore.pyqtSignal()
 	rollback = QtCore.pyqtSignal()
 
@@ -91,7 +90,7 @@ class _Database(QtCore.QObject):
 	def userId(self):
 		""" Return the cached value or get from database if not set yet
 		"""
-		if self.__userId is None and self.isConnected:
+		if self.__userId is None:# and self.isConnected:
 			self.__userId = self.__getCurrentUserId()
 
 		return self.__userId
@@ -110,7 +109,6 @@ class _Database(QtCore.QObject):
 			raised in the 'with' block will cause a rollback. Otherwise commit.
 		"""
 		try:
-			print 'Start transaction'
 			QtSql.QSqlDatabase.database().transaction()
 			yield
 		except:
@@ -123,13 +121,6 @@ class _Database(QtCore.QObject):
 			QtSql.QSqlDatabase.database().commit()
 			self.commit.emit()
 
-	@property
-	def isConnected(self):
-		""" A rather ugly way to see if we are connected to the database
-		"""
-		names = QtSql.QSqlDatabase.connectionNames()
-		return len(names) and QtSql.QSqlDatabase.database(names[0], False).isOpen()
-
 	def connect(self):
 		db = QtSql.QSqlDatabase.addDatabase(self.driver)
 		db.setDatabaseName(self.database)
@@ -139,12 +130,10 @@ class _Database(QtCore.QObject):
 		db.setPort(self.port)
 
 		if not db.open():
-			raise ConnectionException('Failed to connect to database: %r' % db.lastError().text())
+			raise ConnectionException('Failed to connect to database:\n%s' % db.lastError().text())
 
 		if not self.__isDatabaseInitialised():
 			raise DatabaseNotInitialisedException
-
-		self.connected.emit(self.isConnected)
 
 	def __getCurrentUserId(self):
 		""" Returns the current username's userid from the users table.
@@ -166,7 +155,7 @@ class _Database(QtCore.QObject):
 		userId, ok = query.value(0).toInt()
 
 		if not ok:
-			raise ConnectionException('Cannot get userid for %r' % self.username)
+			raise ConnectionException('Cannot get userid for %s' % self.username)
 
 		return userId
 
@@ -186,7 +175,7 @@ class _Database(QtCore.QObject):
 		userId, ok = query.value(0).toInt()
 
 		if not ok:
-			raise ConnectionException('Cannot add new user %r' % self.username)
+			raise ConnectionException('Cannot add new user %s' % self.username)
 
 		return userId
 
@@ -195,13 +184,13 @@ class _Database(QtCore.QObject):
 		cmdfile = QtCore.QFile(filename)
 
 		if not cmdfile.open(QtCore.QIODevice.ReadOnly | QtCore.QIODevice.Text):
-			raise ConnectionException('Cannot open command file %r' % filename)
+			raise ConnectionException('Cannot open command file %s' % filename)
 
 		stream = QtCore.QTextStream(cmdfile)
 
 		# commands in file can span multiple lines. Read everything in 
 		# a buffer then run each command, delimited by ';'
-		buffer = []
+		buff = []
 
 		while not stream.atEnd():
 			line = stream.readLine()
@@ -209,17 +198,17 @@ class _Database(QtCore.QObject):
 			if len(line) == 0 or line.startsWith('--'):
 				continue
 
-			buffer.append(str(line))
+			buff.append(str(line))
 
 		# combine all command and then split again on ';'
-		for command in ' '.join(buffer).split(';'):
+		for command in ' '.join(buff).split(';'):
 			self.__executeQuery(command.strip())
 
 
 	def __executeQuery(self, query):
 		sql = QtSql.QSqlQuery(query)
 		if sql.lastError().isValid():
-			raise ConnectionException('Failed to run command %r: %r' % (query, sql.lastError().text()))
+			raise ConnectionException('Failed to run command %s:\n%s' % (query, sql.lastError().text()))
 
 	def __isDatabaseInitialised(self):
 		query = QtSql.QSqlQuery()
@@ -241,7 +230,7 @@ class _Database(QtCore.QObject):
 		count, ok = query.value(0).toInt()
 
 		if not ok:
-			raise ConnectionException('Failed to run command %r' % query.lastQuery())
+			raise ConnectionException('Failed to run command %s' % query.lastQuery())
 
 		return count > 0
 
