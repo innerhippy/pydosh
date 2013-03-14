@@ -8,6 +8,107 @@ class ImportException(Exception):
 	""" General exception for record import
 	"""
 
+class TagBreakdownModel(QtCore.QAbstractTableModel):
+	
+	class Stats(list):
+		def find(self, tag):
+			for item in self:
+				if item[0] == tag:
+					return item
+		
+	def __init__(self, parent=None):
+		super(TagBreakdownModel, self).__init__(parent=parent)
+		self.__stats = []
+		from signaltracer import SignalTracer
+		self.tracer = SignalTracer()
+		self.tracer.monitor(self)
+
+	def rowCount(self, parent=QtCore.QModelIndex()):
+		return len(self.__stats)
+
+	def columnCount(self, parent=QtCore.QModelIndex()):
+		return 3
+	
+	def updateStats(self, stats):
+		for tag, values in stats.iteritems():
+			currentIndex = self.index(0, 0)
+			match = self.match(currentIndex, QtCore.Qt.DisplayRole, tag, 1, QtCore.Qt.MatchExactly)
+			if len(match) == 0:
+				# New item
+				row = self.rowCount()
+				self.insertRows(row, 1)
+				index = self.index(row, 0)
+				self.setData(index, (tag, values))
+			else:
+				# Update item
+				index = match[0]
+				if values == [
+					self.index(index.row(), 1).data().toPyObject(),
+					self.index(index.row(), 2).data().toPyObject()]:
+					continue
+				self.setData(index, (tag, values))
+
+		# Remove old rows
+		for row in reversed(xrange(self.rowCount())):
+			index = self.index(row, 0)
+			if index.data().toString() not in stats:
+				self.removeRows(index.row(), 1)
+
+	def removeRows(self, position, rows, parent=QtCore.QModelIndex()):
+		self.beginRemoveRows(QtCore.QModelIndex(), position, position+rows-1)
+		del self.__stats[position]
+		self.endRemoveRows()
+		return True
+
+	def insertRows(self, position, rows, parent=QtCore.QModelIndex()):
+		print 'begin insert rows'
+		self.beginInsertRows(QtCore.QModelIndex(), position, position + rows -1)
+		self.__stats.insert(position, None)
+		self.endInsertRows()
+		print 'end insert rows'
+		return True
+
+	def setData(self, index, value, role=QtCore.Qt.EditRole):
+		if role == QtCore.Qt.EditRole and index.column() == 0:
+			print 'begin setData'
+			self.__stats[index.row()] = value
+			#print 'emit dataChanged', index.row(), 0, index.row(), self.columnCount() -1
+			self.dataChanged.emit(self.index(index.row(), 0), self.index(index.row(), self.columnCount() -1))
+			print 'end setData'
+			return True
+
+		return False
+
+	def data(self, index, role=QtCore.Qt.DisplayRole):
+		
+		if role == QtCore.Qt.FontRole and index.column() == 0:
+			return QtGui.QFont(QtGui.QApplication.font().family(), italic=True)
+
+		elif role == QtCore.Qt.DisplayRole:
+			if self.__stats[index.row()] is None:
+				print '*** bad data called', index.column()
+				import pdb
+				pdb.set_trace()
+				return  QtCore.QVariant()
+			#print 'data called', index.column(), index.row()#, self.__stats
+			if index.column() == 0:
+				return self.__stats[index.row()][0]
+			elif index.column() == 1:
+				#print self.__stats[index.row()][1]
+				amount, _ = self.__stats[index.row()][1]
+				#print amount
+				if amount:
+					return amount
+			elif index.column() == 2:
+				#print self.__stats[index.row()][1]
+				import pdb
+				#pdb.set_trace()
+				_, amount = self.__stats[index.row()][1]
+				if amount:
+					return amount * -1
+		return QtCore.QVariant()
+
+
 class ImportRecord(object):
 	def __init__(self, *args):
 		super(ImportRecord, self).__init__()
@@ -224,6 +325,9 @@ class ImportModel(QtCore.QAbstractTableModel):
 		else:
 			return 'ready'
 
+
+
+
 class RecordModel(QtSql.QSqlTableModel):
 	def __init__(self, userId, parent=None):
 		super(RecordModel, self).__init__(parent=parent)
@@ -241,7 +345,6 @@ class RecordModel(QtSql.QSqlTableModel):
 		if index.column() == enum.kRecordColumn_Checked:
 			return flags | QtCore.Qt.ItemIsUserCheckable
 		return flags
-
 
 	def selectStatement(self):
 		if self.tableName().isEmpty():

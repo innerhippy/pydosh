@@ -2,7 +2,7 @@ from contextlib  import contextmanager
 from version import __VERSION__
 from PyQt4 import QtGui, QtCore, QtSql
 from utils import showWaitCursorDecorator, showWaitCursor
-from models import RecordModel, SortProxyModel, CheckComboModel
+from models import RecordModel, SortProxyModel, CheckComboModel, TagBreakdownModel
 from csvdecoder import Decoder, DecoderException
 from database import db
 from ui_pydosh import Ui_pydosh
@@ -91,7 +91,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			proxyModel.setSourceModel(recordsModel)
 			proxyModel.setFilterKeyColumn(-1)
 
-			self.tableView.setEditTriggers(QtGui.QAbstractItemView.DoubleClicked | QtGui.QAbstractItemView.SelectedClicked)
+#			self.tableView.setEditTriggers(QtGui.QAbstractItemView.DoubleClicked | QtGui.QAbstractItemView.SelectedClicked)
 			self.tableView.setModel(proxyModel)
 			self.tableView.verticalHeader().hide()
 			self.tableView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
@@ -103,9 +103,29 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.setColumnHidden(enum.kRecordColumn_RawData, True)
 			self.tableView.setColumnHidden(enum.kRecordColumn_InsertDate, True)
 			self.tableView.setSortingEnabled(True)
-			self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.DescendingOrder)
+
 			self.tableView.horizontalHeader().setStretchLastSection(True)
 			self.tableView.selectionModel().selectionChanged.connect(self.activateButtons)
+
+			self.tagView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+			self.tagView.verticalHeader().hide()
+			self.tagView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+			self.tagView.setStyleSheet('QTableView {background-color: transparent;}')
+			self.tagView.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
+			#self.tagView.horizontalHeader().setStretchLastSection(True)
+			self.tagView.setSortingEnabled(True)
+			self.tagView.sortByColumn(0, 0)
+			
+			self.tagView.horizontalHeader().hide()
+			model = TagBreakdownModel(self)
+			proxyModel = QtGui.QSortFilterProxyModel(self)
+			proxyModel.setSourceModel(model)
+			proxyModel.setDynamicSortFilter(True)
+			#proxyModel.setFilterKeyColumn(1)
+			proxyModel.sort(2, QtCore.Qt.AscendingOrder)
+			
+			self.tagView.setModel(proxyModel)
+			self.tagView.setShowGrid(False)
 
 			# Set sql data model for account types
 			self.accountCombo.clear()
@@ -567,7 +587,21 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		with self.keepSelection():
 			self.model.setFilter('\nAND '.join(queryFilter))
 		#print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
-
+		
+		self.calculateTagStats()
 		self.tableView.resizeColumnsToContents()
 		self.displayRecordCount()
+
+	def calculateTagStats(self):
+		tagStats = {}
+		for row in xrange(self.model.rowCount()):
+			tags = self.model.record(row).value(enum.kRecordColumn_Tags).toString()
+			for tag in tags.split(','):
+				if tag:
+					tagStats.setdefault(tag, [0.0, 0.0])
+					amount = self.model.record(row).value(enum.kRecordColumn_Amount).toPyObject()
+					idx = 0 if amount > 0.0 else 1
+					tagStats[tag][idx] += abs(amount)
+		self.tagView.model().sourceModel().updateStats(tagStats)
+		self.tagView.resizeColumnsToContents()
 
