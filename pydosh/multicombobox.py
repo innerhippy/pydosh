@@ -33,14 +33,9 @@ class MultiComboBox(QtGui.QComboBox):
 		model.checkStateChanged.connect(self.__updateCheckedItems)
 		self.__updateCheckedItems()
 
-		from signaltracer import SignalTracer
-		self.tracer = SignalTracer()
-#		self.tracer.monitor(self, model, self.lineEdit())
-
 	def dataChanged(self):
 		""" Indicates if the underlying data has been updated. 
 		"""
-		print 'calling select on model'
 		self.model().select()
 
 	def __checkAll(self, check=False):
@@ -114,7 +109,6 @@ class MultiComboBox(QtGui.QComboBox):
 		return False
 
 	def __toggleCheckState(self, index):
-
 		value = self.itemData(index, QtCore.Qt.CheckStateRole)
 
 		if value.isValid():

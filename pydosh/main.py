@@ -115,21 +115,21 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			#self.tagView.horizontalHeader().setStretchLastSection(True)
 			self.tagView.setSortingEnabled(True)
 			self.tagView.sortByColumn(0, 0)
-			
+
 			self.tagView.horizontalHeader().hide()
 			model = TagBreakdownModel(self)
 			proxyModel = QtGui.QSortFilterProxyModel(self)
 			proxyModel.setSourceModel(model)
 			proxyModel.setDynamicSortFilter(True)
-			#proxyModel.setFilterKeyColumn(1)
+			# Sort by 3rd column, money out
 			proxyModel.sort(2, QtCore.Qt.AscendingOrder)
-			
+
 			self.tagView.setModel(proxyModel)
 			self.tagView.setShowGrid(False)
 
 			# Set sql data model for account types
 			self.accountCombo.clear()
-	
+
 			accountModel = CheckComboModel()
 			accountModel.setTable('accounttypes')
 			accountModel.setFilter("""
@@ -147,7 +147,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			# Set tag model
 			tagModel = CheckComboModel()
 			tagModel.setTable('tags')
-	
+
 			# Only display tags that have been set on the current records
 			tagModel.setFilter("""
 				userid=%d
@@ -163,7 +163,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tagCombo.setModelColumn(enum.kTagsColumn_TagName)
 			self.tagCombo.setModel(tagModel)
 
-			self.reset()
+		self.reset()
 
 	def showAbout(self):
 
@@ -316,7 +316,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	def controlKeyPressed(self, key):
 		""" Control key has been pressed
-		
+
 			If we have a single row displayed, then toggle the status
 			If this results in the model having no records then
 			reset the QLineEdit that triggered the call.
@@ -451,7 +451,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		"""
 		self.selectDateRange()
 		self.setFilter()
-		
+
 	def addActions(self):
 		quitAction = QtGui.QAction(QtGui.QIcon(':/icons/exit.png'), '&Quit', self)
 		quitAction.setShortcut('Alt+q')
@@ -587,7 +587,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		with self.keepSelection():
 			self.model.setFilter('\nAND '.join(queryFilter))
 		#print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
-		
+
 		self.calculateTagStats()
 		self.tableView.resizeColumnsToContents()
 		self.displayRecordCount()

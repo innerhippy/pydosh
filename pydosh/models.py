@@ -9,28 +9,23 @@ class ImportException(Exception):
 	"""
 
 class TagBreakdownModel(QtCore.QAbstractTableModel):
-	
-	class Stats(list):
-		def find(self, tag):
-			for item in self:
-				if item[0] == tag:
-					return item
-		
+	""" Model to display tag breakdown
+	"""
 	def __init__(self, parent=None):
 		super(TagBreakdownModel, self).__init__(parent=parent)
 		self.__stats = []
-		from signaltracer import SignalTracer
-		self.tracer = SignalTracer()
-		self.tracer.monitor(self)
 
 	def rowCount(self, parent=QtCore.QModelIndex()):
 		return len(self.__stats)
 
 	def columnCount(self, parent=QtCore.QModelIndex()):
 		return 3
-	
+
 	def updateStats(self, stats):
-		for tag, values in stats.iteritems():
+		""" Stats come in as a dictionary: {tag : [money in, money out]}
+			This is stored on __stats as a list of lists [tag, in, out]
+		"""
+		for tag, (amountIn, amountOut) in stats.iteritems():
 			currentIndex = self.index(0, 0)
 			match = self.match(currentIndex, QtCore.Qt.DisplayRole, tag, 1, QtCore.Qt.MatchExactly)
 			if len(match) == 0:
@@ -38,15 +33,20 @@ class TagBreakdownModel(QtCore.QAbstractTableModel):
 				row = self.rowCount()
 				self.insertRows(row, 1)
 				index = self.index(row, 0)
-				self.setData(index, (tag, values))
+				self.setData(index, tag, QtCore.Qt.EditRole)
+				index = self.index(row, 1)
+				self.setData(index, amountIn, QtCore.Qt.EditRole)
+				index = self.index(row, 2)
+				self.setData(index, -1 * amountOut, QtCore.Qt.EditRole)
 			else:
 				# Update item
-				index = match[0]
-				if values == [
-					self.index(index.row(), 1).data().toPyObject(),
-					self.index(index.row(), 2).data().toPyObject()]:
-					continue
-				self.setData(index, (tag, values))
+				index = self.index(match[0].row(), 1)
+				if amountIn != index.data().toPyObject():
+					self.setData(index, amountIn, QtCore.Qt.EditRole)
+
+				index = self.index(match[0].row(), 2)
+				if amountOut != index.data().toPyObject():
+					self.setData(index, -1 * amountOut, QtCore.Qt.EditRole)
 
 		# Remove old rows
 		for row in reversed(xrange(self.rowCount())):
@@ -61,51 +61,27 @@ class TagBreakdownModel(QtCore.QAbstractTableModel):
 		return True
 
 	def insertRows(self, position, rows, parent=QtCore.QModelIndex()):
-		print 'begin insert rows'
 		self.beginInsertRows(QtCore.QModelIndex(), position, position + rows -1)
-		self.__stats.insert(position, None)
+		self.__stats.insert(position, [None, None, None])
 		self.endInsertRows()
-		print 'end insert rows'
 		return True
 
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
-		if role == QtCore.Qt.EditRole and index.column() == 0:
-			print 'begin setData'
-			self.__stats[index.row()] = value
-			#print 'emit dataChanged', index.row(), 0, index.row(), self.columnCount() -1
-			self.dataChanged.emit(self.index(index.row(), 0), self.index(index.row(), self.columnCount() -1))
-			print 'end setData'
+		if role == QtCore.Qt.EditRole:
+			self.__stats[index.row()][index.column()] = value
+			self.dataChanged.emit(index, index)
 			return True
 
 		return False
 
 	def data(self, index, role=QtCore.Qt.DisplayRole):
-		
+
 		if role == QtCore.Qt.FontRole and index.column() == 0:
 			return QtGui.QFont(QtGui.QApplication.font().family(), italic=True)
 
 		elif role == QtCore.Qt.DisplayRole:
-			if self.__stats[index.row()] is None:
-				print '*** bad data called', index.column()
-				import pdb
-				pdb.set_trace()
-				return  QtCore.QVariant()
-			#print 'data called', index.column(), index.row()#, self.__stats
-			if index.column() == 0:
-				return self.__stats[index.row()][0]
-			elif index.column() == 1:
-				#print self.__stats[index.row()][1]
-				amount, _ = self.__stats[index.row()][1]
-				#print amount
-				if amount:
-					return amount
-			elif index.column() == 2:
-				#print self.__stats[index.row()][1]
-				import pdb
-				#pdb.set_trace()
-				_, amount = self.__stats[index.row()][1]
-				if amount:
-					return amount * -1
+			return self.__stats[index.row()][index.column()]
+
 		return QtCore.QVariant()
 
 
