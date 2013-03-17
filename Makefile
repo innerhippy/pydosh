@@ -30,9 +30,5 @@ deb: clean all
 
 dmg: clean all
 	python setup.py -v py2app
-#	cp qt.conf dist/pydosh.app/Contents/Resources/
-#	mkdir -p dist/pydosh.app/Contents/qt_plugins/sqldrivers/
-#	cp /usr/local//Cellar/qt/4.8.4/plugins/sqldrivers/libqsqlpsql.dylib dist/pydosh.app/Contents/qt_plugins/sqldrivers/
-#	cp /usr/local//Cellar/qt/4.8.4/plugins/sqldrivers/libqsqlpsql.dylib dist/pydosh.app/Contents/qt_plugins
-#	hdiutil create -srcfolder dist/pydosh.app pydosh.dmg
+	hdiutil create -srcfolder dist/pydosh.app pydosh.dmg
 

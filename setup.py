@@ -16,7 +16,7 @@ if sys.platform == 'darwin':
 
 	extra_options = dict(
 		setup_requires=['py2app'],
-		app=['pydosh.py'],
+		app=['pydosh/pydosh.py'],
 		data_files=['pydosh'],
 		options = dict(
 			py2app = dict(

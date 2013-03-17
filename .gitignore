@@ -23,3 +23,4 @@ pydosh/pydosh_rc.py
 /build/
 
 /*.dmg
+.DS_Store
