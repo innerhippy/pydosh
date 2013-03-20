@@ -301,9 +301,6 @@ class ImportModel(QtCore.QAbstractTableModel):
 		else:
 			return 'ready'
 
-
-
-
 class RecordModel(QtSql.QSqlTableModel):
 	def __init__(self, userId, parent=None):
 		super(RecordModel, self).__init__(parent=parent)
@@ -448,8 +445,8 @@ class RecordModel(QtSql.QSqlTableModel):
 					return QtCore.QString.number(abs(val), 'f', 2)
 
 			elif item.column() == enum.kRecordColumn_Description:
-				# Truncate the description field to 30 chars, and replace multiple spaces with single
-				return super(RecordModel, self).data(item).toString().replace(QtCore.QRegExp('[ ]+'), ' ').left(30)
+				# Replace multiple spaces with single
+				return super(RecordModel, self).data(item).toString().replace(QtCore.QRegExp('[ ]+'), ' ')
 
 			elif item.column() == enum.kRecordColumn_Date:
 				return super(RecordModel, self).data(item).toDate()

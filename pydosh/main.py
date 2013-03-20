@@ -91,7 +91,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			proxyModel.setSourceModel(recordsModel)
 			proxyModel.setFilterKeyColumn(-1)
 
-#			self.tableView.setEditTriggers(QtGui.QAbstractItemView.DoubleClicked | QtGui.QAbstractItemView.SelectedClicked)
 			self.tableView.setModel(proxyModel)
 			self.tableView.verticalHeader().hide()
 			self.tableView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
@@ -104,19 +103,19 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.setColumnHidden(enum.kRecordColumn_InsertDate, True)
 			self.tableView.setSortingEnabled(True)
 
-			self.tableView.horizontalHeader().setStretchLastSection(True)
+			self.tableView.horizontalHeader().setResizeMode(6, QtGui.QHeaderView.Stretch)
 			self.tableView.selectionModel().selectionChanged.connect(self.activateButtons)
 
 			self.tagView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
 			self.tagView.verticalHeader().hide()
+			self.tagView.horizontalHeader().hide()
 			self.tagView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 			self.tagView.setStyleSheet('QTableView {background-color: transparent;}')
 			self.tagView.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
-			#self.tagView.horizontalHeader().setStretchLastSection(True)
 			self.tagView.setSortingEnabled(True)
 			self.tagView.sortByColumn(0, 0)
 
-			self.tagView.horizontalHeader().hide()
+			
 			model = TagBreakdownModel(self)
 			proxyModel = QtGui.QSortFilterProxyModel(self)
 			proxyModel.setSourceModel(model)
@@ -588,8 +587,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.model.setFilter('\nAND '.join(queryFilter))
 		#print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
 
-		self.calculateTagStats()
 		self.tableView.resizeColumnsToContents()
+		self.tableView.resizeRowsToContents()
+		self.calculateTagStats()
 		self.displayRecordCount()
 
 	def calculateTagStats(self):
@@ -604,4 +604,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 					tagStats[tag][idx] += abs(amount)
 		self.tagView.model().sourceModel().updateStats(tagStats)
 		self.tagView.resizeColumnsToContents()
+		self.tagView.resizeRowsToContents()
+		self.tagView.updateGeometry()
 
