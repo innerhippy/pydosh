@@ -7,13 +7,6 @@ def readme():
         return f.read()
 
 if sys.platform == 'darwin':
-#	from PyQt4 import QtCore
-#	import os
-#	driver='libqsqlpsql.dylib'
-#	frameworkPath = os.path.join(str(QtCore.QLibraryInfo.location(QtCore.QLibraryInfo.PluginsPath)), 'sqldrivers', driver)
-#	print 'detected framework path %r' % frameworkPath
-	
-
 	extra_options = dict(
 		setup_requires=['py2app'],
 		app=['pydosh/pydosh.py'],
@@ -21,12 +14,24 @@ if sys.platform == 'darwin':
 		options = dict(
 			py2app = dict(
 				argv_emulation=True, 
-				includes=['sip', 'PyQt4'],
-#				excludes=['PyQt4.QtDesigner', 'PyQt4.QtDeclarative', 'PyQt4.QtHelp', 'PyQt4.QtMultimedia'],
+#				includes=['sip', 'PyQt4.QtCore'], # These are imported automatically
+				excludes=[
+					'PyQt4.QtDesigner', 
+					'PyQt4.QtDeclarative', 
+					'PyQt4.QtHelp', 
+					'PyQt4.QtMultimedia',
+					'PyQt4.QtSvg',
+					'PyQt4.QtXml',
+					'PyQt4.QtOpenGL',
+					'PyQt4.QtTest',
+					'PyQt4.QtWebKit',
+					'PyQt4.QtScriptTools',
+					'PyQt4.QtXmlPatterns',
+					'PyQt4.QtNetwork',
+					'PyQt4.QtScript',
+				],
 				iconfile='icons/pydosh.icns',
 				qt_plugins=['sqldrivers'],
-#				frameworks=[frameworkPath],
-#				packages=['pydosh'],
 			)
 		)
 	)
