@@ -1,5 +1,6 @@
 UI_TARGETS = $(patsubst %.ui,pydosh/ui_%.py,$(notdir $(wildcard ui/*.ui)))
 ALL_TARGETS = $(UI_TARGETS) pydosh/pydosh_rc.py
+VERSION=$(shell python -c 'from pydosh import version; print version.__VERSION__')
 
 all: $(ALL_TARGETS) 
 
@@ -30,5 +31,5 @@ deb: clean all
 
 dmg: clean all
 	python setup.py -v py2app
-	hdiutil create -srcfolder dist/pydosh.app pydosh.dmg
+	hdiutil create -srcfolder dist/pydosh.app pydosh-$(VERSION).dmg
 

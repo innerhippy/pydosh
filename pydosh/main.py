@@ -103,7 +103,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.setColumnHidden(enum.kRecordColumn_InsertDate, True)
 			self.tableView.setSortingEnabled(True)
 
-			self.tableView.horizontalHeader().setResizeMode(6, QtGui.QHeaderView.Stretch)
+			self.tableView.horizontalHeader().setResizeMode(enum.kRecordColumn_Description, QtGui.QHeaderView.Stretch)
 			self.tableView.selectionModel().selectionChanged.connect(self.activateButtons)
 
 			self.tagView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
