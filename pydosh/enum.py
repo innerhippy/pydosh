@@ -15,7 +15,6 @@ kDate_PreviousYear = 1
 kDate_PreviousMonth = 2
 kdate_LastImport =3
 
-
 kCheckedStatus_All =0
 kCheckedStatus_Checked = 1
 kCheckedStatus_UnChecked = 2
