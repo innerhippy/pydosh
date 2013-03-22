@@ -32,9 +32,10 @@ kAccountTypeColumn_DebitField = 5
 kAccountTypeColumn_CurrencySign = 6
 kAccountTypeColumn_DateFormat = 7
 
-kTagsColumn_TagId = 0
-kTagsColumn_TagName = 1
-kTagsColumn_UserId = 2
+kTagsColumn_TagName = 0
+kTagsColumn_RecordIds = 1
+kTagsColumn_amount_in = 2
+kTagsColumn_amount_out = 3
 
 kRecordTagsColumn_RecordTagId = 0
 kRecordTagsColumn_RecordId = 1
