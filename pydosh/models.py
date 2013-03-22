@@ -500,12 +500,27 @@ class TagModel(QtGui.QSortFilterProxyModel):
 	def setFilter(self, recordIds):
 		self.sourceModel().setFilter(','.join(str(rec) for rec in recordIds))
 
+	def setData(self, index, value, role=QtCore.Qt.EditRole):
+		""" Handle checkstate role changes 
+		"""
+		#index = self.mapFromSource(index)
+		if role == QtCore.Qt.CheckStateRole:
+			if value.toPyObject() == QtCore.Qt.Unchecked:
+				print 'uncheck selected for ', self.index(index.row(), enum.kTagsColumn_TagName).data().toPyObject()
+			else:
+				print 'check selected for ', self.index(index.row(), enum.kTagsColumn_TagName).data().toPyObject()
+
+#			self.dataChanged.emit(index, index)
+			return True
+
+		return super(TagModel, self).setData(index, value, role)
+
 	def data(self, item, role=QtCore.Qt.DisplayRole):
+		import pdb
+		#pdb.set_trace()
 		if role == QtCore.Qt.CheckStateRole and item.column() == 0:
-			tagRecordsIds = set(self.sourceModel().index(item.column(), enum.kTagsColumn_RecordIds).data().toPyObject())
-			print 'recordIds', tagRecordsIds
-			print 'selected', self.__selected
-			print 'ops', self.__selected.issubset(tagRecordsIds),  self.__selected.intersection(tagRecordsIds)
+			tagRecordsIds = set(self.sourceModel().index(item.row(), enum.kTagsColumn_RecordIds).data().toPyObject())
+
 			if self.__selected and self.__selected.issubset(tagRecordsIds):
 				return  QtCore.Qt.Checked
 			elif self.__selected and self.__selected.intersection(tagRecordsIds):
@@ -514,6 +529,8 @@ class TagModel(QtGui.QSortFilterProxyModel):
 				return  QtCore.Qt.Unchecked
 
 		#print 'TagModel::data'
+#		if role == QtCore.Qt.DisplayRole:
+#			print 'values:', item.column(), self.sourceModel().data(item).toPyObject()
 
 		return super(TagModel, self).data(item, role)
 
@@ -528,7 +545,8 @@ class TagModel(QtGui.QSortFilterProxyModel):
 #		pdb.set_trace()
 		self.__selected = set(recordIds)
 #		self.dataChanged.emit(self.createIndex(0, 0), self.createIndex(0, 0))
-		self.dataChanged.emit(self.createIndex(0, 0), self.createIndex(self.rowCount()-1, self.columnCount()-1))
+		#self.dataChanged.emit(self.createIndex(0, 0), self.createIndex(self.rowCount()-1, self.columnCount()-1))
+		self.reset()
 
 
 class TagDatabaseModel(QtSql.QSqlTableModel):
@@ -548,7 +566,7 @@ class TagDatabaseModel(QtSql.QSqlTableModel):
 		queryFilter = 'AND r.recordid IN (%s)' %  queryFilter if queryFilter else ''
 
 		query = """
-			   SELECT t.tagname,
+			   SELECT t.tagname, t.tagid,
 			          ARRAY_TO_STRING(ARRAY_AGG(r.recordid), ',') AS recordids,
 			          SUM(CASE WHEN r.amount > 0 THEN r.amount ELSE 0 END) AS amount_in,
 			          ABS(SUM(CASE WHEN r.amount < 0 THEN r.amount ELSE 0 END)) AS amount_out

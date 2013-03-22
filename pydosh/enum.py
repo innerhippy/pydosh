@@ -33,9 +33,10 @@ kAccountTypeColumn_CurrencySign = 6
 kAccountTypeColumn_DateFormat = 7
 
 kTagsColumn_TagName = 0
-kTagsColumn_RecordIds = 1
-kTagsColumn_amount_in = 2
-kTagsColumn_amount_out = 3
+kTagsColumn_TagId = 1
+kTagsColumn_RecordIds = 2
+kTagsColumn_amount_in = 3
+kTagsColumn_amount_out = 4
 
 kRecordTagsColumn_RecordTagId = 0
 kRecordTagsColumn_RecordId = 1

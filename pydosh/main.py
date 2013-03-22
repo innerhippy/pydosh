@@ -107,6 +107,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.selectionModel().selectionChanged.connect(self.activateButtons)
 
 			self.tagView.setModel(TagModel())
+			self.tagView.setColumnHidden(enum.kTagsColumn_TagId, True)
 			self.tagView.setColumnHidden(enum.kTagsColumn_RecordIds, True)
 			self.tagView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 			self.tagView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
