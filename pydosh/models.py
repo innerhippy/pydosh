@@ -500,6 +500,10 @@ class TagModel(QtGui.QSortFilterProxyModel):
 	def setFilter(self, recordIds):
 		self.sourceModel().setFilter(','.join(str(rec) for rec in recordIds))
 
+	def filterAcceptsColumn(self, column, parent):
+		print column, parent.column()
+		return super(TagModel, self).filterAcceptsColumn(column, parent)
+
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
 		""" Handle checkstate role changes 
 		"""
