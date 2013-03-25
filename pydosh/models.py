@@ -488,79 +488,94 @@ class RecordModel(QtSql.QSqlTableModel):
 
 		return QtCore.QVariant()
 
-class TagModel(QtGui.QSortFilterProxyModel):
+class TagModel(QtSql.QSqlTableModel):
+	tagsChanged = QtCore.pyqtSignal()
+
 	def __init__(self, parent=None):
 		super(TagModel, self).__init__(parent=parent)
 		self.__selected = set()
-
-		model = TagDatabaseModel()
-		self.setSourceModel(model)
-		self.insertColumn(0, QtCore.QModelIndex())
-
-	def setFilter(self, recordIds):
-		self.sourceModel().setFilter(','.join(str(rec) for rec in recordIds))
-
-	def filterAcceptsColumn(self, column, parent):
-		print column, parent.column()
-		return super(TagModel, self).filterAcceptsColumn(column, parent)
-
-	def setData(self, index, value, role=QtCore.Qt.EditRole):
-		""" Handle checkstate role changes 
-		"""
-		#index = self.mapFromSource(index)
-		if role == QtCore.Qt.CheckStateRole:
-			if value.toPyObject() == QtCore.Qt.Unchecked:
-				print 'uncheck selected for ', self.index(index.row(), enum.kTagsColumn_TagName).data().toPyObject()
-			else:
-				print 'check selected for ', self.index(index.row(), enum.kTagsColumn_TagName).data().toPyObject()
-
-#			self.dataChanged.emit(index, index)
-			return True
-
-		return super(TagModel, self).setData(index, value, role)
-
-	def data(self, item, role=QtCore.Qt.DisplayRole):
-		import pdb
-		#pdb.set_trace()
-		if role == QtCore.Qt.CheckStateRole and item.column() == 0:
-			tagRecordsIds = set(self.sourceModel().index(item.row(), enum.kTagsColumn_RecordIds).data().toPyObject())
-
-			if self.__selected and self.__selected.issubset(tagRecordsIds):
-				return  QtCore.Qt.Checked
-			elif self.__selected and self.__selected.intersection(tagRecordsIds):
-				return  QtCore.Qt.PartiallyChecked
-			else:
-				return  QtCore.Qt.Unchecked
-
-		#print 'TagModel::data'
-#		if role == QtCore.Qt.DisplayRole:
-#			print 'values:', item.column(), self.sourceModel().data(item).toPyObject()
-
-		return super(TagModel, self).data(item, role)
-
-	def flags(self, index):
-		flags = super(TagModel, self).flags(index)
-		if index.column() == 0:
-			flags |= QtCore.Qt.ItemIsUserCheckable
-		return flags
-
-	def setSelected(self, recordIds):
-		import pdb
-#		pdb.set_trace()
-		self.__selected = set(recordIds)
-#		self.dataChanged.emit(self.createIndex(0, 0), self.createIndex(0, 0))
-		#self.dataChanged.emit(self.createIndex(0, 0), self.createIndex(self.rowCount()-1, self.columnCount()-1))
-		self.reset()
-
-
-class TagDatabaseModel(QtSql.QSqlTableModel):
-	def __init__(self, parent=None):
-		super(TagDatabaseModel, self).__init__(parent=parent)
 
 		self.setTable('tags')
 		self.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
 		self.select()
 
+	def setFilter(self, recordIds):
+		super(TagModel, self).setFilter(','.join(str(rec) for rec in recordIds))
+
+	def setData(self, index, value, role=QtCore.Qt.EditRole):
+		""" Handle checkstate role changes 
+		"""
+		if role == QtCore.Qt.CheckStateRole and index.column() == enum.kTagsColumn_TagName:
+			tagId = self.index(index.row(), enum.kTagsColumn_TagId).data().toPyObject()
+			recordTagIds = set(self.index(index.row(), enum.kTagsColumn_RecordIds).data().toPyObject())
+
+			if value.toPyObject() == QtCore.Qt.Unchecked:
+				return self.__removeRecordTags(tagId, self.__selected & recordTagIds)
+			else:
+				return self.__addRecordTags(tagId, self.__selected - recordTagIds) 
+
+		return False
+
+	def __addRecordTags(self, tagId, recordIds):
+
+		if not recordIds:
+			return False
+
+		query = QtSql.QSqlQuery()
+		query.prepare("""
+			INSERT INTO recordtags (recordid, tagid)
+			     VALUES (?, ?) """)
+		query.addBindValue(list(recordIds))
+		query.addBindValue([tagId] * len(recordIds))
+
+		if not query.execBatch():
+			raise Exception(query.lastError().text())
+
+		self.tagsChanged.emit()
+		return self.select()
+
+	def __removeRecordTags(self, tagId, recordIds):
+
+		if not recordIds:
+			return False
+
+		query = QtSql.QSqlQuery("""
+			DELETE FROM recordtags
+			      WHERE recordid in (%s)
+			        AND tagid=%s
+			""" % (','.join([str(i) for i in recordIds]), tagId))
+
+		if query.lastError().isValid():
+			raise Exception(query.lastError().text())
+
+		self.tagsChanged.emit()
+		return self.select()
+
+	def data(self, item, role=QtCore.Qt.DisplayRole):
+
+		if role == QtCore.Qt.DisplayRole and item.column() == enum.kTagsColumn_RecordIds:
+			return [int(i) for i in super(TagModel, self).data(item).toString().split(',') if i]
+
+		if role == QtCore.Qt.CheckStateRole and item.column() == enum.kTagsColumn_TagName:
+			tagRecordIds = self.index(item.row(), enum.kTagsColumn_RecordIds).data().toPyObject()
+			if self.__selected and self.__selected.issubset(tagRecordIds):
+				return QtCore.Qt.Checked
+			elif self.__selected and self.__selected.intersection(tagRecordIds):
+				return QtCore.Qt.PartiallyChecked
+			else:
+				return QtCore.Qt.Unchecked
+
+		return super(TagModel, self).data(item, role)
+
+	def flags(self, index):
+		flags = super(TagModel, self).flags(index)
+		if index.column() == enum.kTagsColumn_TagName:
+			flags |= QtCore.Qt.ItemIsUserCheckable
+		return flags
+
+	def setSelected(self, recordIds):
+		self.__selected = set(recordIds)
+		self.reset()
 
 	def selectStatement(self):
 		if self.tableName().isEmpty():
@@ -570,7 +585,7 @@ class TagDatabaseModel(QtSql.QSqlTableModel):
 		queryFilter = 'AND r.recordid IN (%s)' %  queryFilter if queryFilter else ''
 
 		query = """
-			   SELECT t.tagname, t.tagid,
+			   SELECT t.tagid, t.tagname,
 			          ARRAY_TO_STRING(ARRAY_AGG(r.recordid), ',') AS recordids,
 			          SUM(CASE WHEN r.amount > 0 THEN r.amount ELSE 0 END) AS amount_in,
 			          ABS(SUM(CASE WHEN r.amount < 0 THEN r.amount ELSE 0 END)) AS amount_out
@@ -581,156 +596,8 @@ class TagDatabaseModel(QtSql.QSqlTableModel):
 			    WHERE t.userid=%d
 			 GROUP BY t.tagid
 		""" % (queryFilter, db.userId)
-#			      AND r.recordid IN (22,21,9048)
-		#print 'QUERY=',query
+
 		return query
-
-	def data(self, index, role=QtCore.Qt.DisplayRole):
-		if not index.isValid():
-			return QtCore.QVariant()
-
-		if role == QtCore.Qt.DisplayRole and index.column() == enum.kTagsColumn_RecordIds:
-			value = super(TagDatabaseModel, self).data(index).toString()
-
-			if value:
-				return [int(i) for i in value.split(',')]
-			else:
-				return []
-		return super(TagDatabaseModel, self).data(index, role)
-
-class TagModel2(QtSql.QSqlTableModel):
-	def __init__(self, recordIds, parent=None):
-		super(TagModel, self).__init__(parent=parent)
-
-		self.__recordIds = set(recordIds)
-		self.setTable('tags')
-		self.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
-		self.setFilter('userid=%d' % db.userId)
-		self.select()
-
-		model = QtSql.QSqlTableModel(self)
-		model.setTable('recordtags')
-		model.select()
-		self.__tagCache = {}
-
-		self.__recordTagModel = model
-
-	def __contains__(self, tagName):
-		""" Allows convenient:
-				if "someTag" in model:
-		"""
-		for row in xrange(self.rowCount()):
-			if tagName == self.index(row, enum.kTagsColumn_TagName).data().toString():
-				return True
-		return False
-
-	def flags(self, index):
-		return super(TagModel, self).flags(index) | QtCore.Qt.ItemIsUserCheckable
-
-	def data(self, item, role=QtCore.Qt.DisplayRole):
-		""" Tristate checkState:
-				checked - all records have the tag
-				partial - some records have the tag
-				unchecked - no records have the tag
-		"""
-		if not item.isValid():
-			return QtCore.QVariant()
-
-		if role == QtCore.Qt.CheckStateRole and item.column() == enum.kTagsColumn_TagName:
-			# Extract tagId for this tag
-			tagId = super(TagModel, self).data(self.index(item.row(), enum.kTagsColumn_TagId)).toPyObject()
-			recordIdsForTag = set(self.__getRecordIdsForTag(tagId))
-
-			if self.__recordIds and self.__recordIds.issubset(recordIdsForTag):
-				return QtCore.Qt.Checked
-			elif self.__recordIds and self.__recordIds.isintersection(recordIdsForTag):
-				return QtCore.Qt.PartiallyChecked
-			else:
-				return QtCore.Qt.Unchecked
-
-		return super(TagModel, self).data(item, role)
-
-	def __getRecordIdsForTag(self, tagId):
-		""" Returns all recordIds assigned to a given tag (id)
-		"""
-		if tagId not in self.__tagCache:
-			recordIds = []
-			for row in xrange(self.__recordTagModel.rowCount()):
-				recordId = self.__recordTagModel.index(row, enum.kRecordTagsColumn_RecordId).data().toPyObject()
-				recordTagId = self.__recordTagModel.index(row, enum.kRecordTagsColumn_TagId).data().toPyObject()
-
-				if tagId == recordTagId:
-					recordIds.append(recordId)
-			self.__tagCache[tagId] = recordIds
-
-		return self.__tagCache[tagId]
-
-	def setData(self, index, value, role=QtCore.Qt.EditRole):
-		""" Handle checkstate role changes 
-		"""
-		if role == QtCore.Qt.CheckStateRole:
-
-			tagId = self.index(index.row(), enum.kTagsColumn_TagId).data().toPyObject()
-
-			if value.toPyObject() == QtCore.Qt.Unchecked:
-				self.__removeTagsFromRecords(tagId)
-			else:
-				self.__addTagsToRecords(tagId)
-
-			self.dataChanged.emit(index, index)
-			return True
-
-		return super(TagModel, self).setData(index, value, role)
-
-	def __removeTagsFromRecords(self, tagId):
-		""" Delete a tag from our records
-		"""
-		for row in reversed(xrange(self.__recordTagModel.rowCount())):
-			recordId = self.__recordTagModel.index(row, enum.kRecordTagsColumn_RecordId).data().toPyObject()
-			if recordId not in self.__recordIds:
-				continue
-
-			recordTagId = self.__recordTagModel.index(row, enum.kRecordTagsColumn_TagId).data().toPyObject()
-			if recordTagId != tagId:
-				continue
-
-			self.__recordTagModel.removeRows(row, 1)
-			self.__recordTagModel.submit()
-
-		self.__removeTagFromCache(tagId)
-
-	def __removeTagFromCache(self, tagId):
-		if tagId in self.__tagCache:
-			self.__tagCache.pop(tagId)
-
-	def __addTagsToRecords(self, tagId):
-		""" Assign the tag to our records
-		"""
-		currentIds = set(self.__getRecordIdsForTag(tagId))
-		newRecordIds = self.__recordIds - currentIds
-
-		row = self.__recordTagModel.rowCount()
-
-		for recordId in newRecordIds:
-			# Only one row at a time can be inserted when using the OnFieldChange or OnRowChange update strategies.
-			self.__recordTagModel.insertRows(row, 1)
-			self.__recordTagModel.setData(self.__recordTagModel.index(row, enum.kRecordTagsColumn_RecordId), QtCore.QVariant(recordId))
-			self.__recordTagModel.setData(self.__recordTagModel.index(row, enum.kRecordTagsColumn_TagId), QtCore.QVariant(tagId))
-			self.__recordTagModel.submit()
-
-		self.__removeTagFromCache(tagId)
-
-	def addTag(self, tagName):
-		""" Add a new tag and assign to our current records
-		"""
-		rowCount = self.rowCount()
-		self.insertRows(rowCount, 1)
-		self.setData(self.index(rowCount, enum.kTagsColumn_TagName), QtCore.QVariant(tagName))
-		self.setData(self.index(rowCount, enum.kTagsColumn_UserId), QtCore.QVariant(db.userId))
-		self.submit()
-
-		tagId = self.data(self.index(rowCount, enum.kTagsColumn_TagId)).toPyObject()
-		self.__addTagsToRecords(tagId)
 
 
 class SortProxyModel(QtGui.QSortFilterProxyModel):

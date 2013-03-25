@@ -6,7 +6,7 @@ from models import RecordModel, SortProxyModel, CheckComboModel, TagBreakdownMod
 from csvdecoder import Decoder, DecoderException
 from database import db
 from ui_pydosh import Ui_pydosh
-from dialogs import SettingsDialog, TagDialog, ImportDialog
+from dialogs import SettingsDialog, ImportDialog
 import enum
 import pydosh_rc
 
@@ -38,7 +38,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.accountCombo.setDefaultText('all')
 		self.accountCombo.selectionChanged.connect(self.setFilter)
 		self.tagCombo.selectionChanged.connect(self.setFilter)
-		self.tagEditButton.pressed.connect(self.editTagButtonPressed)
 		self.checkedCombo.currentIndexChanged.connect(self.setFilter)
 		self.inoutCombo.currentIndexChanged.connect(self.setFilter)
 		self.descEdit.textChanged.connect(self.setFilter)
@@ -106,7 +105,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.horizontalHeader().setResizeMode(enum.kRecordColumn_Description, QtGui.QHeaderView.Stretch)
 			self.tableView.selectionModel().selectionChanged.connect(self.activateButtons)
 
-			self.tagView.setModel(TagModel())
+			model = TagModel()
+			model.tagsChanged.connect(self.tagsChanged)
+			self.tagView.setModel(model)
 			self.tagView.setColumnHidden(enum.kTagsColumn_TagId, True)
 			self.tagView.setColumnHidden(enum.kTagsColumn_RecordIds, True)
 			self.tagView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
@@ -114,7 +115,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 #			self.tagView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
 			self.tagView.verticalHeader().hide()
-#			self.tagView.horizontalHeader().hide()
+			self.tagView.horizontalHeader().hide()
 			self.tagView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 			self.tableView.selectionModel().selectionChanged.connect(self.recordsSelected)
 #			self.tagView.setStyleSheet('QTableView {background-color: transparent;}')
@@ -122,7 +123,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 #			self.tagView.setSortingEnabled(True)
 #			self.tagView.sortByColumn(0, 0)
 
-			
+			from signaltracer import SignalTracer
+			tracer=SignalTracer()
+			tracer.monitor(self.tableView.model())
 #			model = TagBreakdownModel(self)
 #			proxyModel = QtGui.QSortFilterProxyModel(self)
 #			proxyModel.setSourceModel(model)
@@ -218,29 +221,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			recordIds.append(index.data().toPyObject())
 			
 		self.tagView.model().setSelected(recordIds)
-
-	def editTagButtonPressed(self):
-		""" Tag edit button pressed - this can add/delete tags or assign tags to records
-		"""
-		selectionModel = self.tableView.selectionModel()
-
-		if selectionModel is None:
-			return
-
-		proxyModel = self.tableView.model()
-		recordIds = []
-
-		for proxyIndex in selectionModel.selectedRows():
-			index = self.model.index(proxyModel.mapToSource(proxyIndex).row(), enum.kRecordColumn_RecordId) 
-			recordIds.append(index.data().toPyObject())
-
-		dialog = TagDialog(recordIds, self)
-
-		# Tell the tag combo the data has been changed
-		dialog.dataChanged.connect(self.tagCombo.dataChanged)
-		dialog.model.dataChanged.connect(self.tagCombo.dataChanged)
-
-		dialog.exec_()
 
 	def importDialog(self):
 		combo = QtGui.QComboBox(self)
@@ -606,10 +586,17 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		
 		self.updateTags()
 
+		print 'updating tagView' 
+		self.tagView.resizeColumnsToContents()
+#		self.tagView.resizeRowsToContents()
 		self.tableView.resizeColumnsToContents()
-		self.tableView.resizeRowsToContents()
-		#self.calculateTagStats()
+#		self.tableView.resizeRowsToContents()
 		self.displayRecordCount()
+
+	def tagsChanged(self):
+		with self.keepSelection():
+			self.model.select()
+		self.tableView.setFocus(QtCore.Qt.OtherFocusReason)
 
 	def updateTags(self):
 		""" Tell the tag model to limit tag amounts to current displayed records
@@ -617,21 +604,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		recordIds = []
 		for i in xrange(self.model.rowCount()):
 			recordIds.append(self.model.index(i, enum.kRecordColumn_RecordId).data().toPyObject())
-		
+
 		self.tagView.model().setFilter(recordIds)
 
-	def calculateTagStats(self):
-		tagStats = {}
-		for row in xrange(self.model.rowCount()):
-			tags = self.model.record(row).value(enum.kRecordColumn_Tags).toString()
-			for tag in tags.split(','):
-				if tag:
-					tagStats.setdefault(tag, [0.0, 0.0])
-					amount = self.model.record(row).value(enum.kRecordColumn_Amount).toPyObject()
-					idx = 0 if amount > 0.0 else 1
-					tagStats[tag][idx] += abs(amount)
-		self.tagView.model().sourceModel().updateStats(tagStats)
-		self.tagView.resizeColumnsToContents()
-		self.tagView.resizeRowsToContents()
-		self.tagView.updateGeometry()
 

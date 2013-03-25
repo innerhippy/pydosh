@@ -31,12 +31,12 @@ kAccountTypeColumn_CreditField = 4
 kAccountTypeColumn_DebitField = 5
 kAccountTypeColumn_CurrencySign = 6
 kAccountTypeColumn_DateFormat = 7
-
-kTagsColumn_TagName = 0
-kTagsColumn_TagId = 1
+	
+kTagsColumn_TagId = 0
+kTagsColumn_TagName = 1
 kTagsColumn_RecordIds = 2
-kTagsColumn_amount_in = 3
-kTagsColumn_amount_out = 4
+kTagsColumn_Amount_in = 3
+kTagsColumn_Amount_out = 4
 
 kRecordTagsColumn_RecordTagId = 0
 kRecordTagsColumn_RecordId = 1
