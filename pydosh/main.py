@@ -87,7 +87,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 			proxyModel = SortProxyModel(self)
 			proxyModel.setSourceModel(model)
-			proxyModel.setFilterKeyColumn(-1)
+			proxyModel.sort(enum.kRecordColumn_Date, QtCore.Qt.AscendingOrder)
+#			proxyModel.setFilterKeyColumn(-1)
 
 			self.tableView.setModel(proxyModel)
 			self.tableView.verticalHeader().hide()
@@ -104,38 +105,24 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			#self.tableView.horizontalHeader().setResizeMode(enum.kRecordColumn_Description, QtGui.QHeaderView.Stretch)
 			self.tableView.horizontalHeader().setResizeMode(QtGui.QHeaderView.ResizeToContents)
 			self.tableView.horizontalHeader().setStretchLastSection(True)
-			self.tableView.selectionModel().selectionChanged.connect(self.activateRecordButtons)
+			self.tableView.selectionModel().selectionChanged.connect(self.recordSelectionChanged)
 
 			model = TagModel()
 			model.tagsChanged.connect(self.tagsChanged)
-			self.tagView.setModel(model)
+			proxyModel = QtGui.QSortFilterProxyModel(self)
+			proxyModel.setSourceModel(model)
+			proxyModel.sort(enum.kTagsColumn_Amount_out, QtCore.Qt.AscendingOrder)
+			
+			self.tagView.setModel(proxyModel)
 			self.tagView.setColumnHidden(enum.kTagsColumn_TagId, True)
 			self.tagView.setColumnHidden(enum.kTagsColumn_RecordIds, True)
+			self.tagView.setSortingEnabled(True)
+			self.tagView.sortByColumn(enum.kTagsColumn_Amount_out, QtCore.Qt.AscendingOrder)
 			self.tagView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 			self.tagView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
-
-#			self.tagView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
 			self.tagView.verticalHeader().hide()
-			self.tagView.horizontalHeader().hide()
 			self.tagView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-			self.tableView.selectionModel().selectionChanged.connect(self.recordsSelected)
 			self.tagView.setStyleSheet('QTableView {background-color: transparent;}')
-			self.tagView.selectionModel().selectionChanged.connect(self.activateRemoveTagButtons)
-#			self.tagView.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
-#			self.tagView.setSortingEnabled(True)
-#			self.tagView.sortByColumn(0, 0)
-
-			from signaltracer import SignalTracer
-			tracer=SignalTracer()
-#			tracer.monitor(self.tableView.model())
-#			model = TagBreakdownModel(self)
-#			proxyModel = QtGui.QSortFilterProxyModel(self)
-#			proxyModel.setSourceModel(model)
-#			proxyModel.setDynamicSortFilter(True)
-#			# Sort by 3rd column, money out
-#			proxyModel.sort(2, QtCore.Qt.AscendingOrder)
-#
-#			self.tagView.setModel(proxyModel)
 			self.tagView.setShowGrid(False)
 
 			# Set sql data model for account types
@@ -214,16 +201,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		dialog.exec_()
 		self.setFilter()
 
-	def recordsSelected(self, selected, deselected):
-		proxyModel = self.tableView.model()
-		recordIds = []
-
-		for proxyIndex in self.tableView.selectionModel().selectedRows():
-			index = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kRecordColumn_RecordId)
-			recordIds.append(index.data().toPyObject())
-
-		self.tagView.model().setSelected(recordIds)
-
 	def importDialog(self):
 		combo = QtGui.QComboBox(self)
 		model = QtSql.QSqlTableModel(self)
@@ -300,7 +277,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.accountCombo.model().select()
 			self.reset()
 
-	def activateRecordButtons(self):
+	def recordSelectionChanged(self):
 
 		model = self.tableView.selectionModel()
 		enable = False
@@ -310,9 +287,16 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.toggleCheckButton.setEnabled(enable)
 		self.deleteButton.setEnabled(enable)
+		self.removeTagButton.setEnabled(enable)
 
-	def activateRemoveTagButtons(self):
-		self.removeTagButton.setEnabled(len(self.tagView.selectionModel().selectedRows()) > 0)
+		proxyModel = self.tableView.model()
+		recordIds = []
+
+		for proxyIndex in self.tableView.selectionModel().selectedRows():
+			index = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kRecordColumn_RecordId)
+			recordIds.append(index.data().toPyObject())
+
+		self.tagView.model().sourceModel().setSelected(recordIds)
 
 	def controlKeyPressed(self, key):
 		""" Control key has been pressed
@@ -620,13 +604,13 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		for i in xrange(model.rowCount()):
 			recordIds.append(model.index(i, enum.kRecordColumn_RecordId).data().toPyObject())
 
-		self.tagView.model().setFilter(recordIds)
+		self.tagView.model().sourceModel().setFilter(recordIds)
 
 
 	def addTag(self):
 		tagName, ok = QtGui.QInputDialog.getText(self, 'New Tag', 'Tag', QtGui.QLineEdit.Normal)
 
-		model = self.tagView.model()
+		model = self.tagView.model().sourceModel()
 		if ok and tagName:
 			match = model.match(model.index(0, enum.kTagsColumn_TagName), QtCore.Qt.DisplayRole, tagName, 1, QtCore.Qt.MatchExactly)
 			if match:
@@ -645,7 +629,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 
 	def removeTag(self):
-		model = self.tagView.model()
+		model = self.tagView.model().sourceModel()
 		for index in self.tagView.selectionModel().selectedRows():
 			assignedRecords = model.index(index.row(), enum.kTagsColumn_RecordIds).data().toPyObject()
 			if assignedRecords:

@@ -41,7 +41,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
 		self.view.resizeColumnsToContents()
 		self.view.horizontalHeader().setStretchLastSection(True)
-		self.view.sortByColumn(1, QtCore.Qt.AscendingOrder)
+		self.view.sortByColumn(2, QtCore.Qt.AscendingOrder)
 
 		self.closeButton.clicked.connect(self.__close)
 		self.view.selectionModel().selectionChanged.connect(self.__recordsSelected)

@@ -501,6 +501,71 @@ class TagModel(QtSql.QSqlTableModel):
 	def setFilter(self, recordIds):
 		super(TagModel, self).setFilter(','.join(str(rec) for rec in recordIds))
 
+	def data(self, item, role=QtCore.Qt.DisplayRole):
+
+		if role == QtCore.Qt.DisplayRole and item.column() == enum.kTagsColumn_RecordIds:
+			return [int(i) for i in super(TagModel, self).data(item).toString().split(',') if i]
+
+		if  item.column() == enum.kTagsColumn_TagName and role in (QtCore.Qt.CheckStateRole, QtCore.Qt.ToolTipRole):
+			tagRecordIds = self.index(item.row(), enum.kTagsColumn_RecordIds).data().toPyObject()
+			if role == QtCore.Qt.CheckStateRole:
+				if self.__selected and self.__selected.issubset(tagRecordIds):
+					return QtCore.Qt.Checked
+				elif self.__selected and self.__selected.intersection(tagRecordIds):
+					return QtCore.Qt.PartiallyChecked
+				else:
+					return QtCore.Qt.Unchecked
+			elif role == QtCore.Qt.ToolTipRole:
+				if self.__selected and self.__selected.issubset(tagRecordIds):
+					return 'all %d selected records have tag %r' %  (
+						len(self.__selected),
+						str(self.index(item.row(), enum.kTagsColumn_TagName).data().toPyObject())
+					)
+				elif self.__selected and self.__selected.intersection(tagRecordIds):
+					return '%d of %d selected records have tag %r' %  (
+						len(self.__selected.intersection(tagRecordIds)),
+						len(self.__selected),
+						str(self.index(item.row(), enum.kTagsColumn_TagName).data().toPyObject())
+					)
+				else:
+					return 'no selected records have tag %r' %  (
+						str(self.index(item.row(), enum.kTagsColumn_TagName).data().toPyObject())
+					)
+
+		return super(TagModel, self).data(item, role)
+
+	def flags(self, index):
+		flags = super(TagModel, self).flags(index)
+		if index.column() == enum.kTagsColumn_TagName:
+			flags |= QtCore.Qt.ItemIsUserCheckable
+		return flags
+
+	def setSelected(self, recordIds):
+		self.__selected = set(recordIds)
+		self.reset()
+
+	def selectStatement(self):
+		if self.tableName().isEmpty():
+			return QtCore.QString()
+
+		queryFilter = self.filter()
+		queryFilter = 'AND r.recordid IN (%s)' %  queryFilter if queryFilter else ''
+
+		query = """
+			   SELECT t.tagid, t.tagname,
+			          ARRAY_TO_STRING(ARRAY_AGG(r.recordid), ',') AS recordids,
+			          SUM(CASE WHEN r.amount > 0 THEN r.amount ELSE 0 END) AS amount_in,
+			          ABS(SUM(CASE WHEN r.amount < 0 THEN r.amount ELSE 0 END)) AS amount_out
+			          FROM tags t
+			LEFT JOIN recordtags rt ON rt.tagid=t.tagid
+			LEFT JOIN records r ON r.recordid=rt.recordid
+			      %s
+			    WHERE t.userid=%d
+			 GROUP BY t.tagid
+		""" % (queryFilter, db.userId)
+
+		return query
+
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
 		""" Handle checkstate role changes
 		"""
@@ -514,6 +579,16 @@ class TagModel(QtSql.QSqlTableModel):
 				return self.__addRecordTags(tagId, self.__selected - recordTagIds)
 
 		return False
+
+	def headerData (self, section, orientation, role):
+		if role == QtCore.Qt.DisplayRole:
+			if section == enum.kTagsColumn_TagName:
+				return "tag"
+			elif section == enum.kTagsColumn_Amount_in:
+				return "in"
+			elif section == enum.kTagsColumn_Amount_out:
+				return "out"
+		return QtCore.QVariant()
 
 	def addTag(self, tagName):
 		query = QtSql.QSqlQuery()
@@ -567,54 +642,6 @@ class TagModel(QtSql.QSqlTableModel):
 			raise Exception(query.lastError().text())
 
 		return self.select()
-
-	def data(self, item, role=QtCore.Qt.DisplayRole):
-
-		if role == QtCore.Qt.DisplayRole and item.column() == enum.kTagsColumn_RecordIds:
-			return [int(i) for i in super(TagModel, self).data(item).toString().split(',') if i]
-
-		if role == QtCore.Qt.CheckStateRole and item.column() == enum.kTagsColumn_TagName:
-			tagRecordIds = self.index(item.row(), enum.kTagsColumn_RecordIds).data().toPyObject()
-			if self.__selected and self.__selected.issubset(tagRecordIds):
-				return QtCore.Qt.Checked
-			elif self.__selected and self.__selected.intersection(tagRecordIds):
-				return QtCore.Qt.PartiallyChecked
-			else:
-				return QtCore.Qt.Unchecked
-
-		return super(TagModel, self).data(item, role)
-
-	def flags(self, index):
-		flags = super(TagModel, self).flags(index)
-		if index.column() == enum.kTagsColumn_TagName:
-			flags |= QtCore.Qt.ItemIsUserCheckable
-		return flags
-
-	def setSelected(self, recordIds):
-		self.__selected = set(recordIds)
-		self.reset()
-
-	def selectStatement(self):
-		if self.tableName().isEmpty():
-			return QtCore.QString()
-
-		queryFilter = self.filter()
-		queryFilter = 'AND r.recordid IN (%s)' %  queryFilter if queryFilter else ''
-
-		query = """
-			   SELECT t.tagid, t.tagname,
-			          ARRAY_TO_STRING(ARRAY_AGG(r.recordid), ',') AS recordids,
-			          SUM(CASE WHEN r.amount > 0 THEN r.amount ELSE 0 END) AS amount_in,
-			          ABS(SUM(CASE WHEN r.amount < 0 THEN r.amount ELSE 0 END)) AS amount_out
-			          FROM tags t
-			LEFT JOIN recordtags rt ON rt.tagid=t.tagid
-			LEFT JOIN records r ON r.recordid=rt.recordid
-			      %s
-			    WHERE t.userid=%d
-			 GROUP BY t.tagid
-		""" % (queryFilter, db.userId)
-
-		return query
 
 
 class SortProxyModel(QtGui.QSortFilterProxyModel):
