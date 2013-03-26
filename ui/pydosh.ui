@@ -258,7 +258,7 @@
       </layout>
      </widget>
     </item>
-    <item row="2" column="0">
+    <item row="1" column="0">
      <widget class="QWidget" name="widget_4" native="true">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -270,20 +270,85 @@
        <item>
         <widget class="QGroupBox" name="groupBox_4">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-           <horstretch>0</horstretch>
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>1</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
          <property name="title">
           <string>Records</string>
          </property>
-         <layout class="QVBoxLayout" name="verticalLayout_2">
+         <layout class="QVBoxLayout" name="verticalLayout">
+          <item>
+           <widget class="QWidget" name="widget" native="true">
+            <layout class="QHBoxLayout" name="horizontalLayout_2">
+             <item>
+              <widget class="QToolButton" name="toggleCheckButton">
+               <property name="toolTip">
+                <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Ubuntu'; font-size:11pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Arial'; font-size:10pt;&quot;&gt;toggle checked&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="text">
+                <string>&amp;t</string>
+               </property>
+               <property name="icon">
+                <iconset resource="pydosh.qrc">
+                 <normaloff>:/icons/accept.png</normaloff>:/icons/accept.png</iconset>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QToolButton" name="reloadButton">
+               <property name="toolTip">
+                <string>reload data (Alt-r)</string>
+               </property>
+               <property name="text">
+                <string>&amp;r</string>
+               </property>
+               <property name="icon">
+                <iconset resource="pydosh.qrc">
+                 <normaloff>:/icons/arrow_refresh.png</normaloff>:/icons/arrow_refresh.png</iconset>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QToolButton" name="deleteButton">
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;delete record(s)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="text">
+                <string>&amp;r</string>
+               </property>
+               <property name="icon">
+                <iconset resource="pydosh.qrc">
+                 <normaloff>:/icons/cross.png</normaloff>:/icons/cross.png</iconset>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacer_4">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>703</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </widget>
+          </item>
           <item>
            <widget class="QTableView" name="tableView">
             <property name="sizePolicy">
              <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-              <horstretch>0</horstretch>
+              <horstretch>1</horstretch>
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
@@ -323,6 +388,9 @@
               <widget class="QLabel" name="inTotalLabel">
                <property name="toolTip">
                 <string>total incoming for filtered records</string>
+               </property>
+               <property name="lineWidth">
+                <number>-1</number>
                </property>
                <property name="text">
                 <string>TextLabel</string>
@@ -401,7 +469,7 @@
        <item>
         <widget class="QGroupBox" name="groupBox_3">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
@@ -409,33 +477,7 @@
          <property name="title">
           <string>Tags</string>
          </property>
-         <layout class="QVBoxLayout" name="verticalLayout">
-          <item>
-           <widget class="TagTableView" name="tagView">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="frameShape">
-             <enum>QFrame::NoFrame</enum>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <spacer name="verticalSpacer_3">
-            <property name="orientation">
-             <enum>Qt::Vertical</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>20</width>
-              <height>206</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
+         <layout class="QVBoxLayout" name="verticalLayout_2">
           <item>
            <widget class="QWidget" name="widget_6" native="true">
             <layout class="QHBoxLayout" name="horizontalLayout">
@@ -480,73 +522,34 @@
             </layout>
            </widget>
           </item>
+          <item>
+           <widget class="TagTableView" name="tagView">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="frameShape">
+             <enum>QFrame::NoFrame</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="verticalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>230</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
          </layout>
         </widget>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="1" column="0">
-     <widget class="QWidget" name="widget" native="true">
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
-       <item>
-        <widget class="QToolButton" name="toggleCheckButton">
-         <property name="toolTip">
-          <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Ubuntu'; font-size:11pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Arial'; font-size:10pt;&quot;&gt;toggle checked&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="text">
-          <string>&amp;t</string>
-         </property>
-         <property name="icon">
-          <iconset resource="pydosh.qrc">
-           <normaloff>:/icons/accept.png</normaloff>:/icons/accept.png</iconset>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QToolButton" name="reloadButton">
-         <property name="toolTip">
-          <string>reload data (Alt-r)</string>
-         </property>
-         <property name="text">
-          <string>&amp;r</string>
-         </property>
-         <property name="icon">
-          <iconset resource="pydosh.qrc">
-           <normaloff>:/icons/arrow_refresh.png</normaloff>:/icons/arrow_refresh.png</iconset>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QToolButton" name="deleteButton">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;delete record(s)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="text">
-          <string>&amp;r</string>
-         </property>
-         <property name="icon">
-          <iconset resource="pydosh.qrc">
-           <normaloff>:/icons/cross.png</normaloff>:/icons/cross.png</iconset>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <spacer name="horizontalSpacer_4">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>703</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
        </item>
       </layout>
      </widget>

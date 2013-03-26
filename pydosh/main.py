@@ -102,7 +102,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.setColumnHidden(enum.kRecordColumn_InsertDate, True)
 			self.tableView.setSortingEnabled(True)
 
-			self.tableView.horizontalHeader().setResizeMode(enum.kRecordColumn_Description, QtGui.QHeaderView.Stretch)
+			#self.tableView.horizontalHeader().setResizeMode(enum.kRecordColumn_Description, QtGui.QHeaderView.Stretch)
+			self.tableView.horizontalHeader().setResizeMode(QtGui.QHeaderView.ResizeToContents)
+			self.tableView.horizontalHeader().setStretchLastSection(True)
 			self.tableView.selectionModel().selectionChanged.connect(self.activateButtons)
 
 			model = TagModel()
@@ -118,14 +120,14 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tagView.horizontalHeader().hide()
 			self.tagView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 			self.tableView.selectionModel().selectionChanged.connect(self.recordsSelected)
-#			self.tagView.setStyleSheet('QTableView {background-color: transparent;}')
+			self.tagView.setStyleSheet('QTableView {background-color: transparent;}')
 #			self.tagView.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
 #			self.tagView.setSortingEnabled(True)
 #			self.tagView.sortByColumn(0, 0)
 
 			from signaltracer import SignalTracer
 			tracer=SignalTracer()
-			tracer.monitor(self.tableView.model())
+#			tracer.monitor(self.tableView.model())
 #			model = TagBreakdownModel(self)
 #			proxyModel = QtGui.QSortFilterProxyModel(self)
 #			proxyModel.setSourceModel(model)
@@ -586,16 +588,21 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		
 		self.updateTags()
 
-		print 'updating tagView' 
-		self.tagView.resizeColumnsToContents()
-#		self.tagView.resizeRowsToContents()
+		print 'updating tagView'
+		self.tagView.updateGeometry()
 		self.tableView.resizeColumnsToContents()
+		self.tagView.resizeColumnsToContents()		
+		#self.tagView.resizeRowsToContents()
 #		self.tableView.resizeRowsToContents()
 		self.displayRecordCount()
 
 	def tagsChanged(self):
 		with self.keepSelection():
 			self.model.select()
+
+		self.tagView.resizeColumnsToContents()		
+		self.tagView.resizeRowsToContents()
+		print 'tagsChanged'
 		self.tableView.setFocus(QtCore.Qt.OtherFocusReason)
 
 	def updateTags(self):
