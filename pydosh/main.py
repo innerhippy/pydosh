@@ -47,6 +47,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.startDateEdit.dateChanged.connect(self.setFilter)
 		self.endDateEdit.dateChanged.connect(self.setFilter)
 		self.reloadButton.clicked.connect(self.reset)
+		self.addTagButton.clicked.connect(self.addTag)
+		self.removeTagButton.clicked.connect(self.removeTag)
 
 		self.connectionStatusText.setText('connected to %s@%s' % (db.database, db.hostname))
 
@@ -75,7 +77,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		with self.blockAllSignals():
 
-			model = RecordModel(db.userId, self)
+			model = RecordModel(self)
 			model.setTable('records')
 			model.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
 			model.dataChanged.connect(self.setFilter)
@@ -616,3 +618,29 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.tagView.model().setFilter(recordIds)
 
 
+	def addTag(self):
+		tagName, ok = QtGui.QInputDialog.getText(self, 'New Tag', 'Tag', QtGui.QLineEdit.Normal)
+
+		model = self.tagView.model()
+		if ok and tagName:
+			match = model.match(model.index(0, enum.kTagsColumn_TagName), QtCore.Qt.DisplayRole, tagName, 1, QtCore.Qt.MatchExactly)
+			if match:
+				QtGui.QMessageBox.critical( self, 'Tag Error', 'Tag already exists!', QtGui.QMessageBox.Ok)
+				return
+
+		record = QtSql.QSqlRecord()
+		record.setValue('tagname', tagName)
+		record.setValue('userid', db.userId)
+		print model.insertRecord(-1, record)
+#		row = model.rowCount()
+#		model.insertRows(row, 1)
+#		model.setData(model.index(row, 1), QtCore.QVariant(tagName), QtCore.Qt.EditRole)
+#		model.setData(model.index(row, 2), QtCore.QVariant(db.userId), QtCore.Qt.EditRole)
+		import pdb
+#		pdb.set_trace()
+#		print model.submit()
+		model.select()
+
+	def removeTag(self):
+		for index in self.tagView.selectionModel().selectedRows():
+			self.tagView.model().removeRows(index.row(), 1, QtCore.QModelIndex())

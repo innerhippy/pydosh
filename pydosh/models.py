@@ -170,14 +170,14 @@ class ImportModel(QtCore.QAbstractTableModel):
 		self.__currentTimestamp = None
 
 	def save(self):
-		""" Slot to persist changes to records 
+		""" Slot to persist changes to records
 		"""
 		self.__recordsRollback = deepcopy(self.__records)
 		self.__currentTimestamp = None
 
 	def loadRecords(self, records):
 		""" Import the records into our model
-			An input record is a tuple containing 
+			An input record is a tuple containing
 			(rawData, date, description, txDate, debit, credit, error,)
 
 			The record is checked to see if it's already been imported into the database.
@@ -200,7 +200,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 			if rec.valid and rec.checksum in existingRecords:
 				rec.imported = True
 
-			# Only import unique records or invalid ones (so we can see the error)  
+			# Only import unique records or invalid ones (so we can see the error)
 			if not rec.valid or rec.checksum not in recordsLoaded:
 				recordsLoaded.add(rec.checksum)
 				self.__records.append(rec)
@@ -249,7 +249,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 			return QtCore.QVariant()
 
 		if role == QtCore.Qt.ToolTipRole:
-			return self.__records[item.row()].data 
+			return self.__records[item.row()].data
 
 		if role == QtCore.Qt.DisplayRole:
 			if item.column() == 0:
@@ -302,9 +302,8 @@ class ImportModel(QtCore.QAbstractTableModel):
 			return 'ready'
 
 class RecordModel(QtSql.QSqlTableModel):
-	def __init__(self, userId, parent=None):
+	def __init__(self, parent=None):
 		super(RecordModel, self).__init__(parent=parent)
-		self.__userId = userId
 
 	def select(self):
 		status = super(RecordModel, self).select()
@@ -327,7 +326,7 @@ class RecordModel(QtSql.QSqlTableModel):
 		queryFilter = 'WHERE ' + queryFilter if queryFilter else ''
 
 		query = """
-			SELECT	   r.recordid,
+			    SELECT r.recordid,
 					   r.checked,
 					   array_to_string(array_agg(t.tagname ORDER BY t.tagname), ','),
 					   r.checkdate,
@@ -341,12 +340,12 @@ class RecordModel(QtSql.QSqlTableModel):
 			      FROM records r
 			INNER JOIN accounttypes at ON at.accounttypeid=r.accounttypeid
 						AND r.userid=%(userid)s
-			 LEFT JOIN recordtags rt ON rt.recordid=r.recordid 
+			 LEFT JOIN recordtags rt ON rt.recordid=r.recordid
 			 LEFT JOIN tags t ON rt.tagid=t.tagid
 					   %(filter)s
 			  GROUP BY r.recordid, at.accountname
 			  ORDER BY r.date, r.description, r.txdate, r.recordid
-		""" % {'userid': self.__userId, 'filter': queryFilter}
+		""" % {'userid': db.userId, 'filter': queryFilter}
 
 		return query
 
@@ -376,7 +375,7 @@ class RecordModel(QtSql.QSqlTableModel):
 	def deleteRecords(self, indexes):
 		recordIds = [self.index(index.row(), enum.kRecordColumn_RecordId).data().toPyObject() for index in indexes]
 		query = QtSql.QSqlQuery("""
-			DELETE FROM records 
+			DELETE FROM records
 			      WHERE recordid in (%s)
 		""" % ','.join(str(rec) for rec in recordIds))
 
@@ -497,13 +496,14 @@ class TagModel(QtSql.QSqlTableModel):
 
 		self.setTable('tags')
 		self.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
+		#self.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
 		self.select()
 
 	def setFilter(self, recordIds):
 		super(TagModel, self).setFilter(','.join(str(rec) for rec in recordIds))
 
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
-		""" Handle checkstate role changes 
+		""" Handle checkstate role changes
 		"""
 		if role == QtCore.Qt.CheckStateRole and index.column() == enum.kTagsColumn_TagName:
 			tagId = self.index(index.row(), enum.kTagsColumn_TagId).data().toPyObject()
@@ -512,9 +512,9 @@ class TagModel(QtSql.QSqlTableModel):
 			if value.toPyObject() == QtCore.Qt.Unchecked:
 				return self.__removeRecordTags(tagId, self.__selected & recordTagIds)
 			else:
-				return self.__addRecordTags(tagId, self.__selected - recordTagIds) 
+				return self.__addRecordTags(tagId, self.__selected - recordTagIds)
 
-		return False
+		return super(TagModel, self).setData(index, value, role)
 
 	def __addRecordTags(self, tagId, recordIds):
 

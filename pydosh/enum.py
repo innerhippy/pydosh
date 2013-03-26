@@ -31,7 +31,7 @@ kAccountTypeColumn_CreditField = 4
 kAccountTypeColumn_DebitField = 5
 kAccountTypeColumn_CurrencySign = 6
 kAccountTypeColumn_DateFormat = 7
-	
+
 kTagsColumn_TagId = 0
 kTagsColumn_TagName = 1
 kTagsColumn_RecordIds = 2
