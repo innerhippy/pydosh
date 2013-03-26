@@ -15,7 +15,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def __init__(self, parent=None):
 		super(PydoshWindow, self).__init__(parent=parent)
 		self.setupUi(self)
-		self.model = None
 
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
@@ -76,16 +75,14 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		with self.blockAllSignals():
 
-			self.model = None
-			recordsModel = RecordModel(db.userId, self)
-			recordsModel.setTable('records')
-			recordsModel.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
-			recordsModel.dataChanged.connect(self.setFilter)
-			recordsModel.select()
-			self.model = recordsModel
+			model = RecordModel(db.userId, self)
+			model.setTable('records')
+			model.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
+			model.dataChanged.connect(self.setFilter)
+			model.select()
 
 			proxyModel = SortProxyModel(self)
-			proxyModel.setSourceModel(recordsModel)
+			proxyModel.setSourceModel(model)
 			proxyModel.setFilterKeyColumn(-1)
 
 			self.tableView.setModel(proxyModel)
@@ -217,7 +214,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		recordIds = []
 
 		for proxyIndex in self.tableView.selectionModel().selectedRows():
-			index = self.model.index(proxyModel.mapToSource(proxyIndex).row(), enum.kRecordColumn_RecordId)
+			index = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kRecordColumn_RecordId)
 			recordIds.append(index.data().toPyObject())
 
 		self.tagView.model().setSelected(recordIds)
@@ -317,12 +314,14 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			If this results in the model having no records then
 			reset the QLineEdit that triggered the call.
 		"""
-		if self.model and key == QtCore.Qt.Key_Space:
-			if self.model.rowCount() == 1:
+		proxyModel = self.tableView.model()
+
+		if proxyModel and key == QtCore.Qt.Key_Space:
+			if proxyModel.rowCount() == 1:
 				self.tableView.selectAll()
 				self.toggleSelected()
 
-			if self.model.rowCount() == 0 and isinstance(self.sender(), QtGui.QLineEdit):
+			if proxyModel.rowCount() == 0 and isinstance(self.sender(), QtGui.QLineEdit):
 				self.sender().clear()
 
 	def deleteRecords(self):
@@ -339,12 +338,12 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		with showWaitCursor():
 			indexes = [proxyModel.mapToSource(index) for index in selectionModel.selectedRows()]
-			if self.model.deleteRecords(indexes):
+			if proxyModel.sourceModel().deleteRecords(indexes):
 				self.accountCombo.model().select()
 #				self.tagCombo.model().select()
 			else:
-				QtGui.QMessageBox.critical(self, 'Database Error', 
-						self.model.lastError().text(), QtGui.QMessageBox.Ok)
+				QtGui.QMessageBox.critical(self, 'Database Error',
+					proxyModel.sourceModel().lastError().text(), QtGui.QMessageBox.Ok)
 
 	@contextmanager
 	def blockAllSignals(self):
@@ -373,7 +372,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			indexes = [proxyModel.mapToSource(proxyIndex) for proxyIndex in selectionModel.selectedRows()]
 
 			selectedRecords = [
-				self.model.index(index.row(), enum.kRecordColumn_RecordId).data().toPyObject() 
+				proxyModel.sourceModel().index(index.row(), enum.kRecordColumn_RecordId).data().toPyObject() 
 				for index in indexes
 			]
 			selectionMode = self.tableView.selectionMode()
@@ -383,8 +382,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.setSelectionMode(QtGui.QAbstractItemView.MultiSelection)
 
 			for recordId in selectedRecords:
-				currentIndex = self.model.index(0, enum.kRecordColumn_RecordId)
-				match = self.model.match(currentIndex, QtCore.Qt.DisplayRole, recordId, 1, QtCore.Qt.MatchExactly)
+				currentIndex = proxyModel.sourceModel().index(0, enum.kRecordColumn_RecordId)
+				match = proxyModel.sourceModel().match(currentIndex, QtCore.Qt.DisplayRole, recordId, 1, QtCore.Qt.MatchExactly)
 				if match:
 					self.tableView.selectRow(proxyModel.mapFromSource(match[0]).row())
 
@@ -419,12 +418,12 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		proxyModel = self.tableView.model()
 		indexes = [proxyModel.mapToSource(proxyIndex) for proxyIndex in selectionModel.selectedRows()]
-		if not self.model.setItemsChecked(indexes):
+		if not proxyModel.sourceModel().setItemsChecked(indexes):
 			QtGui.QMessageBox.critical(self, 'Database Error', 
-					self.model.lastError().text(), QtGui.QMessageBox.Ok)
+					proxyModel.sourceModel().lastError().text(), QtGui.QMessageBox.Ok)
 
 	def reset(self):
-		if self.model is None:
+		if self.tableView.model() is None:
 			return
 
 		with self.blockAllSignals():
@@ -487,16 +486,17 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		totalRecords = 0
 		inTotal = 0.0
 		outTotal = 0.0
+		model = self.tableView.model()
 
-		if self.model is not None:
-			numRecords = self.model.rowCount()
+		if model:
+			numRecords = model.rowCount()
 
 			query = QtSql.QSqlQuery('SELECT COUNT(*) FROM records WHERE userid=%d' % db.userId)
 			query.next()
 			totalRecords = query.value(0).toPyObject()
 
 			for i in xrange(numRecords):
-				amount, _ = self.model.record(i).value(enum.kRecordColumn_Amount).toDouble()
+				amount, _ = model.sourceModel().record(i).value(enum.kRecordColumn_Amount).toDouble()
 				if amount > 0.0:
 					inTotal += amount
 				else:
@@ -508,7 +508,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	@showWaitCursorDecorator
 	def setFilter(self, *args):
-		if self.model is None:
+		model = self.tableView.model()
+
+		if model is None:
 			return
 
 		queryFilter = []
@@ -580,10 +582,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 #				""" % ', '.join([str(tagid) for tagid in tagIds]))
 
 		with self.keepSelection():
-			import pdb
-			pdb.set_trace()
-			self.model.setFilter('\nAND '.join(queryFilter))
-		#print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
+			model.sourceModel().setFilter('\nAND '.join(queryFilter))
+		#print model.sourceModel().query().lastQuery().replace(' AND ', '').replace('\n', ' ')
 
 		self.updateTags()
 
@@ -597,7 +597,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	def tagsChanged(self):
 		with self.keepSelection():
-			self.model.select()
+			self.tableView.model().sourceModel().select()
 
 		self.tagView.resizeColumnsToContents()
 		self.tagView.resizeRowsToContents()
@@ -608,8 +608,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		""" Tell the tag model to limit tag amounts to current displayed records
 		"""
 		recordIds = []
-		for i in xrange(self.model.rowCount()):
-			recordIds.append(self.model.index(i, enum.kRecordColumn_RecordId).data().toPyObject())
+		model = self.tableView.model().sourceModel()
+
+		for i in xrange(model.rowCount()):
+			recordIds.append(model.index(i, enum.kRecordColumn_RecordId).data().toPyObject())
 
 		self.tagView.model().setFilter(recordIds)
 
