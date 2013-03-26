@@ -2,7 +2,7 @@ from contextlib  import contextmanager
 from version import __VERSION__
 from PyQt4 import QtGui, QtCore, QtSql
 from utils import showWaitCursorDecorator, showWaitCursor
-from models import RecordModel, SortProxyModel, CheckComboModel, TagBreakdownModel, TagModel
+from models import RecordModel, SortProxyModel, CheckComboModel, TagModel
 from csvdecoder import Decoder, DecoderException
 from database import db
 from ui_pydosh import Ui_pydosh
@@ -37,7 +37,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.accountCombo.setDefaultText('all')
 		self.accountCombo.selectionChanged.connect(self.setFilter)
-		self.tagCombo.selectionChanged.connect(self.setFilter)
 		self.checkedCombo.currentIndexChanged.connect(self.setFilter)
 		self.inoutCombo.currentIndexChanged.connect(self.setFilter)
 		self.descEdit.textChanged.connect(self.setFilter)
@@ -68,7 +67,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				self.accountCombo,
 				self.checkedCombo,
 				self.inoutCombo,
-				self.tagCombo,
 				self.descEdit,
 				self.amountEdit,
 				self.dateCombo,
@@ -221,7 +219,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		for proxyIndex in self.tableView.selectionModel().selectedRows():
 			index = self.model.index(proxyModel.mapToSource(proxyIndex).row(), enum.kRecordColumn_RecordId)
 			recordIds.append(index.data().toPyObject())
-			
+
 		self.tagView.model().setSelected(recordIds)
 
 	def importDialog(self):
@@ -267,7 +265,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			QtGui.QMessageBox.critical(self, 'Import Error', 'No account type specified', QtGui.QMessageBox.Ok)
 			return
 
-		fileNames = QtCore.QStringList([QtCore.QFileInfo(f).fileName() for f in dialog.selectedFiles()]) 
+		fileNames = QtCore.QStringList([QtCore.QFileInfo(f).fileName() for f in dialog.selectedFiles()])
 		dateField = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DateField).data()
 		descriptionField = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DescriptionField).data()
 		creditField = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_CreditField).data()
@@ -335,15 +333,15 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		if QtGui.QMessageBox.question(
 				self, 'Delete Records',
-				'Are you sure you want to delete %d rows?' % len(selectionModel.selectedRows()), 
+				'Are you sure you want to delete %d rows?' % len(selectionModel.selectedRows()),
 				QtGui.QMessageBox.Yes|QtGui.QMessageBox.No) != QtGui.QMessageBox.Yes:
 			return
 
 		with showWaitCursor():
-			indexes = [proxyModel.mapToSource(index) for index in selectionModel.selectedRows()] 
+			indexes = [proxyModel.mapToSource(index) for index in selectionModel.selectedRows()]
 			if self.model.deleteRecords(indexes):
 				self.accountCombo.model().select()
-				self.tagCombo.model().select()
+#				self.tagCombo.model().select()
 			else:
 				QtGui.QMessageBox.critical(self, 'Database Error', 
 						self.model.lastError().text(), QtGui.QMessageBox.Ok)
@@ -362,8 +360,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def keepSelection(self):
 		""" Context manager to preserve table selection. This is usually required
 			when calling select on the model - as this causes a reset of the model.
-			
-			There should be a better way of doing this, but the only accurate means 
+
+			There should be a better way of doing this, but the only accurate means
 			of determining what rows were selected is by saving the recordIds before
 			the yield, and then restoring them with a call to match.
 			"""
@@ -373,7 +371,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 			selectionModel = self.tableView.selectionModel()
 			indexes = [proxyModel.mapToSource(proxyIndex) for proxyIndex in selectionModel.selectedRows()]
-			
+
 			selectedRecords = [
 				self.model.index(index.row(), enum.kRecordColumn_RecordId).data().toPyObject() 
 				for index in indexes
@@ -434,7 +432,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.checkedCombo.setCurrentIndex(enum.kCheckedStatus_All)
 			self.dateCombo.setCurrentIndex(enum.kDate_PreviousYear)
 			self.selectDateRange()
-			self.tagCombo.clearAll()
 			self.accountCombo.clearAll()
 			self.inoutCombo.setCurrentIndex(enum.kInOutStatus_All)
 			self.amountEdit.clear()
@@ -525,7 +522,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		if self.dateCombo.itemData(self.dateCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject() == enum.kdate_LastImport:
 			queryFilter.append("""
 				r.insertdate = (
-					SELECT MAX(insertdate) 
+					SELECT MAX(insertdate)
 					FROM records)
 			""")
 		else:
@@ -571,27 +568,29 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 					"(CAST(r.amount AS char(10)) LIKE '%s%%' OR CAST(r.amount AS char(10)) LIKE '-%s%%')" %
 					(amountFilter, amountFilter))
 
-		# tag filter
-		tagIds = [index.data(QtCore.Qt.UserRole).toPyObject() for index in self.tagCombo.checkedIndexes()]
-
-		if tagIds:
-			queryFilter.append("""
-				r.recordid IN (
-					SELECT recordid
-					FROM recordtags
-					WHERE tagid in (%s))
-				""" % ', '.join([str(tagid) for tagid in tagIds]))
+#		# tag filter
+#		tagIds = [index.data(QtCore.Qt.UserRole).toPyObject() for index in self.tagCombo.checkedIndexes()]
+#
+#		if tagIds:
+#			queryFilter.append("""
+#				r.recordid IN (
+#					SELECT recordid
+#					FROM recordtags
+#					WHERE tagid in (%s))
+#				""" % ', '.join([str(tagid) for tagid in tagIds]))
 
 		with self.keepSelection():
+			import pdb
+			pdb.set_trace()
 			self.model.setFilter('\nAND '.join(queryFilter))
 		#print self.model.query().lastQuery().replace(' AND ', '').replace('\n', ' ')
-		
+
 		self.updateTags()
 
 		print 'updating tagView'
 		self.tagView.updateGeometry()
 		self.tableView.resizeColumnsToContents()
-		self.tagView.resizeColumnsToContents()		
+		self.tagView.resizeColumnsToContents()
 		#self.tagView.resizeRowsToContents()
 #		self.tableView.resizeRowsToContents()
 		self.displayRecordCount()
@@ -600,7 +599,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		with self.keepSelection():
 			self.model.select()
 
-		self.tagView.resizeColumnsToContents()		
+		self.tagView.resizeColumnsToContents()
 		self.tagView.resizeRowsToContents()
 		print 'tagsChanged'
 		self.tableView.setFocus(QtCore.Qt.OtherFocusReason)

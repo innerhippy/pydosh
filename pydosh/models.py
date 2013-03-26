@@ -8,82 +8,82 @@ class ImportException(Exception):
 	""" General exception for record import
 	"""
 
-class TagBreakdownModel(QtCore.QAbstractTableModel):
-	""" Model to display tag breakdown
-	"""
-	def __init__(self, parent=None):
-		super(TagBreakdownModel, self).__init__(parent=parent)
-		self.__stats = []
-
-	def rowCount(self, parent=QtCore.QModelIndex()):
-		return len(self.__stats)
-
-	def columnCount(self, parent=QtCore.QModelIndex()):
-		return 3
-
-	def updateStats(self, stats):
-		""" Stats come in as a dictionary: {tag : [money in, money out]}
-			This is stored on __stats as a list of lists [tag, in, out]
-		"""
-		for tag, (amountIn, amountOut) in stats.iteritems():
-			currentIndex = self.index(0, 0)
-			match = self.match(currentIndex, QtCore.Qt.DisplayRole, tag, 1, QtCore.Qt.MatchExactly)
-			if len(match) == 0:
-				# New item
-				row = self.rowCount()
-				self.insertRows(row, 1)
-				index = self.index(row, 0)
-				self.setData(index, tag, QtCore.Qt.EditRole)
-				index = self.index(row, 1)
-				self.setData(index, amountIn, QtCore.Qt.EditRole)
-				index = self.index(row, 2)
-				self.setData(index, -1 * amountOut, QtCore.Qt.EditRole)
-			else:
-				# Update item
-				index = self.index(match[0].row(), 1)
-				if amountIn != index.data().toPyObject():
-					self.setData(index, amountIn, QtCore.Qt.EditRole)
-
-				index = self.index(match[0].row(), 2)
-				if amountOut != index.data().toPyObject():
-					self.setData(index, -1 * amountOut, QtCore.Qt.EditRole)
-
-		# Remove old rows
-		for row in reversed(xrange(self.rowCount())):
-			index = self.index(row, 0)
-			if index.data().toString() not in stats:
-				self.removeRows(index.row(), 1)
-
-	def removeRows(self, position, rows, parent=QtCore.QModelIndex()):
-		self.beginRemoveRows(QtCore.QModelIndex(), position, position+rows-1)
-		del self.__stats[position]
-		self.endRemoveRows()
-		return True
-
-	def insertRows(self, position, rows, parent=QtCore.QModelIndex()):
-		self.beginInsertRows(QtCore.QModelIndex(), position, position + rows -1)
-		self.__stats.insert(position, [None, None, None])
-		self.endInsertRows()
-		return True
-
-	def setData(self, index, value, role=QtCore.Qt.EditRole):
-		if role == QtCore.Qt.EditRole:
-			self.__stats[index.row()][index.column()] = value
-			self.dataChanged.emit(index, index)
-			return True
-
-		return False
-
-	def data(self, index, role=QtCore.Qt.DisplayRole):
-
-		if role == QtCore.Qt.FontRole and index.column() == 0:
-			return QtGui.QFont(QtGui.QApplication.font().family(), italic=True)
-
-		elif role == QtCore.Qt.DisplayRole:
-			return self.__stats[index.row()][index.column()]
-
-		return QtCore.QVariant()
-
+#class TagBreakdownModel(QtCore.QAbstractTableModel):
+#	""" Model to display tag breakdown
+#	"""
+#	def __init__(self, parent=None):
+#		super(TagBreakdownModel, self).__init__(parent=parent)
+#		self.__stats = []
+#
+#	def rowCount(self, parent=QtCore.QModelIndex()):
+#		return len(self.__stats)
+#
+#	def columnCount(self, parent=QtCore.QModelIndex()):
+#		return 3
+#
+#	def updateStats(self, stats):
+#		""" Stats come in as a dictionary: {tag : [money in, money out]}
+#			This is stored on __stats as a list of lists [tag, in, out]
+#		"""
+#		for tag, (amountIn, amountOut) in stats.iteritems():
+#			currentIndex = self.index(0, 0)
+#			match = self.match(currentIndex, QtCore.Qt.DisplayRole, tag, 1, QtCore.Qt.MatchExactly)
+#			if len(match) == 0:
+#				# New item
+#				row = self.rowCount()
+#				self.insertRows(row, 1)
+#				index = self.index(row, 0)
+#				self.setData(index, tag, QtCore.Qt.EditRole)
+#				index = self.index(row, 1)
+#				self.setData(index, amountIn, QtCore.Qt.EditRole)
+#				index = self.index(row, 2)
+#				self.setData(index, -1 * amountOut, QtCore.Qt.EditRole)
+#			else:
+#				# Update item
+#				index = self.index(match[0].row(), 1)
+#				if amountIn != index.data().toPyObject():
+#					self.setData(index, amountIn, QtCore.Qt.EditRole)
+#
+#				index = self.index(match[0].row(), 2)
+#				if amountOut != index.data().toPyObject():
+#					self.setData(index, -1 * amountOut, QtCore.Qt.EditRole)
+#
+#		# Remove old rows
+#		for row in reversed(xrange(self.rowCount())):
+#			index = self.index(row, 0)
+#			if index.data().toString() not in stats:
+#				self.removeRows(index.row(), 1)
+#
+#	def removeRows(self, position, rows, parent=QtCore.QModelIndex()):
+#		self.beginRemoveRows(QtCore.QModelIndex(), position, position+rows-1)
+#		del self.__stats[position]
+#		self.endRemoveRows()
+#		return True
+#
+#	def insertRows(self, position, rows, parent=QtCore.QModelIndex()):
+#		self.beginInsertRows(QtCore.QModelIndex(), position, position + rows -1)
+#		self.__stats.insert(position, [None, None, None])
+#		self.endInsertRows()
+#		return True
+#
+#	def setData(self, index, value, role=QtCore.Qt.EditRole):
+#		if role == QtCore.Qt.EditRole:
+#			self.__stats[index.row()][index.column()] = value
+#			self.dataChanged.emit(index, index)
+#			return True
+#
+#		return False
+#
+#	def data(self, index, role=QtCore.Qt.DisplayRole):
+#
+#		if role == QtCore.Qt.FontRole and index.column() == 0:
+#			return QtGui.QFont(QtGui.QApplication.font().family(), italic=True)
+#
+#		elif role == QtCore.Qt.DisplayRole:
+#			return self.__stats[index.row()][index.column()]
+#
+#		return QtCore.QVariant()
+#
 
 class ImportRecord(object):
 	def __init__(self, *args):

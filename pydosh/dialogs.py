@@ -1,13 +1,12 @@
 from PyQt4 import QtCore, QtGui, QtSql
 from ui_settings import Ui_Settings
 from ui_login import Ui_Login
-from ui_tags import Ui_Tags
 from ui_import import Ui_Import
 import enum
 from utils import showWaitCursor
 from database import db, DatabaseNotInitialisedException, ConnectionException
 from delegates import AccountDelegate
-from models import AccountModel, TagModel, ImportModel
+from models import AccountModel, ImportModel
 
 class UserCancelledException(Exception):
 	""" Exception to indicate user has cancelled the current operation
