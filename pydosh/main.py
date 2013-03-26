@@ -112,14 +112,16 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			proxyModel = QtGui.QSortFilterProxyModel(self)
 			proxyModel.setSourceModel(model)
 			proxyModel.sort(enum.kTagsColumn_Amount_out, QtCore.Qt.AscendingOrder)
-			
+
 			self.tagView.setModel(proxyModel)
 			self.tagView.setColumnHidden(enum.kTagsColumn_TagId, True)
 			self.tagView.setColumnHidden(enum.kTagsColumn_RecordIds, True)
 			self.tagView.setSortingEnabled(True)
-			self.tagView.sortByColumn(enum.kTagsColumn_Amount_out, QtCore.Qt.AscendingOrder)
+			self.tagView.sortByColumn(enum.kTagsColumn_Amount_out, QtCore.Qt.DescendingOrder)
 			self.tagView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 			self.tagView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+			self.tagView.selectionModel().selectionChanged.connect(self.activateRemoveTagButtons)
+
 			self.tagView.verticalHeader().hide()
 			self.tagView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 			self.tagView.setStyleSheet('QTableView {background-color: transparent;}')
@@ -289,14 +291,23 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.deleteButton.setEnabled(enable)
 		self.removeTagButton.setEnabled(enable)
 
+		recordIds = self.selectedRecordIds()
+
+		self.tagView.model().sourceModel().setSelected(recordIds)
+
+	def selectedRecordIds(self):
+		""" Returns a list of all currently selected recordIds
+		"""
 		proxyModel = self.tableView.model()
 		recordIds = []
 
 		for proxyIndex in self.tableView.selectionModel().selectedRows():
 			index = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kRecordColumn_RecordId)
 			recordIds.append(index.data().toPyObject())
+		return recordIds
 
-		self.tagView.model().sourceModel().setSelected(recordIds)
+	def activateRemoveTagButtons(self):
+		self.removeTagButton.setEnabled(len(self.tagView.selectionModel().selectedRows()) > 0)
 
 	def controlKeyPressed(self, key):
 		""" Control key has been pressed
@@ -357,20 +368,14 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			"""
 		try:
 			# Save selection
-			proxyModel = self.tableView.model()
-
-			selectionModel = self.tableView.selectionModel()
-			indexes = [proxyModel.mapToSource(proxyIndex) for proxyIndex in selectionModel.selectedRows()]
-
-			selectedRecords = [
-				proxyModel.sourceModel().index(index.row(), enum.kRecordColumn_RecordId).data().toPyObject() 
-				for index in indexes
-			]
+			
+			selectedRecords = self.selectedRecordIds()
 			selectionMode = self.tableView.selectionMode()
 			yield
 		finally:
 			# Set this temporarily so that we can select more than one row
 			self.tableView.setSelectionMode(QtGui.QAbstractItemView.MultiSelection)
+			proxyModel = self.tableView.model()
 
 			for recordId in selectedRecords:
 				currentIndex = proxyModel.sourceModel().index(0, enum.kRecordColumn_RecordId)
@@ -592,7 +597,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.tagView.resizeColumnsToContents()
 		self.tagView.resizeRowsToContents()
-		print 'tagsChanged'
 		self.tableView.setFocus(QtCore.Qt.OtherFocusReason)
 
 	def updateTags(self):
@@ -610,28 +614,21 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def addTag(self):
 		tagName, ok = QtGui.QInputDialog.getText(self, 'New Tag', 'Tag', QtGui.QLineEdit.Normal)
 
-		model = self.tagView.model().sourceModel()
+		proxyModel = self.tagView.model()
 		if ok and tagName:
-			match = model.match(model.index(0, enum.kTagsColumn_TagName), QtCore.Qt.DisplayRole, tagName, 1, QtCore.Qt.MatchExactly)
+			match = proxyModel.match(proxyModel.index(0, enum.kTagsColumn_TagName), QtCore.Qt.DisplayRole, tagName, 1, QtCore.Qt.MatchExactly)
 			if match:
 				QtGui.QMessageBox.critical( self, 'Tag Error', 'Tag already exists!', QtGui.QMessageBox.Ok)
 				return
 
-		model.addTag(tagName)
-
-		# Assign seleceted records with the new tag
-		recordIds = []
-
-#		for proxyIndex in self.tableView.selectionModel().selectedRows():
-#			index = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kRecordColumn_RecordId)
-#			recordIds.append(index.data().toPyObject())
-
-
+		# Assign selected records with the new tag
+		tagId = proxyModel.sourceModel().addTag(tagName)
+		proxyModel.sourceModel().addRecordTags(tagId, self.selectedRecordIds())
 
 	def removeTag(self):
-		model = self.tagView.model().sourceModel()
-		for index in self.tagView.selectionModel().selectedRows():
-			assignedRecords = model.index(index.row(), enum.kTagsColumn_RecordIds).data().toPyObject()
+		proxyModel = self.tagView.model()
+		for proxyIndex in self.tagView.selectionModel().selectedRows():
+			assignedRecords = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kTagsColumn_RecordIds).data().toPyObject()
 			if assignedRecords:
 				if QtGui.QMessageBox.question(
 						self, 'Delete Tags',
@@ -639,6 +636,5 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 						QtGui.QMessageBox.Yes|QtGui.QMessageBox.No) != QtGui.QMessageBox.Yes:
 					continue
 
-			model.removeRows(index.row(), 1, QtCore.QModelIndex())
-			self.tableView.model().sourceModel().select()
-
+			proxyModel.sourceModel().removeRows(proxyModel.mapToSource(proxyIndex).row(), 1, QtCore.QModelIndex())
+			proxyModel.sourceModel().select()

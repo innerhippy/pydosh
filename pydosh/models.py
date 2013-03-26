@@ -576,7 +576,7 @@ class TagModel(QtSql.QSqlTableModel):
 			if value.toPyObject() == QtCore.Qt.Unchecked:
 				return self.__removeRecordTags(tagId, self.__selected & recordTagIds)
 			else:
-				return self.__addRecordTags(tagId, self.__selected - recordTagIds)
+				return self.addRecordTags(tagId, self.__selected - recordTagIds)
 
 		return False
 
@@ -595,20 +595,24 @@ class TagModel(QtSql.QSqlTableModel):
 		query.prepare("""
 			INSERT INTO tags (tagname, userid)
 			          VALUES (?, ?)
+			       RETURNING tagid
 		""")
 		query.addBindValue(tagName)
 		query.addBindValue(db.userId)
 
 		if not query.exec_():
 			raise query.lastError().text()
-
+		
+		query.next()
+		insertId = query.value(0).toPyObject() 
 		self.select()
+		return insertId
 
 	def select(self):
 		self.tagsChanged.emit()
 		return super(TagModel, self).select()
 
-	def __addRecordTags(self, tagId, recordIds):
+	def addRecordTags(self, tagId, recordIds):
 
 		if not recordIds:
 			return False

@@ -88,7 +88,6 @@ class _Database(QtCore.QObject):
 
 	@property
 	def userId(self):
-		return 1
 		""" Return the cached value or get from database if not set yet
 		"""
 		if self.__userId is None:# and self.isConnected:
@@ -212,7 +211,6 @@ class _Database(QtCore.QObject):
 			raise ConnectionException('Failed to run command %s:\n%s' % (query, sql.lastError().text()))
 
 	def __isDatabaseInitialised(self):
-		return True
 		query = QtSql.QSqlQuery()
 
 		query.prepare("""
