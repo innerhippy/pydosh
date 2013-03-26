@@ -34,6 +34,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.toggleCheckButton.setEnabled(False)
 		self.deleteButton.setEnabled(False)
 
+		self.removeTagButton.setEnabled(False)
+
 		self.accountCombo.setDefaultText('all')
 		self.accountCombo.selectionChanged.connect(self.setFilter)
 		self.checkedCombo.currentIndexChanged.connect(self.setFilter)
@@ -102,7 +104,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			#self.tableView.horizontalHeader().setResizeMode(enum.kRecordColumn_Description, QtGui.QHeaderView.Stretch)
 			self.tableView.horizontalHeader().setResizeMode(QtGui.QHeaderView.ResizeToContents)
 			self.tableView.horizontalHeader().setStretchLastSection(True)
-			self.tableView.selectionModel().selectionChanged.connect(self.activateButtons)
+			self.tableView.selectionModel().selectionChanged.connect(self.activateRecordButtons)
 
 			model = TagModel()
 			model.tagsChanged.connect(self.tagsChanged)
@@ -118,6 +120,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tagView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 			self.tableView.selectionModel().selectionChanged.connect(self.recordsSelected)
 			self.tagView.setStyleSheet('QTableView {background-color: transparent;}')
+			self.tagView.selectionModel().selectionChanged.connect(self.activateRemoveTagButtons)
 #			self.tagView.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
 #			self.tagView.setSortingEnabled(True)
 #			self.tagView.sortByColumn(0, 0)
@@ -297,7 +300,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.accountCombo.model().select()
 			self.reset()
 
-	def activateButtons(self):
+	def activateRecordButtons(self):
 
 		model = self.tableView.selectionModel()
 		enable = False
@@ -308,6 +311,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.toggleCheckButton.setEnabled(enable)
 		self.deleteButton.setEnabled(enable)
 
+	def activateRemoveTagButtons(self):
+		self.removeTagButton.setEnabled(len(self.tagView.selectionModel().selectedRows()) > 0)
 
 	def controlKeyPressed(self, key):
 		""" Control key has been pressed
@@ -628,19 +633,28 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				QtGui.QMessageBox.critical( self, 'Tag Error', 'Tag already exists!', QtGui.QMessageBox.Ok)
 				return
 
-		record = QtSql.QSqlRecord()
-		record.setValue('tagname', tagName)
-		record.setValue('userid', db.userId)
-		print model.insertRecord(-1, record)
-#		row = model.rowCount()
-#		model.insertRows(row, 1)
-#		model.setData(model.index(row, 1), QtCore.QVariant(tagName), QtCore.Qt.EditRole)
-#		model.setData(model.index(row, 2), QtCore.QVariant(db.userId), QtCore.Qt.EditRole)
-		import pdb
-#		pdb.set_trace()
-#		print model.submit()
-		model.select()
+		model.addTag(tagName)
+
+		# Assign seleceted records with the new tag
+		recordIds = []
+
+#		for proxyIndex in self.tableView.selectionModel().selectedRows():
+#			index = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kRecordColumn_RecordId)
+#			recordIds.append(index.data().toPyObject())
+
+
 
 	def removeTag(self):
+		model = self.tagView.model()
 		for index in self.tagView.selectionModel().selectedRows():
-			self.tagView.model().removeRows(index.row(), 1, QtCore.QModelIndex())
+			assignedRecords = model.index(index.row(), enum.kTagsColumn_RecordIds).data().toPyObject()
+			if assignedRecords:
+				if QtGui.QMessageBox.question(
+						self, 'Delete Tags',
+						'There are %d records assigned to this tag\nSure you want to delete it?' % len(assignedRecords),
+						QtGui.QMessageBox.Yes|QtGui.QMessageBox.No) != QtGui.QMessageBox.Yes:
+					continue
+
+			model.removeRows(index.row(), 1, QtCore.QModelIndex())
+			self.tableView.model().sourceModel().select()
+

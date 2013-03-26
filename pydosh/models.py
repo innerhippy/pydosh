@@ -496,7 +496,6 @@ class TagModel(QtSql.QSqlTableModel):
 
 		self.setTable('tags')
 		self.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
-		#self.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
 		self.select()
 
 	def setFilter(self, recordIds):
@@ -514,7 +513,25 @@ class TagModel(QtSql.QSqlTableModel):
 			else:
 				return self.__addRecordTags(tagId, self.__selected - recordTagIds)
 
-		return super(TagModel, self).setData(index, value, role)
+		return False
+
+	def addTag(self, tagName):
+		query = QtSql.QSqlQuery()
+		query.prepare("""
+			INSERT INTO tags (tagname, userid)
+			          VALUES (?, ?)
+		""")
+		query.addBindValue(tagName)
+		query.addBindValue(db.userId)
+
+		if not query.exec_():
+			raise query.lastError().text()
+
+		self.select()
+
+	def select(self):
+		self.tagsChanged.emit()
+		return super(TagModel, self).select()
 
 	def __addRecordTags(self, tagId, recordIds):
 
@@ -524,14 +541,15 @@ class TagModel(QtSql.QSqlTableModel):
 		query = QtSql.QSqlQuery()
 		query.prepare("""
 			INSERT INTO recordtags (recordid, tagid)
-			     VALUES (?, ?) """)
+			     VALUES (?, ?) 
+		""")
+
 		query.addBindValue(list(recordIds))
 		query.addBindValue([tagId] * len(recordIds))
 
 		if not query.execBatch():
 			raise Exception(query.lastError().text())
 
-		self.tagsChanged.emit()
 		return self.select()
 
 	def __removeRecordTags(self, tagId, recordIds):
@@ -548,7 +566,6 @@ class TagModel(QtSql.QSqlTableModel):
 		if query.lastError().isValid():
 			raise Exception(query.lastError().text())
 
-		self.tagsChanged.emit()
 		return self.select()
 
 	def data(self, item, role=QtCore.Qt.DisplayRole):
