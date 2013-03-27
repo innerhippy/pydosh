@@ -35,6 +35,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.deleteButton.setEnabled(False)
 
 		self.removeTagButton.setEnabled(False)
+		self.filterTagButton.setEnabled(False)
 
 		self.accountCombo.setDefaultText('all')
 		self.accountCombo.selectionChanged.connect(self.setFilter)
@@ -51,6 +52,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.reloadButton.clicked.connect(self.reset)
 		self.addTagButton.clicked.connect(self.addTag)
 		self.removeTagButton.clicked.connect(self.removeTag)
+		self.filterTagButton.clicked.connect(self.filterRecordsByTags)
 
 		self.connectionStatusText.setText('connected to %s@%s' % (db.database, db.hostname))
 
@@ -76,6 +78,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				self.startDateEdit,
 				self.endDateEdit,
 		)
+
+		self.filterTagIds = []
 
 		with self.blockAllSignals():
 
@@ -120,7 +124,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tagView.sortByColumn(enum.kTagsColumn_Amount_out, QtCore.Qt.DescendingOrder)
 			self.tagView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 			self.tagView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
-			self.tagView.selectionModel().selectionChanged.connect(self.activateRemoveTagButtons)
+			self.tagView.selectionModel().selectionChanged.connect(self.activateTagButtons)
 
 			self.tagView.verticalHeader().hide()
 			self.tagView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
@@ -281,11 +285,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	def recordSelectionChanged(self):
 
-		model = self.tableView.selectionModel()
-		enable = False
-
-		if model:
-			enable = len(model.selectedRows()) > 0
+		enable = len(self.tableView.selectionModel().selectedRows()) > 0
 
 		self.toggleCheckButton.setEnabled(enable)
 		self.deleteButton.setEnabled(enable)
@@ -306,8 +306,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			recordIds.append(index.data().toPyObject())
 		return recordIds
 
-	def activateRemoveTagButtons(self):
-		self.removeTagButton.setEnabled(len(self.tagView.selectionModel().selectedRows()) > 0)
+	def activateTagButtons(self):
+		enable = len(self.tagView.selectionModel().selectedRows()) > 0
+		self.removeTagButton.setEnabled(enable)
+		self.filterTagButton.setEnabled(enable)
 
 	def controlKeyPressed(self, key):
 		""" Control key has been pressed
@@ -434,6 +436,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.endDateEdit.setEnabled(True)
 			self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.DescendingOrder)
 
+		self.filterTagIds = []
 		self.setFilter()
 
 	def __dateRangeSelected(self):
@@ -569,21 +572,20 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 #		# tag filter
 #		tagIds = [index.data(QtCore.Qt.UserRole).toPyObject() for index in self.tagCombo.checkedIndexes()]
 #
-#		if tagIds:
-#			queryFilter.append("""
-#				r.recordid IN (
-#					SELECT recordid
-#					FROM recordtags
-#					WHERE tagid in (%s))
-#				""" % ', '.join([str(tagid) for tagid in tagIds]))
+		if self.filterTagIds:
+			queryFilter.append("""
+				r.recordid IN (
+					SELECT recordid
+					FROM recordtags
+					WHERE tagid in (%s))
+				""" % ', '.join([str(tagid) for tagid in self.filterTagIds]))
 
 		with self.keepSelection():
 			model.sourceModel().setFilter('\nAND '.join(queryFilter))
-		#print model.sourceModel().query().lastQuery().replace(' AND ', '').replace('\n', ' ')
+		print model.sourceModel().query().lastQuery().replace(' AND ', '').replace('\n', ' ')
 
 		self.updateTags()
 
-		print 'updating tagView'
 		self.tagView.updateGeometry()
 		self.tableView.resizeColumnsToContents()
 		self.tagView.resizeColumnsToContents()
@@ -638,3 +640,11 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 			proxyModel.sourceModel().removeRows(proxyModel.mapToSource(proxyIndex).row(), 1, QtCore.QModelIndex())
 			proxyModel.sourceModel().select()
+			
+	def filterRecordsByTags(self):
+		self.filterTagIds = []
+		proxyModel = self.tagView.model()
+		for proxyIndex in self.tagView.selectionModel().selectedRows():
+			self.filterTagIds.append(proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kTagsColumn_TagId).data().toPyObject())
+
+		self.setFilter()
