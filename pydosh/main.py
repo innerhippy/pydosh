@@ -110,7 +110,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.horizontalHeader().setResizeMode(QtGui.QHeaderView.ResizeToContents)
 			self.tableView.horizontalHeader().setStretchLastSection(True)
 			self.tableView.selectionModel().selectionChanged.connect(self.recordSelectionChanged)
-			self.tableView.installEventFilter(self)
+
+			self.tableView.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+			self.tableView.customContextMenuRequested.connect(self.popup)
+			#self.tableView.installEventFilter(self)
 
 			model = TagModel(self)
 			model.tagsChanged.connect(self.tagsChanged)
@@ -169,6 +172,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 #			self.tagCombo.setModel(tagModel)
 
 		self.reset()
+
+
+	def popup(self, pos):
+			print pos
 
 	def showAbout(self):
 
@@ -583,7 +590,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		with self.keepSelection():
 			model.sourceModel().setFilter('\nAND '.join(queryFilter))
-		print model.sourceModel().query().lastQuery().replace(' AND ', '').replace('\n', ' ')
+		#print model.sourceModel().query().lastQuery().replace(' AND ', '').replace('\n', ' ')
 
 		self.updateTags()
 
