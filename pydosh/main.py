@@ -110,8 +110,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.horizontalHeader().setResizeMode(QtGui.QHeaderView.ResizeToContents)
 			self.tableView.horizontalHeader().setStretchLastSection(True)
 			self.tableView.selectionModel().selectionChanged.connect(self.recordSelectionChanged)
+			self.tableView.installEventFilter(self)
 
-			model = TagModel()
+			model = TagModel(self)
 			model.tagsChanged.connect(self.tagsChanged)
 			proxyModel = QtGui.QSortFilterProxyModel(self)
 			proxyModel.setSourceModel(model)
@@ -640,7 +641,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 			proxyModel.sourceModel().removeRows(proxyModel.mapToSource(proxyIndex).row(), 1, QtCore.QModelIndex())
 			proxyModel.sourceModel().select()
-			
+
 	def filterRecordsByTags(self):
 		self.filterTagIds = []
 		proxyModel = self.tagView.model()
@@ -648,3 +649,33 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.filterTagIds.append(proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kTagsColumn_TagId).data().toPyObject())
 
 		self.setFilter()
+
+	def eventFilter(self, receiver, event):
+		print 'eventFilter', receiver, event.type()
+		if receiver == self.tableView and event.type() == QtCore.QEvent.MouseButtonPress:
+			print 'True'
+			return True
+		print 'False'
+		return False
+
+	def contextMenuEvent(self, event):
+		print 'contextMenuEvent', event
+#		quitAction = QtGui.QAction('&Quit', self)
+#		quitAction.setShortcut('Alt+q')
+#		quitAction.setStatusTip('Exit the program')
+#		quitAction.setIcon(QtGui.QIcon(':/icons/exit.png'))
+#
+#		signalMap = {}
+#		contextMenu = QtGui.QMenu()
+#
+#		clearAllAction = contextMenu.addAction(QtGui.QIcon(':/icons/cross.png'), 'Clear All')
+#		clearAllAction.setIconVisibleInMenu(True)
+#		signalMap[clearAllAction] = self.clearAll
+#		checkAllAction = contextMenu.addAction(QtGui.QIcon(':/icons/tick.png'), 'Check All')
+#		checkAllAction.setIconVisibleInMenu(True)
+#		signalMap[checkAllAction] = self.checkAll
+#
+#		contextMenuAction = contextMenu.exec_(QtGui.QCursor.pos())
+#		if contextMenuAction and signalMap.has_key(contextMenuAction):
+#			signalMap[contextMenuAction]()
+#
