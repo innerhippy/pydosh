@@ -488,7 +488,8 @@ class RecordModel(QtSql.QSqlTableModel):
 		return QtCore.QVariant()
 
 class TagModel(QtSql.QSqlTableModel):
-	tagsChanged = QtCore.pyqtSignal()
+#	tagsChanged = QtCore.pyqtSignal()
+	selectionChanged = QtCore.pyqtSignal('PyQt_PyObject')
 
 	def __init__(self, parent=None):
 		super(TagModel, self).__init__(parent=parent)
@@ -501,36 +502,38 @@ class TagModel(QtSql.QSqlTableModel):
 	def setFilter(self, recordIds):
 		super(TagModel, self).setFilter(','.join(str(rec) for rec in recordIds))
 
+	def setData(self, index, value, role=QtCore.Qt.EditRole):
+		""" Handle checkstate role changes
+		"""
+		if role == QtCore.Qt.CheckStateRole and index.column() == enum.kTagsColumn_TagName:
+#			tagId = self.index(index.row(), enum.kTagsColumn_TagId).data().toPyObject()
+#			recordTagIds = set(self.index(index.row(), enum.kTagsColumn_RecordIds).data().toPyObject())
+
+			if value.toPyObject() == QtCore.Qt.Unchecked:
+				self.__selected.remove(index.row())
+			else:
+				self.__selected.add(index.row())
+
+			tagIds = set()
+			for row in self.__selected:
+				tagIds.add(self.index(row, enum.kTagsColumn_TagId).data().toPyObject())
+			self.selectionChanged.emit(tagIds)
+			return True 
+
+		return False
+
 	def data(self, item, role=QtCore.Qt.DisplayRole):
 
-		if role == QtCore.Qt.DisplayRole and item.column() == enum.kTagsColumn_RecordIds:
-			return [int(i) for i in super(TagModel, self).data(item).toString().split(',') if i]
+#		if role == QtCore.Qt.DisplayRole and item.column() == enum.kTagsColumn_RecordIds:
+#			return [int(i) for i in super(TagModel, self).data(item).toString().split(',') if i]
 
-		if  item.column() == enum.kTagsColumn_TagName and role in (QtCore.Qt.CheckStateRole, QtCore.Qt.ToolTipRole):
-			tagRecordIds = self.index(item.row(), enum.kTagsColumn_RecordIds).data().toPyObject()
+		if  role == QtCore.Qt.CheckStateRole and item.column() == enum.kTagsColumn_TagName:
+#			tagRecordIds = self.index(item.row(), enum.kTagsColumn_RecordIds).data().toPyObject()
 			if role == QtCore.Qt.CheckStateRole:
-				if self.__selected and self.__selected.issubset(tagRecordIds):
+				if item.row() in self.__selected:
 					return QtCore.Qt.Checked
-				elif self.__selected and self.__selected.intersection(tagRecordIds):
-					return QtCore.Qt.PartiallyChecked
 				else:
 					return QtCore.Qt.Unchecked
-			elif role == QtCore.Qt.ToolTipRole:
-				if self.__selected and self.__selected.issubset(tagRecordIds):
-					return 'all %d selected records have tag %r' %  (
-						len(self.__selected),
-						str(self.index(item.row(), enum.kTagsColumn_TagName).data().toPyObject())
-					)
-				elif self.__selected and self.__selected.intersection(tagRecordIds):
-					return '%d of %d selected records have tag %r' %  (
-						len(self.__selected.intersection(tagRecordIds)),
-						len(self.__selected),
-						str(self.index(item.row(), enum.kTagsColumn_TagName).data().toPyObject())
-					)
-				else:
-					return 'no selected records have tag %r' %  (
-						str(self.index(item.row(), enum.kTagsColumn_TagName).data().toPyObject())
-					)
 
 		return super(TagModel, self).data(item, role)
 
@@ -540,9 +543,9 @@ class TagModel(QtSql.QSqlTableModel):
 			flags |= QtCore.Qt.ItemIsUserCheckable
 		return flags
 
-	def setSelected(self, recordIds):
-		self.__selected = set(recordIds)
-		self.reset()
+#	def setSelected(self, recordIds):
+#		self.__selected = set(recordIds)
+#		self.reset()
 
 	def selectStatement(self):
 		if self.tableName().isEmpty():
@@ -566,19 +569,7 @@ class TagModel(QtSql.QSqlTableModel):
 
 		return query
 
-	def setData(self, index, value, role=QtCore.Qt.EditRole):
-		""" Handle checkstate role changes
-		"""
-		if role == QtCore.Qt.CheckStateRole and index.column() == enum.kTagsColumn_TagName:
-			tagId = self.index(index.row(), enum.kTagsColumn_TagId).data().toPyObject()
-			recordTagIds = set(self.index(index.row(), enum.kTagsColumn_RecordIds).data().toPyObject())
 
-			if value.toPyObject() == QtCore.Qt.Unchecked:
-				return self.removeRecordTags(tagId, self.__selected & recordTagIds)
-			else:
-				return self.addRecordTags(tagId, self.__selected - recordTagIds)
-
-		return False
 
 	def headerData (self, section, orientation, role):
 		if role == QtCore.Qt.DisplayRole:
@@ -609,7 +600,7 @@ class TagModel(QtSql.QSqlTableModel):
 		return insertId
 
 	def select(self):
-		self.tagsChanged.emit()
+#		self.tagsChanged.emit()
 		return super(TagModel, self).select()
 
 	def addRecordTags(self, tagId, recordIds):
