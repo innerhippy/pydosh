@@ -174,8 +174,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.reset()
 
 
-	def popup(self, pos):
-			print pos
 
 	def showAbout(self):
 
@@ -656,17 +654,17 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.filterTagIds.append(proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kTagsColumn_TagId).data().toPyObject())
 
 		self.setFilter()
-
-	def eventFilter(self, receiver, event):
-		print 'eventFilter', receiver, event.type()
-		if receiver == self.tableView and event.type() == QtCore.QEvent.MouseButtonPress:
-			print 'True'
-			return True
-		print 'False'
-		return False
-
-	def contextMenuEvent(self, event):
-		print 'contextMenuEvent', event
+#
+#	def eventFilter(self, receiver, event):
+#		print 'eventFilter', receiver, event.type()
+#		if receiver == self.tableView and event.type() == QtCore.QEvent.MouseButtonPress:
+#			print 'True'
+#			return True
+#		print 'False'
+#		return False
+#
+#	def contextMenuEvent(self, event):
+#		print 'contextMenuEvent', event
 #		quitAction = QtGui.QAction('&Quit', self)
 #		quitAction.setShortcut('Alt+q')
 #		quitAction.setStatusTip('Exit the program')
@@ -685,4 +683,77 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 #		contextMenuAction = contextMenu.exec_(QtGui.QCursor.pos())
 #		if contextMenuAction and signalMap.has_key(contextMenuAction):
 #			signalMap[contextMenuAction]()
+
+
+	def popup(self, pos):
+#		enable = len(self.tableView.selectionModel().selectedRows()) > 0
 #
+#		self.toggleCheckButton.setEnabled(enable)
+#		self.deleteButton.setEnabled(enable)
+#		self.removeTagButton.setEnabled(enable)
+#
+#		recordIds = self.selectedRecordIds()
+#
+#		self.tagView.model().sourceModel().setSelected(recordIds)
+
+#		print self.tableView.viewport().mapToGlobal(pos)
+#		menu = QtGui.QMenu(self)
+#		tagList = QtGui.QListView(self)
+#		tagList.setModel(self.tagView.model())
+#		tagList.setModelColumn(1)
+#		action = QtGui.QWidgetAction(self)
+#		action.setDefaultWidget(tagList)
+#		menu.addAction(action)
+#		menu.exec_(self.tableView.viewport().mapToGlobal(pos))
+
+		self.tableView.viewport().mapToGlobal(pos)
+		tagList = QtGui.QListWidget(self)
+		tagList.itemChanged.connect(self.updateTags2)
+
+		selectedRecordIds = set(self.selectedRecordIds())
+		model = self.tagView.model()
+		for row in xrange(model.rowCount()):
+			tagId = model.index(row, enum.kTagsColumn_TagId).data().toPyObject()
+			tagName = model.index(row, enum.kTagsColumn_TagName).data().toPyObject()
+			tagRecordIds = model.index(row, enum.kTagsColumn_RecordIds).data().toPyObject()
+
+			item = QtGui.QListWidgetItem(tagName)
+			item.setData(QtCore.Qt.UserRole, tagId)
+
+			if selectedRecordIds and selectedRecordIds.issubset(tagRecordIds):
+				item.setCheckState(QtCore.Qt.Checked)
+				tooltip = 'all %d selected records have tag %r' %  (len(selectedRecordIds), str(tagName))
+
+			elif selectedRecordIds and selectedRecordIds.intersection(tagRecordIds):
+				item.setCheckState(QtCore.Qt.PartiallyChecked)
+				tooltip = '%d of %d selected records have tag %r' %  (
+						len(selectedRecordIds.intersection(tagRecordIds)),
+						len(selectedRecordIds), str(tagName))
+			else:
+				item.setCheckState(QtCore.Qt.Unchecked)
+				tooltip = 'no selected records have tag %r' % str(tagName)
+			
+			item.setData(QtCore.Qt.ToolTipRole, tooltip)
+			tagList.addItem(item)
+
+		action = QtGui.QWidgetAction(self)
+		action.setDefaultWidget(tagList)
+		menu = QtGui.QMenu(self)
+		menu.addAction(action)
+		menu.exec_(self.tableView.viewport().mapToGlobal(pos))
+
+	def updateTags2(self, item):
+		checkState = item.data(QtCore.Qt.CheckStateRole).toPyObject()
+		tagId = item.data(QtCore.Qt.UserRole).toPyObject()
+
+		if checkState == QtCore.Qt.Unchecked:
+			self.tagView.model().sourceModel().removeRecordTags(tagId, self.selectedRecordIds())
+		else:
+			self.tagView.model().sourceModel().addRecordTags(tagId, self.selectedRecordIds())
+
+#class TagAction(QtGui.QWidgetAction):
+#	def __init__(self, parent=None):
+#		super(TagAction, self).__init__(parent=parent)
+#		
+#	def createWidget(self, parent):
+#		return 

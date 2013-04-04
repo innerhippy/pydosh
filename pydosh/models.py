@@ -574,7 +574,7 @@ class TagModel(QtSql.QSqlTableModel):
 			recordTagIds = set(self.index(index.row(), enum.kTagsColumn_RecordIds).data().toPyObject())
 
 			if value.toPyObject() == QtCore.Qt.Unchecked:
-				return self.__removeRecordTags(tagId, self.__selected & recordTagIds)
+				return self.removeRecordTags(tagId, self.__selected & recordTagIds)
 			else:
 				return self.addRecordTags(tagId, self.__selected - recordTagIds)
 
@@ -631,7 +631,7 @@ class TagModel(QtSql.QSqlTableModel):
 
 		return self.select()
 
-	def __removeRecordTags(self, tagId, recordIds):
+	def removeRecordTags(self, tagId, recordIds):
 
 		if not recordIds:
 			return False
