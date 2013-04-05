@@ -10,7 +10,6 @@ from dialogs import SettingsDialog, ImportDialog
 import enum
 import pydosh_rc
 
-
 class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def __init__(self, parent=None):
 		super(PydoshWindow, self).__init__(parent=parent)
@@ -33,9 +32,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.toggleCheckButton.setEnabled(False)
 		self.deleteButton.setEnabled(False)
-
 		self.removeTagButton.setEnabled(False)
-#		self.filterTagButton.setEnabled(False)
 
 		self.accountCombo.setDefaultText('all')
 		self.accountCombo.selectionChanged.connect(self.setFilter)
@@ -46,13 +43,12 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.amountEdit.controlKeyPressed.connect(self.controlKeyPressed)
 		self.toggleCheckButton.clicked.connect(self.toggleSelected)
 		self.deleteButton.clicked.connect(self.deleteRecords)
-		self.dateCombo.currentIndexChanged.connect(self.__dateRangeSelected)
+		self.dateCombo.currentIndexChanged.connect(self.dateRangeSelected)
 		self.startDateEdit.dateChanged.connect(self.setFilter)
 		self.endDateEdit.dateChanged.connect(self.setFilter)
 		self.reloadButton.clicked.connect(self.reset)
 		self.addTagButton.clicked.connect(self.addTag)
 		self.removeTagButton.clicked.connect(self.removeTag)
-#		self.filterTagButton.clicked.connect(self.filterRecordsByTags)
 
 		self.connectionStatusText.setText('connected to %s@%s' % (db.database, db.hostname))
 
@@ -92,7 +88,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			proxyModel = SortProxyModel(self)
 			proxyModel.setSourceModel(model)
 			proxyModel.sort(enum.kRecordColumn_Date, QtCore.Qt.AscendingOrder)
-#			proxyModel.setFilterKeyColumn(-1)
 
 			self.tableView.setModel(proxyModel)
 			self.tableView.verticalHeader().hide()
@@ -106,17 +101,14 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.setColumnHidden(enum.kRecordColumn_InsertDate, True)
 			self.tableView.setSortingEnabled(True)
 
-			#self.tableView.horizontalHeader().setResizeMode(enum.kRecordColumn_Description, QtGui.QHeaderView.Stretch)
-			self.tableView.horizontalHeader().setResizeMode(QtGui.QHeaderView.ResizeToContents)
-			self.tableView.horizontalHeader().setStretchLastSection(True)
-#			self.tableView.selectionModel().selectionChanged.connect(self.recordSelectionChanged)
+			self.tableView.horizontalHeader().setResizeMode(enum.kRecordColumn_Description, QtGui.QHeaderView.Stretch)
+			self.tableView.selectionModel().selectionChanged.connect(self.recordSelectionChanged)
 
 			self.tableView.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
 			self.tableView.customContextMenuRequested.connect(self.popup)
-			#self.tableView.installEventFilter(self)
 
 			model = TagModel(self)
-			#model.tagsChanged.connect(self.tagsChanged)
+			model.tagsChanged.connect(self.tagModelChanged)
 			model.selectionChanged.connect(self.setTagSelection)
 			proxyModel = QtGui.QSortFilterProxyModel(self)
 			proxyModel.setSourceModel(model)
@@ -153,25 +145,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			accountModel.setUserRoleColumn(enum.kAccountTypeColumn_AccountTypeId)
 			self.accountCombo.setModelColumn(enum.kAccountTypeColumn_AccountName)
 			self.accountCombo.setModel(accountModel)
-
-#			# Set tag model
-#			tagModel = CheckComboModel()
-#			tagModel.setTable('tags')
-#
-#			# Only display tags that have been set on the current records
-#			tagModel.setFilter("""
-#				userid=%d
-#				AND tagid IN (
-#					SELECT DISTINCT tagid
-#					FROM recordtags rt
-#					INNER JOIN records r
-#					ON r.recordid=rt.recordid
-#				)
-#				""" % db.userId)
-#			tagModel.select()
-#			tagModel.setUserRoleColumn(enum.kTagsColumn_TagId)
-#			self.tagCombo.setModelColumn(enum.kTagsColumn_TagName)
-#			self.tagCombo.setModel(tagModel)
 
 		self.reset()
 
@@ -291,17 +264,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.accountCombo.model().select()
 			self.reset()
 
-#	def recordSelectionChanged(self):
-#
-#		enable = len(self.tableView.selectionModel().selectedRows()) > 0
-#
-#		self.toggleCheckButton.setEnabled(enable)
-#		self.deleteButton.setEnabled(enable)
-#		self.removeTagButton.setEnabled(enable)
-#
-#		recordIds = self.selectedRecordIds()
-#
-#		self.tagView.model().sourceModel().setSelected(recordIds)
+	def recordSelectionChanged(self):
+		enable = len(self.tableView.selectionModel().selectedRows()) > 0
+		self.toggleCheckButton.setEnabled(enable)
+		self.deleteButton.setEnabled(enable)
 
 	def selectedRecordIds(self):
 		""" Returns a list of all currently selected recordIds
@@ -317,7 +283,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def activateTagButtons(self):
 		enable = len(self.tagView.selectionModel().selectedRows()) > 0
 		self.removeTagButton.setEnabled(enable)
-#		self.filterTagButton.setEnabled(enable)
 
 	def controlKeyPressed(self, key):
 		""" Control key has been pressed
@@ -352,7 +317,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			indexes = [proxyModel.mapToSource(index) for index in selectionModel.selectedRows()]
 			if proxyModel.sourceModel().deleteRecords(indexes):
 				self.accountCombo.model().select()
-#				self.tagCombo.model().select()
 			else:
 				QtGui.QMessageBox.critical(self, 'Database Error',
 					proxyModel.sourceModel().lastError().text(), QtGui.QMessageBox.Ok)
@@ -447,7 +411,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.filterTagIds = set()
 		self.setFilter()
 
-	def __dateRangeSelected(self):
+	def dateRangeSelected(self):
 		""" Date combo has been changed. Set the date fields and refresh the records model
 		"""
 		self.selectDateRange()
@@ -577,9 +541,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 					"(CAST(r.amount AS char(10)) LIKE '%s%%' OR CAST(r.amount AS char(10)) LIKE '-%s%%')" %
 					(amountFilter, amountFilter))
 
-#		# tag filter
-#		tagIds = [index.data(QtCore.Qt.UserRole).toPyObject() for index in self.tagCombo.checkedIndexes()]
-#
 		if self.filterTagIds:
 			queryFilter.append("""
 				r.recordid IN (
@@ -588,33 +549,25 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 					WHERE tagid in (%s))
 				""" % ', '.join([str(tagid) for tagid in self.filterTagIds]))
 
-#		if self.filterTagIds:
-#			queryFilter.append("""
-#				r.recordid IN (%s)
-#				""" % ', '.join([str(recordId) for recordId in self.filterTagIds]))
-
 		with self.keepSelection():
 			model.sourceModel().setFilter('\nAND '.join(queryFilter))
-		print model.sourceModel().query().lastQuery().replace(' AND ', '').replace('\n', ' ')
+		#print model.sourceModel().query().lastQuery().replace(' AND ', '').replace('\n', ' ')
 
-		self.updateTags()
+		self.updateTagFilter()
 
 		self.tagView.updateGeometry()
 		self.tableView.resizeColumnsToContents()
 		self.tagView.resizeColumnsToContents()
-		#self.tagView.resizeRowsToContents()
-#		self.tableView.resizeRowsToContents()
 		self.displayRecordCount()
 
-#	def tagsChanged(self):
-#		with self.keepSelection():
-#			self.tableView.model().sourceModel().select()
-#
-#		self.tagView.resizeColumnsToContents()
-#		self.tagView.resizeRowsToContents()
-#		self.tableView.setFocus(QtCore.Qt.OtherFocusReason)
+	def tagModelChanged(self):
+		""" Tag model has changed - call select on record model to refresh the changes (in tag column)
+			Note: calling setFilter is a bad idea as we'll enter circular hell
+		"""
+		with self.keepSelection():
+			self.tableView.model().sourceModel().select()
 
-	def updateTags(self):
+	def updateTagFilter(self):
 		""" Tell the tag model to limit tag amounts to current displayed records
 		"""
 		recordIds = []
@@ -627,6 +580,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 
 	def addTag(self):
+		""" Add a new tag to the tag model and assign any selected records
+		"""
 		tagName, ok = QtGui.QInputDialog.getText(self, 'New Tag', 'Tag', QtGui.QLineEdit.Normal)
 
 		proxyModel = self.tagView.model()
@@ -650,55 +605,15 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 						'There are %d records assigned to this tag\nSure you want to delete it?' % len(assignedRecords),
 						QtGui.QMessageBox.Yes|QtGui.QMessageBox.No) != QtGui.QMessageBox.Yes:
 					continue
-
-			proxyModel.sourceModel().removeRows(proxyModel.mapToSource(proxyIndex).row(), 1, QtCore.QModelIndex())
-			proxyModel.sourceModel().select()
-
-#	def filterRecordsByTags(self):
-#		self.filterTagIds = []
-#		proxyModel = self.tagView.model()
-#		for proxyIndex in self.tagView.selectionModel().selectedRows():
-#			self.filterTagIds.append(proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kTagsColumn_TagId).data().toPyObject())
-#
-#		self.setFilter()
-#
-#	def eventFilter(self, receiver, event):
-#		print 'eventFilter', receiver, event.type()
-#		if receiver == self.tableView and event.type() == QtCore.QEvent.MouseButtonPress:
-#			print 'True'
-#			return True
-#		print 'False'
-#		return False
-#
-#	def contextMenuEvent(self, event):
-#		print 'contextMenuEvent', event
-#		quitAction = QtGui.QAction('&Quit', self)
-#		quitAction.setShortcut('Alt+q')
-#		quitAction.setStatusTip('Exit the program')
-#		quitAction.setIcon(QtGui.QIcon(':/icons/exit.png'))
-#
-#		signalMap = {}
-#		contextMenu = QtGui.QMenu()
-#
-#		clearAllAction = contextMenu.addAction(QtGui.QIcon(':/icons/cross.png'), 'Clear All')
-#		clearAllAction.setIconVisibleInMenu(True)
-#		signalMap[clearAllAction] = self.clearAll
-#		checkAllAction = contextMenu.addAction(QtGui.QIcon(':/icons/tick.png'), 'Check All')
-#		checkAllAction.setIconVisibleInMenu(True)
-#		signalMap[checkAllAction] = self.checkAll
-#
-#		contextMenuAction = contextMenu.exec_(QtGui.QCursor.pos())
-#		if contextMenuAction and signalMap.has_key(contextMenuAction):
-#			signalMap[contextMenuAction]()
+			tagId = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kTagsColumn_TagId).data().toPyObject()
+			proxyModel.sourceModel().removeTag(tagId)
 
 
 	def popup(self, pos):
-		import pdb
-		pdb.set_trace()
 		self.tableView.viewport().mapToGlobal(pos)
 
 		tagList = QtGui.QListWidget(self)
-		tagList.itemChanged.connect(self.updateTags2)
+		tagList.itemChanged.connect(self.saveTagChanges)
 
 		selectedRecordIds = set(self.selectedRecordIds())
 		model = self.tagView.model()
@@ -732,7 +647,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		menu.addAction(action)
 		menu.exec_(self.tableView.viewport().mapToGlobal(pos))
 
-	def updateTags2(self, item):
+	def saveTagChanges(self, item):
+		""" Save tag changes to tag model
+		"""
 		checkState = item.data(QtCore.Qt.CheckStateRole).toPyObject()
 		tagId = item.data(QtCore.Qt.UserRole).toPyObject()
 
@@ -742,6 +659,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tagView.model().sourceModel().addRecordTags(tagId, self.selectedRecordIds())
 
 	def setTagSelection(self, tagIds):
+		""" Filter model by tags in response to tagView selection changed
+		"""
 		self.filterTagIds = tagIds
 		self.setFilter()
 
