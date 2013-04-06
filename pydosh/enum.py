@@ -15,7 +15,6 @@ kDate_PreviousYear = 1
 kDate_PreviousMonth = 2
 kdate_LastImport =3
 
-
 kCheckedStatus_All =0
 kCheckedStatus_Checked = 1
 kCheckedStatus_UnChecked = 2
@@ -35,7 +34,9 @@ kAccountTypeColumn_DateFormat = 7
 
 kTagsColumn_TagId = 0
 kTagsColumn_TagName = 1
-kTagsColumn_UserId = 2
+kTagsColumn_RecordIds = 2
+kTagsColumn_Amount_in = 3
+kTagsColumn_Amount_out = 4
 
 kRecordTagsColumn_RecordTagId = 0
 kRecordTagsColumn_RecordId = 1

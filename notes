@@ -1,0 +1,32 @@
+    SELECT t.tagname, 
+           SUM( CASE WHEN r.amount > 0 THEN r.amount ELSE 0 END ) AS in, 
+           ABS( SUM( CASE WHEN r.amount < 0 THEN r.amount ELSE 0 END ) ) AS out 
+      FROM records r 
+INNER JOIN recordtags rt 
+        ON rt.recordid=r.recordid 
+       AND r.userid=1 
+       AND r.recordid IN (6339) 
+INNER JOIN tags t ON t.tagid=rt.tagid 
+  GROUP BY t.tagid
+
+
+   SELECT t.tagname, 
+          ARRAY_TO_STRING(ARRAY_AGG(r.recordid), ',') AS recordids,
+          SUM(CASE WHEN r.amount > 0 THEN r.amount ELSE 0 END) AS amount_in, 
+          ABS(SUM(CASE WHEN r.amount < 0 THEN r.amount ELSE 0 END)) AS amount_out 
+          FROM tags t 
+LEFT JOIN recordtags rt ON rt.tagid=t.tagid
+LEFT JOIN records r ON r.recordid=rt.recordid 
+    WHERE r.recordid IN (22,21,9048) 
+ GROUP BY t.tagid
+
+SELECT t.tagname,
+          ARRAY_TO_STRING(ARRAY_AGG(r.recordid), ',') AS recordids,
+          SUM(CASE WHEN r.amount > 0 THEN r.amount ELSE 0 END) AS amount_in,
+          ABS(SUM(CASE WHEN r.amount < 0 THEN r.amount ELSE 0 END)) AS amount_out
+          FROM tags t                                                            
+LEFT JOIN recordtags rt ON rt.tagid=t.tagid                                      
+LEFT JOIN records r ON r.recordid=rt.recordid                                    
+      AND r.recordid IN (22,21,9048)                                             
+ GROUP BY t.tagid                                                        
+ ORDER BY amount_out DESC

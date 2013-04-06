@@ -1,13 +1,12 @@
 from PyQt4 import QtCore, QtGui, QtSql
 from ui_settings import Ui_Settings
 from ui_login import Ui_Login
-from ui_tags import Ui_Tags
 from ui_import import Ui_Import
 import enum
 from utils import showWaitCursor
 from database import db, DatabaseNotInitialisedException, ConnectionException
 from delegates import AccountDelegate
-from models import AccountModel, TagModel, ImportModel
+from models import AccountModel, ImportModel
 
 class UserCancelledException(Exception):
 	""" Exception to indicate user has cancelled the current operation
@@ -42,7 +41,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
 		self.view.resizeColumnsToContents()
 		self.view.horizontalHeader().setStretchLastSection(True)
-		self.view.sortByColumn(1, QtCore.Qt.AscendingOrder)
+		self.view.sortByColumn(2, QtCore.Qt.AscendingOrder)
 
 		self.closeButton.clicked.connect(self.__close)
 		self.view.selectionModel().selectionChanged.connect(self.__recordsSelected)
@@ -281,53 +280,3 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 			QtGui.QMessageBox.warning(self, 'Database', 'Failed to connect: %s' % str(err))
 		else:
 			self.accept()
-
-class TagDialog(Ui_Tags, QtGui.QDialog):
-
-	# Emitted when the TagModel data has changed (tag added or removed)
-	dataChanged= QtCore.pyqtSignal()
-
-	def __init__(self, recordIds, parent=None):
-		super(TagDialog, self).__init__(parent=parent)
-
-		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-		self.setupUi(self)
-
-		self.tagView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
-		self.tagView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
-		self.tagView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
-		self.deleteTagButton.setEnabled(False)
-
-		model = TagModel(recordIds, self)
-		self.tagView.setModel(model)
-		self.tagView.setModelColumn(enum.kTagsColumn_TagName)
-
-		self.addTagButton.pressed.connect(self.addTag)
-		self.deleteTagButton.pressed.connect(self.deleteTags)
-		self.tagView.selectionModel().selectionChanged.connect(self.activateDeleteTagButton)
-
-		self.model = model
-
-	def activateDeleteTagButton(self, selected):
-		self.deleteTagButton.setEnabled(len(selected) > 0)
-
-	def addTag(self):
-		""" Add a new tag
-		"""
-		tagName, ok = QtGui.QInputDialog.getText(self, 'New Tag', 'Tag', QtGui.QLineEdit.Normal)
-
-		if ok and tagName:
-			if tagName in self.model:
-				QtGui.QMessageBox.critical( self, 'Tag Error', 'Tag already exists!', QtGui.QMessageBox.Ok)
-				return
-
-			self.model.addTag(tagName)
-			self.dataChanged.emit()
-
-	def deleteTags(self):
-		rows = self.tagView.selectionModel().selectedRows()
-		if rows:
-			for index in reversed(rows):
-				self.model.removeRows(index.row(), 1, QtCore.QModelIndex())
-			self.dataChanged.emit()
-
