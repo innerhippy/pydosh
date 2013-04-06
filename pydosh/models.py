@@ -502,6 +502,11 @@ class TagModel(QtSql.QSqlTableModel):
 	def setFilter(self, recordIds):
 		super(TagModel, self).setFilter(','.join(str(rec) for rec in recordIds))
 
+	def clearSelection(self):
+		for row in xrange(self.rowCount()):
+			index = self.index(row, enum.kTagsColumn_TagName)
+			self.setData(index, QtCore.QVariant(QtCore.Qt.Unchecked), QtCore.Qt.CheckStateRole)
+
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
 		""" Handle checkstate role changes
 		"""
@@ -515,8 +520,10 @@ class TagModel(QtSql.QSqlTableModel):
 			else:
 				if tagId not in self.__selectedTagIds:
 					return False
+				
 				self.__selectedTagIds.remove(tagId)
 
+			self.dataChanged.emit(index, index)
 			self.selectionChanged.emit(self.__selectedTagIds)
 			return True 
 
@@ -524,8 +531,17 @@ class TagModel(QtSql.QSqlTableModel):
 
 	def data(self, item, role=QtCore.Qt.DisplayRole):
 
-		if role == QtCore.Qt.DisplayRole and item.column() == enum.kTagsColumn_RecordIds:
-			return set([int(i) for i in super(TagModel, self).data(item).toString().split(',') if i])
+		if role == QtCore.Qt.DisplayRole:
+
+			if item.column() == enum.kTagsColumn_RecordIds:
+				return set([int(i) for i in super(TagModel, self).data(item).toString().split(',') if i])
+
+			elif item.column() in (enum.kTagsColumn_Amount_in, enum.kTagsColumn_Amount_out):
+				amount = '%.2f' % super(TagModel, self).data(item).toPyObject()
+				if amount == '0.00':
+					return QtCore.QVariant()
+				else:
+					return QtCore.QVariant(amount)
 
 		if  role == QtCore.Qt.CheckStateRole and item.column() == enum.kTagsColumn_TagName:
 			tagId = self.index(item.row(), enum.kTagsColumn_TagId).data().toPyObject()
@@ -590,6 +606,7 @@ class TagModel(QtSql.QSqlTableModel):
 		query.next()
 		insertId = query.value(0).toPyObject() 
 		self.select()
+		self.tagsChanged.emit()
 		return insertId
 
 	def removeTag(self, tagId):
@@ -604,10 +621,8 @@ class TagModel(QtSql.QSqlTableModel):
 		# Now delete it
 		self.removeRows(match.row(), 1, QtCore.QModelIndex())
 		self.select()
-	
-	def select(self):
 		self.tagsChanged.emit()
-		return super(TagModel, self).select()
+	
 
 	def addRecordTags(self, tagId, recordIds):
 		if not recordIds:
@@ -632,7 +647,9 @@ class TagModel(QtSql.QSqlTableModel):
 		if not query.execBatch():
 			raise Exception(query.lastError().text())
 
+		self.tagsChanged.emit()
 		return self.select()
+	
 
 	def removeRecordTags(self, tagId, recordIds):
 
@@ -648,6 +665,7 @@ class TagModel(QtSql.QSqlTableModel):
 		if query.lastError().isValid():
 			raise Exception(query.lastError().text())
 
+		self.tagsChanged.emit()
 		return self.select()
 
 
@@ -754,9 +772,8 @@ class CheckComboModel(QtSql.QSqlTableModel):
 			else:
 				self._checkedItems.remove(index.row())
 
-			self.emit(QtCore.SIGNAL('dataChanged(QModelIndex, QModelIndex)'), index, index)
-			self.emit(QtCore.SIGNAL('checkStateChanged()'))
-
+			self.dataChanged.emit(index, index)
+			self.checkStateChanged.emit()
 			return True
 
 		return False

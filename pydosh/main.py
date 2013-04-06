@@ -109,7 +109,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 			model = TagModel(self)
 			model.tagsChanged.connect(self.tagModelChanged)
-			model.selectionChanged.connect(self.setTagSelection)
+			model.selectionChanged.connect(self.setTagFilter)
 			proxyModel = QtGui.QSortFilterProxyModel(self)
 			proxyModel.setSourceModel(model)
 			proxyModel.sort(enum.kTagsColumn_Amount_out, QtCore.Qt.AscendingOrder)
@@ -121,8 +121,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tagView.sortByColumn(enum.kTagsColumn_TagName, QtCore.Qt.AscendingOrder)
 			self.tagView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 			self.tagView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
-			self.tagView.selectionModel().selectionChanged.connect(self.activateTagButtons)
-			
+			self.tagView.selectionModel().selectionChanged.connect(self.enableRemoveTagButton)
 
 			self.tagView.verticalHeader().hide()
 			self.tagView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
@@ -147,8 +146,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.accountCombo.setModel(accountModel)
 
 		self.reset()
-
-
 
 	def showAbout(self):
 
@@ -280,7 +277,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			recordIds.append(index.data().toPyObject())
 		return recordIds
 
-	def activateTagButtons(self):
+	def enableRemoveTagButton(self):
 		enable = len(self.tagView.selectionModel().selectedRows()) > 0
 		self.removeTagButton.setEnabled(enable)
 
@@ -408,7 +405,11 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.endDateEdit.setEnabled(True)
 			self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.DescendingOrder)
 
-		self.filterTagIds = set()
+		# Reset tagView - block signals as we're calling setFilter anyway
+		tagModel = self.tagView.model().sourceModel()
+		tagModel.blockSignals(True)
+		tagModel.clearSelection()
+		tagModel.blockSignals(False)
 		self.setFilter()
 
 	def dateRangeSelected(self):
@@ -658,7 +659,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		else:
 			self.tagView.model().sourceModel().addRecordTags(tagId, self.selectedRecordIds())
 
-	def setTagSelection(self, tagIds):
+	def setTagFilter(self, tagIds):
 		""" Filter model by tags in response to tagView selection changed
 		"""
 		self.filterTagIds = tagIds
