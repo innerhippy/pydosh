@@ -25,6 +25,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.inoutCombo.addItem('in', enum.kInOutStatus_In)
 		self.inoutCombo.addItem('out', enum.kInOutStatus_Out)
 
+		self.tagsCombo.addItem('all', enum.kTagCombo_All)
+		self.tagsCombo.addItem('with tags', enum.kTagCombo_With)
+		self.tagsCombo.addItem('without tags', enum.kTagCombo_Without)
+
 		self.dateCombo.addItem('All', userData=enum.kDate_All)
 		self.dateCombo.addItem('Last 12 months', userData=enum.kDate_PreviousYear)
 		self.dateCombo.addItem('Last month', userData=enum.kDate_PreviousMonth)
@@ -37,6 +41,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.accountCombo.setDefaultText('all')
 		self.accountCombo.selectionChanged.connect(self.setFilter)
 		self.checkedCombo.currentIndexChanged.connect(self.setFilter)
+		self.tagsCombo.currentIndexChanged.connect(self.setFilter)
 		self.inoutCombo.currentIndexChanged.connect(self.setFilter)
 		self.descEdit.textChanged.connect(self.setFilter)
 		self.amountEdit.textChanged.connect(self.setFilter)
@@ -67,6 +72,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.__signalsToBlock = (
 				self.accountCombo,
 				self.checkedCombo,
+				self.tagsCombo,
 				self.inoutCombo,
 				self.descEdit,
 				self.amountEdit,
@@ -396,6 +402,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		with self.blockAllSignals():
 			self.populateDates()
 			self.checkedCombo.setCurrentIndex(enum.kCheckedStatus_All)
+			self.tagsCombo.setCurrentIndex(enum.kCheckedStatus_All)
 			self.dateCombo.setCurrentIndex(enum.kDate_PreviousYear)
 			self.selectDateRange()
 			self.accountCombo.clearAll()
@@ -506,6 +513,13 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			if startDate.isValid() and endDate.isValid():
 				queryFilter.append("r.date >= '%s'" % startDate.toString(QtCore.Qt.ISODate))
 				queryFilter.append("r.date <= '%s'" % endDate.toString(QtCore.Qt.ISODate))
+
+		# Basic tag filter
+		state = self.tagsCombo.itemData(self.tagsCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
+		if state == enum.kTagCombo_With:
+			queryFilter.append('t.tagname is not null')
+		elif state == enum.kTagCombo_Without:
+			queryFilter.append('t.tagname is null')
 
 		# checked state filter
 		state = self.checkedCombo.itemData(self.checkedCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()

@@ -23,6 +23,10 @@ kInOutStatus_All = 0
 kInOutStatus_In = 1
 kInOutStatus_Out = 2
 
+kTagCombo_All = 0
+kTagCombo_With = 1
+kTagCombo_Without = 2
+
 kAccountTypeColumn_AccountTypeId = 0
 kAccountTypeColumn_AccountName = 1
 kAccountTypeColumn_DateField = 2
