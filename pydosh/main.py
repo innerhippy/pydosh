@@ -111,7 +111,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.selectionModel().selectionChanged.connect(self.recordSelectionChanged)
 
 			self.tableView.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-			self.tableView.customContextMenuRequested.connect(self.popup)
+			self.tableView.customContextMenuRequested.connect(self.tagEditPopup)
 
 			model = TagModel(self)
 			model.tagsChanged.connect(self.tagModelChanged)
@@ -137,7 +137,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			# Set sql data model for account types
 			self.accountCombo.clear()
 
-			accountModel = CheckComboModel()
+			accountModel = CheckComboModel(self)
 			accountModel.setTable('accounttypes')
 			accountModel.setFilter("""
 				accounttypeid IN (
@@ -187,11 +187,15 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.endDateEdit.setEnabled(False)
 
 	def settingsDialog(self):
+		""" Launch the settings dialog widget to configure account information
+		"""
 		dialog = SettingsDialog(self)
 		dialog.exec_()
 		self.setFilter()
 
 	def importDialog(self):
+		""" Launch the import dialog
+		"""
 		combo = QtGui.QComboBox(self)
 		model = QtSql.QSqlTableModel(self)
 		model.setTable('accounttypes')
@@ -268,6 +272,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.reset()
 
 	def recordSelectionChanged(self):
+		""" Only enable buttons if a selection has been made
+		""" 
 		enable = len(self.tableView.selectionModel().selectedRows()) > 0
 		self.toggleCheckButton.setEnabled(enable)
 		self.deleteButton.setEnabled(enable)
@@ -345,7 +351,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			"""
 		try:
 			# Save selection
-			
 			selectedRecords = self.selectedRecordIds()
 			selectionMode = self.tableView.selectionMode()
 			yield
@@ -624,10 +629,11 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			proxyModel.sourceModel().removeTag(tagId)
 
 
-	def popup(self, pos):
+	def tagEditPopup(self, pos):
 		self.tableView.viewport().mapToGlobal(pos)
 
-		tagList = QtGui.QListWidget(self)
+		tagList = TagListWidget(self)
+		tagList.setPersistEditor(QtGui.QApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier)
 		tagList.itemChanged.connect(self.saveTagChanges)
 
 		selectedRecordIds = set(self.selectedRecordIds())
@@ -658,6 +664,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		action = QtGui.QWidgetAction(self)
 		action.setDefaultWidget(tagList)
+
 		menu = QtGui.QMenu(self)
 		menu.addAction(action)
 		menu.exec_(self.tableView.viewport().mapToGlobal(pos))
@@ -673,9 +680,27 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		else:
 			self.tagView.model().sourceModel().addRecordTags(tagId, self.selectedRecordIds())
 
+		if item.listWidget().persistEditor() == False or len(self.selectedRecordIds()) == 0:
+			# If there's no selection available then close the tag menu
+			item.listWidget().parent().close()
+
 	def setTagFilter(self, tagIds):
 		""" Filter model by tags in response to tagView selection changed
 		"""
 		self.filterTagIds = tagIds
 		self.setFilter()
 
+
+class TagListWidget(QtGui.QListWidget):
+	""" Simple extension to QListWidget to allow persistence of editor
+		when used in QMenu popup
+	""" 
+	def __init__(self, parent=None):
+		super(TagListWidget, self).__init__(parent=parent)
+		self.__persistEditor = False
+
+	def setPersistEditor(self, persist):
+		self.__persistEditor = persist
+
+	def persistEditor(self):
+		return self.__persistEditor

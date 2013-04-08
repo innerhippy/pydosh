@@ -13,3 +13,6 @@ v1.3, Mar 12 2013
   - refresh tag model on any change
   - total count working
   - added tag breakdown view
+
+v1.4, Apr 8 2013
+  - major changes to tag model

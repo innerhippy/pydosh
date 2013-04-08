@@ -30,7 +30,7 @@ class MultiComboBox(QtGui.QComboBox):
 		self.setModelColumn(self.modelColumn())
 		model.rowsInserted.connect(self.__updateCheckedItems)
 		model.rowsRemoved.connect(self.__updateCheckedItems)
-		model.checkStateChanged.connect(self.__updateCheckedItems)
+		model.dataChanged.connect(self.__updateCheckedItems)
 		self.__updateCheckedItems()
 
 	def dataChanged(self):
