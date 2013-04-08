@@ -324,9 +324,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		with showWaitCursor():
 			indexes = [proxyModel.mapToSource(index) for index in selectionModel.selectedRows()]
-			if proxyModel.sourceModel().deleteRecords(indexes):
-				self.accountCombo.model().select()
-			else:
+			if not proxyModel.sourceModel().deleteRecords(indexes):
 				QtGui.QMessageBox.critical(self, 'Database Error',
 					proxyModel.sourceModel().lastError().text(), QtGui.QMessageBox.Ok)
 
@@ -366,6 +364,12 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 					self.tableView.selectRow(proxyModel.mapFromSource(match[0]).row())
 
 			self.tableView.setSelectionMode(selectionMode)
+			
+			selected = self.tableView.selectionModel().selectedRows()
+
+			# Scroll to first selected row
+			if selected:
+				self.tableView.scrollTo(selected[0], QtGui.QAbstractItemView.EnsureVisible)
 
 	def populateDates(self):
 		query = QtSql.QSqlQuery("""
@@ -571,13 +575,15 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		with self.keepSelection():
 			model.sourceModel().setFilter('\nAND '.join(queryFilter))
+
 		#print model.sourceModel().query().lastQuery().replace(' AND ', '').replace('\n', ' ')
 
 		self.updateTagFilter()
 
 		self.tagView.updateGeometry()
-		self.tableView.resizeColumnsToContents()
 		self.tagView.resizeColumnsToContents()
+		self.tableView.resizeColumnsToContents()
+		
 		self.displayRecordCount()
 
 	def tagModelChanged(self):

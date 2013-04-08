@@ -249,25 +249,25 @@ class RecordModel(QtSql.QSqlTableModel):
 		queryFilter = 'WHERE ' + queryFilter if queryFilter else ''
 
 		query = """
-			    SELECT r.recordid,
-					   r.checked,
-					   array_to_string(array_agg(t.tagname ORDER BY t.tagname), ','),
-					   r.checkdate,
-					   r.date,
-					   at.accountname,
-					   r.description,
-					   r.txdate,
-					   r.amount,
-					   r.insertdate,
-					   r.rawdata
-			      FROM records r
-			INNER JOIN accounttypes at ON at.accounttypeid=r.accounttypeid
-						AND r.userid=%(userid)s
-			 LEFT JOIN recordtags rt ON rt.recordid=r.recordid
-			 LEFT JOIN tags t ON rt.tagid=t.tagid
-					   %(filter)s
-			  GROUP BY r.recordid, at.accountname
-			  ORDER BY r.date, r.description, r.txdate, r.recordid
+                SELECT r.recordid,
+                       r.checked,
+                       array_to_string(array_agg(t.tagname ORDER BY t.tagname), ','),
+                       r.checkdate,
+                       r.date,
+                       at.accountname,
+                       r.description,
+                       r.txdate,
+                       r.amount,
+                       r.insertdate,
+                       r.rawdata
+                  FROM records r
+            INNER JOIN accounttypes at ON at.accounttypeid=r.accounttypeid
+                   AND r.userid=%(userid)s
+             LEFT JOIN recordtags rt ON rt.recordid=r.recordid
+             LEFT JOIN tags t ON rt.tagid=t.tagid
+                       %(filter)s
+              GROUP BY r.recordid, at.accountname
+              ORDER BY r.date, r.description, r.txdate, r.recordid
 		""" % {'userid': db.userId, 'filter': queryFilter}
 
 		return query
