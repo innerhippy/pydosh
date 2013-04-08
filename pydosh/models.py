@@ -443,12 +443,15 @@ class TagModel(QtSql.QSqlTableModel):
 			else:
 				if tagId not in self.__selectedTagIds:
 					return False
-				
+
 				self.__selectedTagIds.remove(tagId)
 
 			self.dataChanged.emit(index, index)
 			self.selectionChanged.emit(self.__selectedTagIds)
 			return True 
+
+		if role == QtCore.Qt.EditRole and index.column() == enum.kTagsColumn_TagName:
+			return super(TagModel, self).setData(index, value, role)
 
 		return False
 
@@ -477,8 +480,14 @@ class TagModel(QtSql.QSqlTableModel):
 
 	def flags(self, index):
 		flags = super(TagModel, self).flags(index)
+
 		if index.column() == enum.kTagsColumn_TagName:
 			flags |= QtCore.Qt.ItemIsUserCheckable
+		
+		# Only allow tag name to be editable
+		if index.column() != enum.kTagsColumn_TagName:
+			flags ^= QtCore.Qt.ItemIsEditable
+
 		return flags
 
 	def selectStatement(self):
@@ -550,7 +559,7 @@ class TagModel(QtSql.QSqlTableModel):
 	def addRecordTags(self, tagId, recordIds):
 		if not recordIds:
 			return False
-		
+
 		# Remove records that already have this tag
 		currentIndex = self.index(0, enum.kTagsColumn_TagId)
 		match = self.match(currentIndex, QtCore.Qt.DisplayRole, tagId, 1, QtCore.Qt.MatchExactly)
@@ -608,6 +617,7 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 		elif left.column() == enum.kRecordColumn_Amount:
 			leftVal, leftOk = self.sourceModel().record(left.row()).value(enum.kRecordColumn_Amount).toDouble()
 			rightVal, rightOk = self.sourceModel().record(right.row()).value(enum.kRecordColumn_Amount).toDouble()
+
 			if leftOk and rightOk:
 				return leftVal < rightVal
 
