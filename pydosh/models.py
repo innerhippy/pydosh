@@ -227,6 +227,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 class RecordModel(QtSql.QSqlTableModel):
 	def __init__(self, parent=None):
 		super(RecordModel, self).__init__(parent=parent)
+		self._highlightText = None
 
 	def select(self):
 		status = super(RecordModel, self).select()
@@ -310,6 +311,10 @@ class RecordModel(QtSql.QSqlTableModel):
 
 		return True
 
+	def highlightText(self, text):
+		self._highlightText = text
+		self.reset()
+
 	def data(self, item, role=QtCore.Qt.DisplayRole):
 		""" Return data from the model, formatted for viewing
 		"""
@@ -321,6 +326,12 @@ class RecordModel(QtSql.QSqlTableModel):
 				return QtCore.Qt.Checked
 			else:
 				return QtCore.Qt.Unchecked
+
+		if role == QtCore.Qt.FontRole and item.column() == enum.kRecordColumn_Description:
+			if self._highlightText and self.data(item, QtCore.Qt.DisplayRole).contains(self._highlightText, QtCore.Qt.CaseInsensitive):
+				font = QtGui.QFont()
+				font.setBold(True)
+				return font
 
 		if role == QtCore.Qt.ToolTipRole:
 			if item.column() == enum.kRecordColumn_Tags:

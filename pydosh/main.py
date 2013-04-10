@@ -44,6 +44,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.tagsCombo.currentIndexChanged.connect(self.setFilter)
 		self.inoutCombo.currentIndexChanged.connect(self.setFilter)
 		self.descEdit.textChanged.connect(self.setFilter)
+		self.scrolltoEdit.textChanged.connect(self.scrollTo)
 		self.amountEdit.textChanged.connect(self.setFilter)
 		self.amountEdit.controlKeyPressed.connect(self.controlKeyPressed)
 		self.toggleCheckButton.clicked.connect(self.toggleSelected)
@@ -75,6 +76,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				self.tagsCombo,
 				self.inoutCombo,
 				self.descEdit,
+				self.scrolltoEdit,
 				self.amountEdit,
 				self.dateCombo,
 				self.startDateEdit,
@@ -421,6 +423,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.endDateEdit.setEnabled(True)
 			self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.DescendingOrder)
 
+		# Need signals to clear highlight filter on model
+		self.scrolltoEdit.clear()
+
 		# Reset tagView - block signals as we're calling setFilter anyway
 		tagModel = self.tagView.model().sourceModel()
 		tagModel.blockSignals(True)
@@ -696,6 +701,15 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.filterTagIds = tagIds
 		self.setFilter()
 
+	def scrollTo(self, text):
+		# Tell the model to highlight or un-highlight matching rows
+		self.tableView.model().sourceModel().highlightText(text)
+
+		if text:
+			currentIndex = self.tableView.model().index(0, enum.kRecordColumn_Description)
+			matches = self.tableView.model().match(currentIndex, QtCore.Qt.DisplayRole, text)
+			if matches:
+				self.tableView.scrollTo(matches[0], QtGui.QAbstractItemView.EnsureVisible)
 
 class TagListWidget(QtGui.QListWidget):
 	""" Simple extension to QListWidget to allow persistence of editor
