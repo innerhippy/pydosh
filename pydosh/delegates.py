@@ -21,18 +21,13 @@ class AccountDelegate(QtGui.QItemDelegate):
 
 		return lineEdit
 
-
 	def setModelData(self, editor, model, index):
 
 		if not index.isValid():
 			return
 
 		if editor:
-			if index.column() == enum.kAccountTypeColumn_CurrencySign:
-				model.setData(index, editor.text())
-			else:
-				value = editor.text() if editor.text() else QtCore.QVariant(QtCore.QVariant.Int)
-				model.setData(index, value)
+			model.setData(index, editor.text())
 
 	def updateEditorGeometry(self, editor, option, index):
 		editor.setGeometry(option.rect)

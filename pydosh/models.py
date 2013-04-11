@@ -650,7 +650,7 @@ class AccountModel(QtSql.QSqlTableModel):
 
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
 		# Don't flag cell as changed when it hasn't
-		if role == QtCore.Qt.EditRole and self.data(index, role) == value:
+		if role == QtCore.Qt.EditRole and index.data(QtCore.Qt.DisplayRole) == value:
 			return False
 
 		return super(AccountModel, self).setData(index, value, role)

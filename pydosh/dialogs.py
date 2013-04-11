@@ -170,7 +170,7 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 		self.view.sortByColumn(enum.kAccountTypeColumn_AccountName, QtCore.Qt.AscendingOrder)
 		self.view.resizeColumnsToContents()
 		self.view.horizontalHeader().setStretchLastSection(True)
-		self.view.setItemDelegate(AccountDelegate())
+		self.view.setItemDelegate(AccountDelegate(self))
 
 		model.dataChanged.connect(self.view.clearSelection)
 		model.dataChanged.connect(self.__dataChanged)
@@ -182,26 +182,40 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 		self.enableCommit(True)
 
 	def validateNewAccount(self, record):
-		error = ''
-		if not record.value(enum.kAccountTypeColumn_AccountName).toString():
-			error = "Account name cannot be empty!"
-		elif record.value(enum.kAccountTypeColumn_DateField).isNull():
-			error = "Date field must be set!"
-		elif record.value(enum.kAccountTypeColumn_DescriptionField).isNull():
-			error = "Description field must be set!"
-		elif record.value(enum.kAccountTypeColumn_CurrencySign).toPyObject() not in (1, -1):
-			error = "Current sign value must be 1 or -1"
-		elif not record.value(enum.kAccountTypeColumn_DateFormat).toString():
-			error = "Date format cannot be empty!"
+		try:
+			if record.value(enum.kAccountTypeColumn_AccountName).toString().isEmpty():
+				raise Exception('Account name cannot be empty')
 
-		if error:
-			QtGui.QMessageBox.critical(self, 'Account failed', error, QtGui.QMessageBox.Ok)
+			value, ok = record.value(enum.kAccountTypeColumn_DateField).toInt()
+			if not ok or value < 0:
+				raise Exception('Date field must be set (index of date field)')
+
+			value, ok = record.value(enum.kAccountTypeColumn_CreditField).toInt()
+			if not ok or value < 0:
+				raise Exception('Credit field must be set (index of credit field)')
+
+			value, ok = record.value(enum.kAccountTypeColumn_DebitField).toInt()
+			if not ok or value < 0:
+				raise Exception('Debit field must be set (index of debit field)')
+
+			if record.value(enum.kAccountTypeColumn_DescriptionField).toString().isEmpty():
+				raise Exception('Description field must be set (index of description field)')
+
+			value, ok = record.value(enum.kAccountTypeColumn_CurrencySign).toInt()
+			if not ok or value not in (1, -1):
+				raise Exception('Currency sign value must be 1 or -1')
+
+			if record.value(enum.kAccountTypeColumn_DateFormat).toString().isEmpty():
+				raise Exception('"Date format cannot be empty (eg "dd/MM/yyyy")')
+
+		except Exception, err:
+			QtGui.QMessageBox.critical(self, 'Account failed', str(err), QtGui.QMessageBox.Ok)
 			# Trash the bad record
 			record.clear()
 
 	def saveSettings(self):
 
-		if self.model.submitAll() and self.model.lastError().isValid():
+		if not self.model.submitAll() and self.model.lastError().isValid():
 			# If we've cleared the record from validateNewAccount() then the database error
 			# will be empty. No need to issue a second error message
 			if self.m_model.lastError().databaseText():
@@ -222,7 +236,11 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 		rowCount = self.model.rowCount()
 		self.model.insertRow(rowCount)
 
-		index = self.model.index(rowCount, 1)
+		for column in xrange(1, self.model.columnCount()):
+			index = self.model.index(rowCount, column)
+			self.model.setData(index, QtCore.QVariant(), QtCore.Qt.EditRole)
+
+		index = self.model.index(rowCount, enum.kAccountTypeColumn_AccountName)
 		self.view.setCurrentIndex(index)
 		self.view.edit(index)
 
