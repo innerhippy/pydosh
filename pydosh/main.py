@@ -39,7 +39,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.removeTagButton.setEnabled(False)
 
 		self.accountCombo.setDefaultText('all')
-		self.accountCombo.selectionChanged.connect(self.setFilter)
+#		self.accountCombo.selectionChanged.connect(self.setFilter)
 		self.checkedCombo.currentIndexChanged.connect(self.setFilter)
 		self.tagsCombo.currentIndexChanged.connect(self.setFilter)
 		self.inoutCombo.currentIndexChanged.connect(self.setFilter)
@@ -50,8 +50,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.toggleCheckButton.clicked.connect(self.toggleSelected)
 		self.deleteButton.clicked.connect(self.deleteRecords)
 		self.dateCombo.currentIndexChanged.connect(self.dateRangeSelected)
-		self.startDateEdit.dateChanged.connect(self.setFilter)
-		self.endDateEdit.dateChanged.connect(self.setFilter)
+#		self.startDateEdit.dateChanged.connect(self.setFilter)
+#		self.endDateEdit.dateChanged.connect(self.setFilter)
 		self.reloadButton.clicked.connect(self.reset)
 		self.addTagButton.clicked.connect(self.addTag)
 		self.removeTagButton.clicked.connect(self.removeTag)
@@ -84,6 +84,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		)
 
 		self.filterTagIds = set()
+		self.maxInsertDate = None
 
 		with self.blockAllSignals():
 
@@ -94,6 +95,13 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			model.select()
 
 			proxyModel = SortProxyModel(self)
+			proxyModel.setDynamicSortFilter(True)
+
+			self.startDateEdit.dateChanged.connect(proxyModel.setStartDate)
+			self.endDateEdit.dateChanged.connect(proxyModel.setEndDate)
+			self.accountCombo.selectionChanged.connect(self.accountSelectionChanged)
+			
+			proxyModel.filterChanged.connect(self.displayRecordCount)
 			proxyModel.setSourceModel(model)
 			proxyModel.sort(enum.kRecordColumn_Date, QtCore.Qt.AscendingOrder)
 
@@ -104,6 +112,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
 
 			self.tableView.setColumnHidden(enum.kRecordColumn_RecordId, True)
+			self.tableView.setColumnHidden(enum.kRecordColumn_AccountTypeId, True)
 			self.tableView.setColumnHidden(enum.kRecordColumn_CheckDate, True)
 			self.tableView.setColumnHidden(enum.kRecordColumn_RawData, True)
 			self.tableView.setColumnHidden(enum.kRecordColumn_InsertDate, True)
@@ -137,6 +146,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tagView.setShowGrid(False)
 
 			# Set sql data model for account types
+			# TODO: fixme
 			self.accountCombo.clear()
 
 			accountModel = CheckComboModel(self)
@@ -153,7 +163,17 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.accountCombo.setModelColumn(enum.kAccountTypeColumn_AccountName)
 			self.accountCombo.setModel(accountModel)
 
+#			from signaltracer import SignalTracer
+#			tracer=SignalTracer()
+#			tracer.monitor(self.tagView.model(), self.tagView.model().sourceModel(), self.tagView.selectionModel())
+
 		self.reset()
+
+	def accountSelectionChanged(self):
+		""" Tell the proxy filter to filter on selected account ids
+		"""
+		accountIds = [index.data(QtCore.Qt.UserRole).toPyObject() for index in self.accountCombo.checkedIndexes()]
+		self.tableView.model().setAccountFilter(accountIds)
 
 	def showAbout(self):
 
@@ -171,6 +191,11 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def selectDateRange(self):
 		selected = self.dateCombo.itemData(self.dateCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
 
+		# Clear the filters but don't trigger a re-draw just yet
+		self.tableView.model().setStartDate(None, invalidate=False)
+		self.tableView.model().setEndDate(None, invalidate=False)
+		self.tableView.model().setInsertDate(None, invalidate=False)
+
 		if selected == enum.kDate_All:
 			self.startDateEdit.setDate(self.startDateEdit.minimumDate())
 			self.endDateEdit.setDate(self.endDateEdit.maximumDate())
@@ -185,6 +210,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.startDateEdit.setEnabled(True)
 			self.endDateEdit.setEnabled(True)
 		elif selected == enum.kdate_LastImport:
+			self.tableView.model().setInsertDate(self.maxInsertDate)
 			self.startDateEdit.setEnabled(False)
 			self.endDateEdit.setEnabled(False)
 
@@ -375,20 +401,24 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	def populateDates(self):
 		query = QtSql.QSqlQuery("""
-				SELECT MIN(date), MAX(date)
-				FROM records
-				WHERE userid=%d
+			SELECT MIN(date), 
+				   MAX(date),  
+				   MAX(insertdate)
+			  FROM records
+			 WHERE userid=%d
 			""" % db.userId)
 
 		if query.next():
 			startDate = query.value(0).toDate()
 			endDate = query.value(1).toDate()
+			maxInsertDateTime = query.value(2).toDateTime()
 
 			self.startDateEdit.setDateRange(startDate, endDate)
 			self.endDateEdit.setDateRange(startDate, endDate)
 
 			self.startDateEdit.setDate(startDate)
 			self.endDateEdit.setDate(endDate)
+			self.maxInsertDate = maxInsertDateTime
 
 	@showWaitCursorDecorator
 	def toggleSelected(self, *args):
@@ -423,6 +453,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.endDateEdit.setEnabled(True)
 			self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.DescendingOrder)
 
+		# ClearFilters
+		self.tableView.model().clearFilters()
 		# Need signals to clear highlight filter on model
 		self.scrolltoEdit.clear()
 
@@ -437,7 +469,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		""" Date combo has been changed. Set the date fields and refresh the records model
 		"""
 		self.selectDateRange()
-		self.setFilter()
+#		self.setFilter()
 
 	def addActions(self):
 		quitAction = QtGui.QAction(QtGui.QIcon(':/icons/exit.png'), '&Quit', self)
@@ -501,6 +533,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	@showWaitCursorDecorator
 	def setFilter(self, *args):
+		print 'setFilter called'
 		model = self.tableView.model()
 
 		if model is None:
@@ -509,24 +542,24 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		queryFilter = []
 
 		# Account filter
-		accountIds = [index.data(QtCore.Qt.UserRole).toPyObject() for index in self.accountCombo.checkedIndexes()]
-		if accountIds:
-			queryFilter.append('r.accounttypeid in (%s)' % ', '.join(str(acid) for acid in accountIds))
+#		accountIds = [index.data(QtCore.Qt.UserRole).toPyObject() for index in self.accountCombo.checkedIndexes()]
+#		if accountIds:
+#			queryFilter.append('r.accounttypeid in (%s)' % ', '.join(str(acid) for acid in accountIds))
 
 		# Date filter
-		if self.dateCombo.itemData(self.dateCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject() == enum.kdate_LastImport:
-			queryFilter.append("""
-				r.insertdate = (
-					SELECT MAX(insertdate)
-					FROM records)
-			""")
-		else:
-			startDate = self.startDateEdit.date()
-			endDate = self.endDateEdit.date()
-
-			if startDate.isValid() and endDate.isValid():
-				queryFilter.append("r.date >= '%s'" % startDate.toString(QtCore.Qt.ISODate))
-				queryFilter.append("r.date <= '%s'" % endDate.toString(QtCore.Qt.ISODate))
+#		if self.dateCombo.itemData(self.dateCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject() == enum.kdate_LastImport:
+#			queryFilter.append("""
+#				r.insertdate = (
+#					SELECT MAX(insertdate)
+#					FROM records)
+#			""")
+#		else:
+#			startDate = self.startDateEdit.date()
+#			endDate = self.endDateEdit.date()
+#
+#			if startDate.isValid() and endDate.isValid():
+#				queryFilter.append("r.date >= '%s'" % startDate.toString(QtCore.Qt.ISODate))
+#				queryFilter.append("r.date <= '%s'" % endDate.toString(QtCore.Qt.ISODate))
 
 		# Basic tag filter
 		state = self.tagsCombo.itemData(self.tagsCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
@@ -581,7 +614,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		with self.keepSelection():
 			model.sourceModel().setFilter('\nAND '.join(queryFilter))
 
-		#print model.sourceModel().query().lastQuery().replace(' AND ', '').replace('\n', ' ')
+		#print model.sourceModel().selectStatement()
+		#query().lastQuery().replace(' AND ', '').replace('\n', ' ')
 
 		self.updateTagFilter()
 
@@ -589,7 +623,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.tagView.resizeColumnsToContents()
 		self.tableView.resizeColumnsToContents()
 		
-		self.displayRecordCount()
+		#self.displayRecordCount()
 
 	def tagModelChanged(self):
 		""" Tag model has changed - call select on record model to refresh the changes (in tag column)

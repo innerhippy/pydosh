@@ -255,6 +255,7 @@ class RecordModel(QtSql.QSqlTableModel):
                        array_to_string(array_agg(t.tagname ORDER BY t.tagname), ','),
                        r.checkdate,
                        r.date,
+                       r.accounttypeid,
                        at.accountname,
                        r.description,
                        r.txdate,
@@ -284,8 +285,8 @@ class RecordModel(QtSql.QSqlTableModel):
 		recordIds = [self.index(index.row(), enum.kRecordColumn_RecordId).data().toPyObject() for index in indexes]
 		query = QtSql.QSqlQuery("""
 			UPDATE records
-               SET checkdate = CASE WHEN checked=1 THEN NULL ELSE current_timestamp END,
-			       checked = CASE WHEN checked=1 THEN 0 ELSE 1 END
+               SET checkdate = CASE WHEN checked = 1 THEN NULL ELSE current_timestamp END,
+			       checked   = CASE WHEN checked = 1 THEN 0 ELSE 1 END
 			 WHERE recordid in (%s)
 			""" % ','.join(str(rec) for rec in recordIds))
 
@@ -410,7 +411,7 @@ class RecordModel(QtSql.QSqlTableModel):
 				return "Tags"
 			elif section == enum.kRecordColumn_Date:
 				return "Date"
-			elif section == enum.kRecordColumn_AccountType:
+			elif section == enum.kRecordColumn_AccountTypeName:
 				return "Account"
 			elif section == enum.kRecordColumn_Description:
 				return "Description"
@@ -613,8 +614,64 @@ class TagModel(QtSql.QSqlTableModel):
 
 
 class SortProxyModel(QtGui.QSortFilterProxyModel):
+	# Signal emitted whenever there is a change to the filter
+	filterChanged = QtCore.pyqtSignal()
+
 	def __init__(self, parent=None):
 		super(SortProxyModel, self).__init__(parent=parent)
+		self._startDate = None
+		self._endDate = None
+		self._insertDate = None
+		self._accountids = None
+
+	def clearFilters(self):
+		self._startDate = None
+		self._endDate = None
+		self._insertDate = None
+		self._accountids = None
+		self.invalidateFilter()
+
+	def setStartDate(self, startDate, invalidate=True):
+		self._startDate = startDate
+		if invalidate:
+			self.invalidateFilter()
+
+	def setEndDate(self, date, invalidate=True):
+		self._endDate = date
+		if invalidate:
+			self.invalidateFilter()
+
+	def setInsertDate(self, date, invalidate=True):
+		self._insertDate = date
+		if invalidate:
+			self.invalidateFilter()
+
+	def setAccountFilter(self, accountIds, invalidate=True):
+		self._accountids = accountIds
+		if invalidate:
+			self.invalidateFilter()
+
+	def invalidateFilter(self):
+		super(SortProxyModel, self).invalidateFilter()
+		self.filterChanged.emit()
+
+	def filterAcceptsRow(self, sourceRow, parent):
+		if self._startDate:
+			if self.sourceModel().index(sourceRow, enum.kRecordColumn_Date, parent).data() < self._startDate:
+				return False
+
+		if self._endDate:
+			if self.sourceModel().index(sourceRow, enum.kRecordColumn_Date, parent).data() > self._endDate:
+				return False
+
+		if self._insertDate:
+			if self.sourceModel().index(sourceRow, enum.kRecordColumn_InsertDate).data() != self._insertDate:
+				return False
+
+		if self._accountids:
+			if self.sourceModel().index(sourceRow, enum.kRecordColumn_AccountTypeId).data().toPyObject() not in self._accountids:
+				return False
+		return True
 
 	def lessThan(self, left, right):
 		""" Define the comparison to ensure column data is sorted correctly
