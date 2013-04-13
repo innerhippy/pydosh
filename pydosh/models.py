@@ -329,7 +329,7 @@ class RecordModel(QtSql.QSqlTableModel):
 				return QtCore.Qt.Unchecked
 
 		if role == QtCore.Qt.FontRole and item.column() == enum.kRecordColumn_Description:
-			if self._highlightText and self.data(item, QtCore.Qt.DisplayRole).contains(self._highlightText, QtCore.Qt.CaseInsensitive):
+			if self._highlightText and item.data(QtCore.Qt.DisplayRole).toString().contains(self._highlightText, QtCore.Qt.CaseInsensitive):
 				font = QtGui.QFont()
 				font.setBold(True)
 				return font
@@ -340,7 +340,7 @@ class RecordModel(QtSql.QSqlTableModel):
 				return item.data(QtCore.Qt.UserRole)
 
 			elif item.column() == enum.kRecordColumn_Checked:
-				if super(RecordModel, self).data(self.index(item.row(), enum.kRecordColumn_Checked)).toBool():
+				if item.data(QtCore.Qt.CheckStateRole).toPyObject() == QtCore.Qt.Checked:
 					return "Checked: " + super(RecordModel, self).data(
 							self.index(item.row(), enum.kRecordColumn_CheckDate)).toDateTime().toString("dd/MM/yy hh:mm")
 
@@ -619,18 +619,20 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 
 	def __init__(self, parent=None):
 		super(SortProxyModel, self).__init__(parent=parent)
+		self.__reset()
+
+	def __reset(self):
+		""" Create or re-create all filter
+		"""
 		self._startDate = None
 		self._endDate = None
 		self._insertDate = None
 		self._accountids = None
 		self._hasTags = None
+		self._checked = None
 
 	def clearFilters(self):
-		self._startDate = None
-		self._endDate = None
-		self._insertDate = None
-		self._accountids = None
-		self._hasTags = None
+		self.__reset()
 		self.invalidateFilter()
 
 	def setStartDate(self, startDate, invalidate=True):
@@ -653,11 +655,30 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 		if invalidate:
 			self.invalidateFilter()
 			
-	def setHasTagsFilter(self, selection, invalidate=True):
-		self._hasTags = selection
+	def setHasTagsFilter(self, value, invalidate=True):
+		""" Set basic tag filter
+
+			selection:
+				None  - no filter
+				True  - filter with tags
+				False - filter with no tags
+		"""
+		self._hasTags = value
 		if invalidate:
 			self.invalidateFilter()
 
+	def setCheckedFilter(self, value, invalidate=True):
+		""" Checked records filter
+
+			selection:
+				None  - all
+				True  - filter only checked
+				False - filter not checked
+		"""
+		self._checked = value
+		if invalidate:
+			self.invalidateFilter()
+		
 	def invalidateFilter(self):
 		""" Override invalidateFilter so that we can emit the filterChanged signal
 		"""
@@ -680,13 +701,16 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 		if self._accountids:
 			if self.sourceModel().index(sourceRow, enum.kRecordColumn_AccountTypeId).data().toPyObject() not in self._accountids:
 				return False
-			
-		if self._hasTags == enum.kTagCombo_With:
-			if not self.sourceModel().index(sourceRow, enum.kRecordColumn_Tags).data(QtCore.Qt.UserRole).toString():
+
+		if self._hasTags is not None:
+			hasTags = self.sourceModel().index(sourceRow, enum.kRecordColumn_Tags).data(QtCore.Qt.UserRole).toBool()
+			if self._hasTags != hasTags:
 				return False
-		elif self._hasTags == enum.kTagCombo_Without:
-			if self.sourceModel().index(sourceRow, enum.kRecordColumn_Tags).data(QtCore.Qt.UserRole).toString():
-				return False			
+
+		if self._checked is not None:
+			isChecked = self.sourceModel().index(sourceRow, enum.kRecordColumn_Checked).data(QtCore.Qt.CheckStateRole).toPyObject() == QtCore.Qt.Checked
+			if self._checked != isChecked:
+				return False
 
 		return True
 

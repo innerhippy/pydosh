@@ -40,7 +40,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.accountCombo.setDefaultText('all')
 #		self.accountCombo.selectionChanged.connect(self.setFilter)
-		self.checkedCombo.currentIndexChanged.connect(self.setFilter)
+		#self.checkedCombo.currentIndexChanged.connect(self.setFilter)
 #		self.tagsCombo.currentIndexChanged.connect(self.setFilter)
 		self.inoutCombo.currentIndexChanged.connect(self.setFilter)
 		self.descEdit.textChanged.connect(self.setFilter)
@@ -101,6 +101,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.endDateEdit.dateChanged.connect(proxyModel.setEndDate)
 			self.accountCombo.selectionChanged.connect(self.accountSelectionChanged)
 			self.tagsCombo.currentIndexChanged.connect(self.tagSelectionChanged)
+			self.checkedCombo.currentIndexChanged.connect(self.checkedSelectionChanged)
 			
 			proxyModel.filterChanged.connect(self.displayRecordCount)
 			proxyModel.setSourceModel(model)
@@ -178,10 +179,28 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 
 	def tagSelectionChanged(self, index):
-		# Basic tag filter (has tags or not)
+		""" Basic tag filter (has tags or not)
+		"""
 		state = self.tagsCombo.itemData(index, QtCore.Qt.UserRole).toPyObject()
-		self.tableView.model().setHasTagsFilter(state)
+		if state == enum.kTagCombo_With:
+			value = True
+		elif state == enum.kTagCombo_Without:
+			value = False
+		else:
+			value = None
+		self.tableView.model().setHasTagsFilter(value)
 
+	def checkedSelectionChanged(self, index):
+		""" Set filter for checked records
+		"""
+		state = self.checkedCombo.itemData(index, QtCore.Qt.UserRole).toPyObject()
+		if state == enum.kCheckedStatus_Checked:
+			value = True
+		elif state == enum.kCheckedStatus_UnChecked:
+			value = False
+		else:
+			value = None
+		self.tableView.model().setCheckedFilter(value)
 
 	def showAbout(self):
 
@@ -577,11 +596,11 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 #			queryFilter.append('t.tagname is null')
 
 		# checked state filter
-		state = self.checkedCombo.itemData(self.checkedCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
-		if state == enum.kCheckedStatus_Checked:
-			queryFilter.append('r.checked=1')
-		elif state == enum.kCheckedStatus_UnChecked:
-			queryFilter.append('r.checked=0')
+#		state = self.checkedCombo.itemData(self.checkedCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
+#		if state == enum.kCheckedStatus_Checked:
+#			queryFilter.append('r.checked=1')
+#		elif state == enum.kCheckedStatus_UnChecked:
+#			queryFilter.append('r.checked=0')
 
 		# money in/out filter
 		state = self.inoutCombo.itemData(self.inoutCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
