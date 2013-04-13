@@ -43,7 +43,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		#self.checkedCombo.currentIndexChanged.connect(self.setFilter)
 		#self.tagsCombo.currentIndexChanged.connect(self.setFilter)
 		#self.inoutCombo.currentIndexChanged.connect(self.setFilter)
-		self.descEdit.textChanged.connect(self.setFilter)
+		#self.descEdit.textChanged.connect(self.setFilter)
 		self.scrolltoEdit.textChanged.connect(self.scrollTo)
 		self.amountEdit.textChanged.connect(self.setFilter)
 		self.amountEdit.controlKeyPressed.connect(self.controlKeyPressed)
@@ -103,6 +103,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tagsCombo.currentIndexChanged.connect(self.tagSelectionChanged)
 			self.checkedCombo.currentIndexChanged.connect(self.checkedSelectionChanged)
 			self.inoutCombo.currentIndexChanged.connect(self.inOutSelectionChanged)
+			self.descEdit.textChanged.connect(proxyModel.setDescriptionFilter)
 			
 			proxyModel.filterChanged.connect(self.displayRecordCount)
 			proxyModel.setSourceModel(model)
@@ -623,8 +624,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 #			queryFilter.append('r.amount < 0')
 
 		# description filter
-		if self.descEdit.text():
-			queryFilter.append("lower(r.description) LIKE '%%%s%%'" % self.descEdit.text().toLower())
+#		if self.descEdit.text():
+#			queryFilter.append("lower(r.description) LIKE '%%%s%%'" % self.descEdit.text().toLower())
 
 		# amount filter. May contain operators < > <= or >=
 		amountFilter = self.amountEdit.text()

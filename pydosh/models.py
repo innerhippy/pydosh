@@ -632,6 +632,7 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 		self._hasTags = None
 		self._checked = None
 		self._creditFilter = None
+		self._description = None
 
 	def clearFilters(self):
 		self.__reset()
@@ -689,6 +690,12 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 		self._creditFilter = value
 		self.invalidateFilter()
 
+	def setDescriptionFilter(self, text):
+		""" Filter by description (case insensitive)
+		"""
+		self._description = text
+		self.invalidateFilter()
+
 	def invalidateFilter(self):
 		""" Override invalidateFilter so that we can emit the filterChanged signal
 		"""
@@ -726,6 +733,11 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 			amount = self.sourceModel().index(sourceRow, enum.kRecordColumn_Amount).data(QtCore.Qt.UserRole).toPyObject()
 			print self._creditFilter, amount < 0.0
 			if self._creditFilter != (amount >= 0.0):
+				return False
+
+		if self._description:
+			description = self.sourceModel().index(sourceRow, enum.kRecordColumn_Description).data().toString()
+			if not description.contains(self._description, QtCore.Qt.CaseInsensitive):
 				return False
 
 		return True
