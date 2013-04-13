@@ -1,4 +1,5 @@
 from copy import deepcopy
+import operator
 from PyQt4 import QtCore, QtGui, QtSql
 import enum
 from database import db
@@ -633,6 +634,7 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 		self._checked = None
 		self._creditFilter = None
 		self._description = None
+		self._amountFilter = None
 
 	def clearFilters(self):
 		self.__reset()
@@ -696,6 +698,14 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 		self._description = text
 		self.invalidateFilter()
 
+	def setAmountFilter(self, text, op=None):
+		""" Set amount filter with optional operator
+			If operator is None then a string comparison is done on amount start
+		""" 
+		self._amountFilter = text
+		self._amountOperator = op
+		self.invalidateFilter()
+
 	def invalidateFilter(self):
 		""" Override invalidateFilter so that we can emit the filterChanged signal
 		"""
@@ -740,6 +750,16 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 			if not description.contains(self._description, QtCore.Qt.CaseInsensitive):
 				return False
 
+		if self._amountFilter:
+			amount = self.sourceModel().index(sourceRow, enum.kRecordColumn_Amount).data().toPyObject()
+			if self._amountOperator is None:
+				# Filter as string matching start
+				if not amount.startsWith(self._amountFilter):
+					return False
+			else:
+				# Use operator to perform match
+				if not self._amountOperator(float(amount), float(self._amountFilter)):
+					return False
 		return True
 
 	def lessThan(self, left, right):

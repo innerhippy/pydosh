@@ -1,4 +1,5 @@
 from contextlib  import contextmanager
+import operator
 from version import __VERSION__
 from PyQt4 import QtGui, QtCore, QtSql
 from utils import showWaitCursorDecorator, showWaitCursor
@@ -45,7 +46,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		#self.inoutCombo.currentIndexChanged.connect(self.setFilter)
 		#self.descEdit.textChanged.connect(self.setFilter)
 		self.scrolltoEdit.textChanged.connect(self.scrollTo)
-		self.amountEdit.textChanged.connect(self.setFilter)
+		#self.amountEdit.textChanged.connect(self.setFilter)
 		self.amountEdit.controlKeyPressed.connect(self.controlKeyPressed)
 		self.toggleCheckButton.clicked.connect(self.toggleSelected)
 		self.deleteButton.clicked.connect(self.deleteRecords)
@@ -104,6 +105,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.checkedCombo.currentIndexChanged.connect(self.checkedSelectionChanged)
 			self.inoutCombo.currentIndexChanged.connect(self.inOutSelectionChanged)
 			self.descEdit.textChanged.connect(proxyModel.setDescriptionFilter)
+			self.amountEdit.textChanged.connect(self.amountFilterChanged)
 			
 			proxyModel.filterChanged.connect(self.displayRecordCount)
 			proxyModel.setSourceModel(model)
@@ -215,6 +217,30 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		else:
 			value = None
 		self.tableView.model().setCreditFilter(value)
+
+	def amountFilterChanged(self, text):
+		if text:
+			if text.contains(QtCore.QRegExp('[<>=]+')):
+				# looks like we have operators, test validity and amount
+				operatorMap = {
+					'=':  operator.eq,
+					'>':  operator.gt,
+					'<':  operator.lt,
+					'>=': operator.ge,
+					'<=': operator.le
+				}
+				rx = QtCore.QRegExp('^(=|>|<|>=|<=)([\\.\\d+]+)')
+				if rx.indexIn(text) != -1 and str(rx.cap(1)) in operatorMap:
+					self.tableView.model().setAmountFilter(rx.cap(2), operatorMap[str(rx.cap(1))])
+				else:
+					# Input not complete yet.
+					return
+			else:
+				# No operator supplied - treat amount as a string
+				self.tableView.model().setAmountFilter(text)
+		else:
+			# No filter
+			self.tableView.model().setAmountFilter(None)
 
 	def showAbout(self):
 
@@ -628,21 +654,21 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 #			queryFilter.append("lower(r.description) LIKE '%%%s%%'" % self.descEdit.text().toLower())
 
 		# amount filter. May contain operators < > <= or >=
-		amountFilter = self.amountEdit.text()
-		if amountFilter:
-			if amountFilter.contains(QtCore.QRegExp('[<>=]+')):
-				# looks like we have operators, test validity and amount
-				rx = QtCore.QRegExp('^(=|>|<|>=|<=)([\\.\\d+]+)')
-				if rx.indexIn(amountFilter) != -1:
-					queryFilter.append('abs(r.amount) %s %s' % (rx.cap(1), rx.cap(2)))
-				else:
-					# Input not complete yet.
-					return
-			else:
-				# No operator supplied - treat amount as a string
-				queryFilter.append(
-					"(CAST(r.amount AS char(10)) LIKE '%s%%' OR CAST(r.amount AS char(10)) LIKE '-%s%%')" %
-					(amountFilter, amountFilter))
+#		amountFilter = self.amountEdit.text()
+#		if amountFilter:
+#			if amountFilter.contains(QtCore.QRegExp('[<>=]+')):
+#				# looks like we have operators, test validity and amount
+#				rx = QtCore.QRegExp('^(=|>|<|>=|<=)([\\.\\d+]+)')
+#				if rx.indexIn(amountFilter) != -1:
+#					queryFilter.append('abs(r.amount) %s %s' % (rx.cap(1), rx.cap(2)))
+#				else:
+#					# Input not complete yet.
+#					return
+#			else:
+#				# No operator supplied - treat amount as a string
+#				queryFilter.append(
+#					"(CAST(r.amount AS char(10)) LIKE '%s%%' OR CAST(r.amount AS char(10)) LIKE '-%s%%')" %
+#					(amountFilter, amountFilter))
 
 		if self.filterTagIds:
 			queryFilter.append("""
