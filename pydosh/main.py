@@ -41,7 +41,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.accountCombo.setDefaultText('all')
 #		self.accountCombo.selectionChanged.connect(self.setFilter)
 		self.checkedCombo.currentIndexChanged.connect(self.setFilter)
-		self.tagsCombo.currentIndexChanged.connect(self.setFilter)
+#		self.tagsCombo.currentIndexChanged.connect(self.setFilter)
 		self.inoutCombo.currentIndexChanged.connect(self.setFilter)
 		self.descEdit.textChanged.connect(self.setFilter)
 		self.scrolltoEdit.textChanged.connect(self.scrollTo)
@@ -100,6 +100,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.startDateEdit.dateChanged.connect(proxyModel.setStartDate)
 			self.endDateEdit.dateChanged.connect(proxyModel.setEndDate)
 			self.accountCombo.selectionChanged.connect(self.accountSelectionChanged)
+			self.tagsCombo.currentIndexChanged.connect(self.tagSelectionChanged)
 			
 			proxyModel.filterChanged.connect(self.displayRecordCount)
 			proxyModel.setSourceModel(model)
@@ -174,6 +175,13 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		"""
 		accountIds = [index.data(QtCore.Qt.UserRole).toPyObject() for index in self.accountCombo.checkedIndexes()]
 		self.tableView.model().setAccountFilter(accountIds)
+
+
+	def tagSelectionChanged(self, index):
+		# Basic tag filter (has tags or not)
+		state = self.tagsCombo.itemData(index, QtCore.Qt.UserRole).toPyObject()
+		self.tableView.model().setHasTagsFilter(state)
+
 
 	def showAbout(self):
 
@@ -561,12 +569,12 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 #				queryFilter.append("r.date >= '%s'" % startDate.toString(QtCore.Qt.ISODate))
 #				queryFilter.append("r.date <= '%s'" % endDate.toString(QtCore.Qt.ISODate))
 
-		# Basic tag filter
-		state = self.tagsCombo.itemData(self.tagsCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
-		if state == enum.kTagCombo_With:
-			queryFilter.append('t.tagname is not null')
-		elif state == enum.kTagCombo_Without:
-			queryFilter.append('t.tagname is null')
+#		# Basic tag filter
+#		state = self.tagsCombo.itemData(self.tagsCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
+#		if state == enum.kTagCombo_With:
+#			queryFilter.append('t.tagname is not null')
+#		elif state == enum.kTagCombo_Without:
+#			queryFilter.append('t.tagname is null')
 
 		# checked state filter
 		state = self.checkedCombo.itemData(self.checkedCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()

@@ -337,7 +337,7 @@ class RecordModel(QtSql.QSqlTableModel):
 		if role == QtCore.Qt.ToolTipRole:
 			if item.column() == enum.kRecordColumn_Tags:
 				#Show tag names for this record
-				return self.record(item.row()).value(enum.kRecordColumn_Tags).toString()
+				return item.data(QtCore.Qt.UserRole)
 
 			elif item.column() == enum.kRecordColumn_Checked:
 				if super(RecordModel, self).data(self.index(item.row(), enum.kRecordColumn_Checked)).toBool():
@@ -352,8 +352,8 @@ class RecordModel(QtSql.QSqlTableModel):
 				return super(RecordModel, self).data(item).toString()
 
 		if role == QtCore.Qt.UserRole and item.column() == enum.kRecordColumn_Tags:
-			# Return the number of tags
-			return super(RecordModel, self).data(item).toPyObject()
+			# Access the tags via UserRole
+			return super(RecordModel, self).data(item).toString()
 
 		if role == QtCore.Qt.BackgroundColorRole:
 			# Indicate credit/debit with row colour
@@ -364,7 +364,7 @@ class RecordModel(QtSql.QSqlTableModel):
 		if role == QtCore.Qt.DecorationRole:
 			if item.column() == enum.kRecordColumn_Tags:
 				# Show tag icon if we have any
-				if super(RecordModel, self).data(item).toPyObject():
+				if item.data(QtCore.Qt.UserRole).toString():
 					return QtGui.QIcon(':/icons/tag_yellow.png')
 
 		if role == QtCore.Qt.DisplayRole:
@@ -623,12 +623,14 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 		self._endDate = None
 		self._insertDate = None
 		self._accountids = None
+		self._hasTags = None
 
 	def clearFilters(self):
 		self._startDate = None
 		self._endDate = None
 		self._insertDate = None
 		self._accountids = None
+		self._hasTags = None
 		self.invalidateFilter()
 
 	def setStartDate(self, startDate, invalidate=True):
@@ -650,8 +652,15 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 		self._accountids = accountIds
 		if invalidate:
 			self.invalidateFilter()
+			
+	def setHasTagsFilter(self, selection, invalidate=True):
+		self._hasTags = selection
+		if invalidate:
+			self.invalidateFilter()
 
 	def invalidateFilter(self):
+		""" Override invalidateFilter so that we can emit the filterChanged signal
+		"""
 		super(SortProxyModel, self).invalidateFilter()
 		self.filterChanged.emit()
 
@@ -671,12 +680,21 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 		if self._accountids:
 			if self.sourceModel().index(sourceRow, enum.kRecordColumn_AccountTypeId).data().toPyObject() not in self._accountids:
 				return False
+			
+		if self._hasTags == enum.kTagCombo_With:
+			if not self.sourceModel().index(sourceRow, enum.kRecordColumn_Tags).data(QtCore.Qt.UserRole).toString():
+				return False
+		elif self._hasTags == enum.kTagCombo_Without:
+			if self.sourceModel().index(sourceRow, enum.kRecordColumn_Tags).data(QtCore.Qt.UserRole).toString():
+				return False			
+
 		return True
 
 	def lessThan(self, left, right):
 		""" Define the comparison to ensure column data is sorted correctly
 		"""
 		if left.column() == enum.kRecordColumn_Tags:
+			# TODO: check this is valid
 			return self.sourceModel().data(left, QtCore.Qt.UserRole) < self.sourceModel().data(right, QtCore.Qt.UserRole)
 
 		elif left.column() == enum.kRecordColumn_Checked:
