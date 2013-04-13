@@ -41,8 +41,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.accountCombo.setDefaultText('all')
 #		self.accountCombo.selectionChanged.connect(self.setFilter)
 		#self.checkedCombo.currentIndexChanged.connect(self.setFilter)
-#		self.tagsCombo.currentIndexChanged.connect(self.setFilter)
-		self.inoutCombo.currentIndexChanged.connect(self.setFilter)
+		#self.tagsCombo.currentIndexChanged.connect(self.setFilter)
+		#self.inoutCombo.currentIndexChanged.connect(self.setFilter)
 		self.descEdit.textChanged.connect(self.setFilter)
 		self.scrolltoEdit.textChanged.connect(self.scrollTo)
 		self.amountEdit.textChanged.connect(self.setFilter)
@@ -102,6 +102,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.accountCombo.selectionChanged.connect(self.accountSelectionChanged)
 			self.tagsCombo.currentIndexChanged.connect(self.tagSelectionChanged)
 			self.checkedCombo.currentIndexChanged.connect(self.checkedSelectionChanged)
+			self.inoutCombo.currentIndexChanged.connect(self.inOutSelectionChanged)
 			
 			proxyModel.filterChanged.connect(self.displayRecordCount)
 			proxyModel.setSourceModel(model)
@@ -201,6 +202,18 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		else:
 			value = None
 		self.tableView.model().setCheckedFilter(value)
+
+	def inOutSelectionChanged(self, index):
+		""" Set filter for in/out amount
+		"""
+		state = self.inoutCombo.itemData(index, QtCore.Qt.UserRole).toPyObject()
+		if state == enum.kInOutStatus_In:
+			value = True
+		elif state == enum.kInOutStatus_Out:
+			value = False
+		else:
+			value = None
+		self.tableView.model().setCreditFilter(value)
 
 	def showAbout(self):
 
@@ -603,11 +616,11 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 #			queryFilter.append('r.checked=0')
 
 		# money in/out filter
-		state = self.inoutCombo.itemData(self.inoutCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
-		if state == enum.kInOutStatus_In:
-			queryFilter.append('r.amount > 0')
-		elif state == enum.kInOutStatus_Out:
-			queryFilter.append('r.amount < 0')
+#		state = self.inoutCombo.itemData(self.inoutCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
+#		if state == enum.kInOutStatus_In:
+#			queryFilter.append('r.amount > 0')
+#		elif state == enum.kInOutStatus_Out:
+#			queryFilter.append('r.amount < 0')
 
 		# description filter
 		if self.descEdit.text():

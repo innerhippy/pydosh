@@ -322,19 +322,21 @@ class RecordModel(QtSql.QSqlTableModel):
 		if not item.isValid():
 			return QtCore.QVariant()
 
-		if role == QtCore.Qt.CheckStateRole and item.column() == enum.kRecordColumn_Checked:
-			if super(RecordModel, self).data(item).toBool():
-				return QtCore.Qt.Checked
-			else:
-				return QtCore.Qt.Unchecked
+		if role == QtCore.Qt.CheckStateRole:
+			if item.column() == enum.kRecordColumn_Checked:
+				if super(RecordModel, self).data(item).toBool():
+					return QtCore.Qt.Checked
+				else:
+					return QtCore.Qt.Unchecked
 
-		if role == QtCore.Qt.FontRole and item.column() == enum.kRecordColumn_Description:
-			if self._highlightText and item.data(QtCore.Qt.DisplayRole).toString().contains(self._highlightText, QtCore.Qt.CaseInsensitive):
-				font = QtGui.QFont()
-				font.setBold(True)
-				return font
+		elif role == QtCore.Qt.FontRole:
+			if item.column() == enum.kRecordColumn_Description:
+				if self._highlightText and item.data(QtCore.Qt.DisplayRole).toString().contains(self._highlightText, QtCore.Qt.CaseInsensitive):
+					font = QtGui.QFont()
+					font.setBold(True)
+					return font
 
-		if role == QtCore.Qt.ToolTipRole:
+		elif role == QtCore.Qt.ToolTipRole:
 			if item.column() == enum.kRecordColumn_Tags:
 				#Show tag names for this record
 				return item.data(QtCore.Qt.UserRole)
@@ -351,32 +353,31 @@ class RecordModel(QtSql.QSqlTableModel):
 			elif item.column() == enum.kRecordColumn_Description:
 				return super(RecordModel, self).data(item).toString()
 
-		if role == QtCore.Qt.UserRole and item.column() == enum.kRecordColumn_Tags:
-			# Access the tags via UserRole
-			return super(RecordModel, self).data(item).toString()
+		elif role == QtCore.Qt.UserRole:
+			if item.column() in (enum.kRecordColumn_Tags, enum.kRecordColumn_Amount):
+				# Return the raw data for these columns
+				return super(RecordModel, self).data(item)
 
-		if role == QtCore.Qt.BackgroundColorRole:
+		elif role == QtCore.Qt.BackgroundColorRole:
 			# Indicate credit/debit with row colour
-			val, ok = self.record(item.row()).value(enum.kRecordColumn_Amount).toDouble()
-			if ok:
-				return QtGui.QColor("#b6ffac") if val > 0.0 else QtGui.QColor("#ffd3cf")
+			val = self.index(item.row(), enum.kRecordColumn_Amount).data(QtCore.Qt.UserRole).toPyObject()
+			return QtGui.QColor("#b6ffac") if val > 0.0 else QtGui.QColor("#ffd3cf")
 
-		if role == QtCore.Qt.DecorationRole:
+		elif role == QtCore.Qt.DecorationRole:
 			if item.column() == enum.kRecordColumn_Tags:
 				# Show tag icon if we have any
 				if item.data(QtCore.Qt.UserRole).toString():
 					return QtGui.QIcon(':/icons/tag_yellow.png')
 
-		if role == QtCore.Qt.DisplayRole:
+		elif role == QtCore.Qt.DisplayRole:
 			if item.column() in (enum.kRecordColumn_Checked, enum.kRecordColumn_Tags):
 				# Don't display anything for these fields
 				return QtCore.QVariant()
 
 			elif item.column() == enum.kRecordColumn_Amount:
 				# Display absolute currency values. credit/debit is indicated by background colour
-				val, ok = super(RecordModel, self).data(item).toDouble()
-				if ok:
-					return QtCore.QString.number(abs(val), 'f', 2)
+				val = super(RecordModel, self).data(item).toPyObject()
+				return QtCore.QString.number(abs(val), 'f', 2)
 
 			elif item.column() == enum.kRecordColumn_Description:
 				# Replace multiple spaces with single
@@ -630,6 +631,7 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 		self._accountids = None
 		self._hasTags = None
 		self._checked = None
+		self._creditFilter = None
 
 	def clearFilters(self):
 		self.__reset()
@@ -650,12 +652,11 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 		if invalidate:
 			self.invalidateFilter()
 
-	def setAccountFilter(self, accountIds, invalidate=True):
+	def setAccountFilter(self, accountIds):
 		self._accountids = accountIds
-		if invalidate:
-			self.invalidateFilter()
+		self.invalidateFilter()
 			
-	def setHasTagsFilter(self, value, invalidate=True):
+	def setHasTagsFilter(self, value):
 		""" Set basic tag filter
 
 			selection:
@@ -664,10 +665,9 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 				False - filter with no tags
 		"""
 		self._hasTags = value
-		if invalidate:
-			self.invalidateFilter()
+		self.invalidateFilter()
 
-	def setCheckedFilter(self, value, invalidate=True):
+	def setCheckedFilter(self, value):
 		""" Checked records filter
 
 			selection:
@@ -676,9 +676,19 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 				False - filter not checked
 		"""
 		self._checked = value
-		if invalidate:
-			self.invalidateFilter()
-		
+		self.invalidateFilter()
+	
+	def setCreditFilter(self, value):
+		""" Credit amount filter
+
+			selection:
+				None  - all
+				True  - filter on credit
+				False - filter on debit
+		"""
+		self._creditFilter = value
+		self.invalidateFilter()
+
 	def invalidateFilter(self):
 		""" Override invalidateFilter so that we can emit the filterChanged signal
 		"""
@@ -710,6 +720,12 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 		if self._checked is not None:
 			isChecked = self.sourceModel().index(sourceRow, enum.kRecordColumn_Checked).data(QtCore.Qt.CheckStateRole).toPyObject() == QtCore.Qt.Checked
 			if self._checked != isChecked:
+				return False
+
+		if self._creditFilter is not None:
+			amount = self.sourceModel().index(sourceRow, enum.kRecordColumn_Amount).data(QtCore.Qt.UserRole).toPyObject()
+			print self._creditFilter, amount < 0.0
+			if self._creditFilter != (amount >= 0.0):
 				return False
 
 		return True
