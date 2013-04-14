@@ -23,6 +23,29 @@ def showWaitCursorDecorator(f):
 			for widget in self.__signalsToBlock:
 				widget.blockSignals(False)
 
+class _BlockSignals(object):
+	_refs = {}
+	def __init__(self):
+		super(_BlockSignals, self).__init__()
+
+	@contextmanager
+	def __call__(self, widget):
+		self._refs.setdefault(widget, 0)
+		self._refs[widget] += 1
+
+		try:
+			widget.blockSignals(True)
+			yield
+		finally:
+			if self._refs[widget] == 1:
+				self._refs.pop(widget)
+				widget.blockSignals(False)
+			else:
+				# don't unblock - another call to block is in progress
+				self._refs[widget] -= 1
+
+blockSignals = _BlockSignals()
+
 @contextmanager
 def showWaitCursor():
 	""" Context manager utility for showing wait cursor for a code block

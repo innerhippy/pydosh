@@ -2,7 +2,7 @@ from contextlib  import contextmanager
 import operator
 from version import __VERSION__
 from PyQt4 import QtGui, QtCore, QtSql
-from utils import showWaitCursorDecorator, showWaitCursor
+from utils import showWaitCursorDecorator, showWaitCursor, blockSignals
 from models import RecordModel, SortProxyModel, CheckComboModel, TagModel
 from csvdecoder import Decoder, DecoderException
 from database import db
@@ -92,7 +92,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			model = RecordModel(self)
 			model.setTable('records')
 			model.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
-			model.dataChanged.connect(self.setFilter)
+			model.dataChanged.connect(self.recordsChanged)
 			model.select()
 
 			proxyModel = SortProxyModel(self)
@@ -107,7 +107,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.descEdit.textChanged.connect(proxyModel.setDescriptionFilter)
 			self.amountEdit.textChanged.connect(self.amountFilterChanged)
 			
-			proxyModel.filterChanged.connect(self.displayRecordCount)
+			proxyModel.filterChanged.connect(self.recordsChanged)
 			proxyModel.setSourceModel(model)
 			proxyModel.sort(enum.kRecordColumn_Date, QtCore.Qt.AscendingOrder)
 
@@ -169,10 +169,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			accountModel.setUserRoleColumn(enum.kAccountTypeColumn_AccountTypeId)
 			self.accountCombo.setModelColumn(enum.kAccountTypeColumn_AccountName)
 			self.accountCombo.setModel(accountModel)
-
+#
 #			from signaltracer import SignalTracer
 #			tracer=SignalTracer()
-#			tracer.monitor(self.tagView.model(), self.tagView.model().sourceModel(), self.tagView.selectionModel())
+#			tracer.monitor(self.tableView.model(), self.tableView.model().sourceModel())
 
 		self.reset()
 
@@ -288,8 +288,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		""" Launch the settings dialog widget to configure account information
 		"""
 		dialog = SettingsDialog(self)
-		dialog.exec_()
-		self.setFilter()
+		if dialog.exec_():
+			self.reset()
+		#self.setFilter()
+#		self.tableView.model().sourceModel().select()
 
 	def importDialog(self):
 		""" Launch the import dialog
@@ -495,21 +497,25 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		""" Toggle checked status on all selected rows in view.
 		"""
-		# Get recordids from all selected rows
 		selectionModel = self.tableView.selectionModel()
-		if selectionModel is None:
-			return
-
 		proxyModel = self.tableView.model()
-		indexes = [proxyModel.mapToSource(proxyIndex) for proxyIndex in selectionModel.selectedRows()]
-		if not proxyModel.sourceModel().setItemsChecked(indexes):
-			QtGui.QMessageBox.critical(self, 'Database Error', 
-					proxyModel.sourceModel().lastError().text(), QtGui.QMessageBox.Ok)
+
+		with blockSignals(self.tableView.model().sourceModel()):
+			for proxyIndex in selectionModel.selectedRows():
+				# Need the index of checked column
+				proxyIndex = proxyModel.index(proxyIndex.row(), enum.kRecordColumn_Checked)
+				index = proxyModel.mapToSource(proxyIndex)
+	
+				if index.data(QtCore.Qt.CheckStateRole).toPyObject() == QtCore.Qt.Checked:
+					proxyModel.sourceModel().setData(index, QtCore.QVariant(QtCore.Qt.Unchecked), QtCore.Qt.CheckStateRole)
+				elif index.data(QtCore.Qt.CheckStateRole).toPyObject() == QtCore.Qt.Unchecked:
+					proxyModel.sourceModel().setData(index, QtCore.QVariant(QtCore.Qt.Checked), QtCore.Qt.CheckStateRole)
+		
+		self.tableView.model().sourceModel().reset()
 
 	def reset(self):
-		if self.tableView.model() is None:
-			return
-
+		""" Reset all filters and combo boxes to a default state
+		"""
 		with self.blockAllSignals():
 			self.populateDates()
 			self.checkedCombo.setCurrentIndex(enum.kCheckedStatus_All)
@@ -525,6 +531,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		# ClearFilters
 		self.tableView.model().clearFilters()
+
 		# Need signals to clear highlight filter on model
 		self.scrolltoEdit.clear()
 
@@ -533,7 +540,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		tagModel.blockSignals(True)
 		tagModel.clearSelection()
 		tagModel.blockSignals(False)
-		self.setFilter()
+		#self.setFilter()
+		self.tableView.model().sourceModel().select()
 
 	def dateRangeSelected(self):
 		""" Date combo has been changed. Set the date fields and refresh the records model
@@ -575,117 +583,25 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		helpMenu = self.menuBar().addMenu('&Help')
 		helpMenu.addAction(aboutAction)
 
-
 	def displayRecordCount(self):
-		numRecords = 0
-		totalRecords = 0
 		inTotal = 0.0
 		outTotal = 0.0
-		model = self.tableView.model()
 
-		if model:
-			numRecords = model.rowCount()
-
-			query = QtSql.QSqlQuery('SELECT COUNT(*) FROM records WHERE userid=%d' % db.userId)
-			query.next()
-			totalRecords = query.value(0).toPyObject()
-
-			for i in xrange(numRecords):
-				amount, _ = model.sourceModel().record(i).value(enum.kRecordColumn_Amount).toDouble()
-				if amount > 0.0:
-					inTotal += amount
-				else:
-					outTotal += abs(amount)
+		model = self.tableView.model().sourceModel()
+		for row in xrange(model.rowCount()):
+			amount = model.index(row, enum.kRecordColumn_Amount).data(QtCore.Qt.UserRole).toPyObject()
+			if amount > 0.0:
+				inTotal += amount
+			else:
+				outTotal += abs(amount)
 
 		self.inTotalLabel.setText(QtCore.QString("%L1").arg(inTotal, 0, 'f', 2))
 		self.outTotalLabel.setText(QtCore.QString("%L1").arg(outTotal, 0, 'f', 2))
-		self.recordCountLabel.setText('%d / %d' % (numRecords, totalRecords))
+		self.recordCountLabel.setText('%d / %d' % (self.tableView.model().rowCount(), model.rowCount()))
 
 	@showWaitCursorDecorator
-	def setFilter(self, *args):
-		print 'setFilter called'
-		model = self.tableView.model()
-
-		if model is None:
-			return
-
-		queryFilter = []
-
-		# Account filter
-#		accountIds = [index.data(QtCore.Qt.UserRole).toPyObject() for index in self.accountCombo.checkedIndexes()]
-#		if accountIds:
-#			queryFilter.append('r.accounttypeid in (%s)' % ', '.join(str(acid) for acid in accountIds))
-
-		# Date filter
-#		if self.dateCombo.itemData(self.dateCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject() == enum.kdate_LastImport:
-#			queryFilter.append("""
-#				r.insertdate = (
-#					SELECT MAX(insertdate)
-#					FROM records)
-#			""")
-#		else:
-#			startDate = self.startDateEdit.date()
-#			endDate = self.endDateEdit.date()
-#
-#			if startDate.isValid() and endDate.isValid():
-#				queryFilter.append("r.date >= '%s'" % startDate.toString(QtCore.Qt.ISODate))
-#				queryFilter.append("r.date <= '%s'" % endDate.toString(QtCore.Qt.ISODate))
-
-#		# Basic tag filter
-#		state = self.tagsCombo.itemData(self.tagsCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
-#		if state == enum.kTagCombo_With:
-#			queryFilter.append('t.tagname is not null')
-#		elif state == enum.kTagCombo_Without:
-#			queryFilter.append('t.tagname is null')
-
-		# checked state filter
-#		state = self.checkedCombo.itemData(self.checkedCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
-#		if state == enum.kCheckedStatus_Checked:
-#			queryFilter.append('r.checked=1')
-#		elif state == enum.kCheckedStatus_UnChecked:
-#			queryFilter.append('r.checked=0')
-
-		# money in/out filter
-#		state = self.inoutCombo.itemData(self.inoutCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
-#		if state == enum.kInOutStatus_In:
-#			queryFilter.append('r.amount > 0')
-#		elif state == enum.kInOutStatus_Out:
-#			queryFilter.append('r.amount < 0')
-
-		# description filter
-#		if self.descEdit.text():
-#			queryFilter.append("lower(r.description) LIKE '%%%s%%'" % self.descEdit.text().toLower())
-
-		# amount filter. May contain operators < > <= or >=
-#		amountFilter = self.amountEdit.text()
-#		if amountFilter:
-#			if amountFilter.contains(QtCore.QRegExp('[<>=]+')):
-#				# looks like we have operators, test validity and amount
-#				rx = QtCore.QRegExp('^(=|>|<|>=|<=)([\\.\\d+]+)')
-#				if rx.indexIn(amountFilter) != -1:
-#					queryFilter.append('abs(r.amount) %s %s' % (rx.cap(1), rx.cap(2)))
-#				else:
-#					# Input not complete yet.
-#					return
-#			else:
-#				# No operator supplied - treat amount as a string
-#				queryFilter.append(
-#					"(CAST(r.amount AS char(10)) LIKE '%s%%' OR CAST(r.amount AS char(10)) LIKE '-%s%%')" %
-#					(amountFilter, amountFilter))
-
-#		if self.filterTagIds:
-#			queryFilter.append("""
-#				r.recordid IN (
-#					SELECT recordid
-#					FROM recordtags
-#					WHERE tagid in (%s))
-#				""" % ', '.join([str(tagid) for tagid in self.filterTagIds]))
-
-		with self.keepSelection():
-			model.sourceModel().setFilter('\nAND '.join(queryFilter))
-
-		#print model.sourceModel().selectStatement()
-		#query().lastQuery().replace(' AND ', '').replace('\n', ' ')
+	def recordsChanged(self, *args):
+		print 'recordsChanged called', self.sender()
 
 		self.updateTagFilter()
 
@@ -693,12 +609,13 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.tagView.resizeColumnsToContents()
 		self.tableView.resizeColumnsToContents()
 		
-		#self.displayRecordCount()
+		self.displayRecordCount()
 
 	def tagModelChanged(self):
 		""" Tag model has changed - call select on record model to refresh the changes (in tag column)
 			Note: calling setFilter is a bad idea as we'll enter circular hell
 		"""
+		#TODO: fix me
 		with self.keepSelection():
 			self.tableView.model().sourceModel().select()
 
@@ -706,12 +623,13 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		""" Tell the tag model to limit tag amounts to current displayed records
 		"""
 		recordIds = []
-		model = self.tableView.model().sourceModel()
+		model = self.tableView.model()
 
 		for i in xrange(model.rowCount()):
 			recordIds.append(model.index(i, enum.kRecordColumn_RecordId).data().toPyObject())
 
-		self.tagView.model().sourceModel().setFilter(recordIds)
+		recordIdsAsString = ','.join([str(rec) for rec in recordIds])
+		self.tagView.model().sourceModel().setFilter(recordIdsAsString)
 
 
 	def addTag(self):
@@ -798,12 +716,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		if item.listWidget().persistEditor() == False or len(self.selectedRecordIds()) == 0:
 			# If there's no selection available then close the tag menu
 			item.listWidget().parent().close()
-
-#	def setTagFilter(self, tagIds):
-#		""" Filter model by tags in response to tagView selection changed
-#		"""
-#		self.filterTagIds = tagIds
-#		self.setFilter()
 
 	def scrollTo(self, text):
 		# Tell the model to highlight or un-highlight matching rows

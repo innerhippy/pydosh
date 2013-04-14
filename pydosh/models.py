@@ -3,6 +3,7 @@ import operator
 from PyQt4 import QtCore, QtGui, QtSql
 import enum
 from database import db
+from utils import blockSignals
 import pydosh_rc
 
 class ImportException(Exception):
@@ -270,39 +271,16 @@ class RecordModel(QtSql.QSqlTableModel):
              LEFT JOIN tags t ON rt.tagid=t.tagid
                        %(filter)s
               GROUP BY r.recordid, at.accountname
-              ORDER BY r.date, r.description, r.txdate, r.recordid
+              ORDER BY r.date, r.recordid
 		""" % {'userid': db.userId, 'filter': queryFilter}
 
 		return query
 
-	def setItemsChecked(self, indexes):
-		""" Toggles the checked status on a list of model indexes
-			The checkdate column is set to the current timestamp is
-			checked, otherwise NULL is inserted
-
-			It's more efficient to make a bulk update query than
-			set every row via the model
-		"""
-		recordIds = [self.index(index.row(), enum.kRecordColumn_RecordId).data().toPyObject() for index in indexes]
-		query = QtSql.QSqlQuery("""
-			UPDATE records
-               SET checkdate = CASE WHEN checked = 1 THEN NULL ELSE current_timestamp END,
-			       checked   = CASE WHEN checked = 1 THEN 0 ELSE 1 END
-			 WHERE recordid in (%s)
-			""" % ','.join(str(rec) for rec in recordIds))
-
-		if query.lastError().isValid():
-			return False
-
-		self.dataChanged.emit(indexes[0], indexes[-1])
-
-		return True
-
 	def deleteRecords(self, indexes):
 		recordIds = [self.index(index.row(), enum.kRecordColumn_RecordId).data().toPyObject() for index in indexes]
 		query = QtSql.QSqlQuery("""
-			DELETE FROM records
-			      WHERE recordid in (%s)
+            DELETE FROM records
+                  WHERE recordid in (%s)
 		""" % ','.join(str(rec) for rec in recordIds))
 
 		if query.lastError().isValid():
@@ -401,11 +379,29 @@ class RecordModel(QtSql.QSqlTableModel):
 
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
 		""" Save new checkstate role changes in database
+		
+			Only send a single dataChanged signal for the whole row, not two separate
 		"""
+		status = False
 		if role == QtCore.Qt.CheckStateRole and index.column() == enum.kRecordColumn_Checked:
-			return self.setItemsChecked([index])
+			with blockSignals(self):
+				if value.toPyObject() == QtCore.Qt.Checked:
+					status = (
+						super(RecordModel, self).setData(index, 1, QtCore.Qt.EditRole) and 
+						super(RecordModel, self).setData(self.index(index.row(), enum.kRecordColumn_CheckDate),
+														QtCore.QDateTime.currentDateTimeUtc(), 
+														QtCore.Qt.EditRole)
+					)
+				elif value.toPyObject() == QtCore.Qt.Unchecked:
+					status = (
+						super(RecordModel, self).setData(index, 0, QtCore.Qt.EditRole) and
+						super(RecordModel, self).setData(self.index(index.row(), enum.kRecordColumn_CheckDate),
+														QtCore.QVariant(), QtCore.Qt.EditRole)
+					)
+		if status:
+			self.dataChanged.emit(self.index(index.row(), 0), self.index(index.row(), self.columnCount()))
 
-		return False
+		return status
 
 	def headerData (self, section, orientation, role=QtCore.Qt.DisplayRole):
 		""" Set the header labels for the view
@@ -434,14 +430,17 @@ class TagModel(QtSql.QSqlTableModel):
 
 	def __init__(self, parent=None):
 		super(TagModel, self).__init__(parent=parent)
-		self.__selectedTagIds = set()
+		self.__selectedTagNames = set()
 
 		self.setTable('tags')
 		self.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
 		super(TagModel, self).select()
 
-	def setFilter(self, recordIds):
-		super(TagModel, self).setFilter(','.join(str(rec) for rec in recordIds))
+#	def setFilter(self, recordIds):
+#		""" Limits the tag model to a list of recordids
+#			The query requires a 
+#		"""
+#		super(TagModel, self).setFilter(','.join(str(rec) for rec in recordIds))
 
 	def clearSelection(self):
 		for row in xrange(self.rowCount()):
@@ -451,40 +450,30 @@ class TagModel(QtSql.QSqlTableModel):
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
 		""" Handle checkstate role changes
 		"""
-		if role == QtCore.Qt.CheckStateRole and index.column() == enum.kTagsColumn_TagName:
-			tagId = self.index(index.row(), enum.kTagsColumn_TagId).data().toPyObject()
-
-			if value.toPyObject() == QtCore.Qt.Checked:
-				if tagId in self.__selectedTagIds:
-					return False
-				self.__selectedTagIds.add(tagId)
-			else:
-				if tagId not in self.__selectedTagIds:
-					return False
-
-				self.__selectedTagIds.remove(tagId)
-
-			self.dataChanged.emit(index, index)
-			self.selectionChanged.emit(self._selectedTagNames())
-			return True 
-
-		if role == QtCore.Qt.EditRole and index.column() == enum.kTagsColumn_TagName:
-			return super(TagModel, self).setData(index, value, role)
+		if index.column() == enum.kTagsColumn_TagName:
+			if role == QtCore.Qt.CheckStateRole:
+				tagName = index.data().toPyObject()
+	
+				if value.toPyObject() == QtCore.Qt.Checked:
+					if tagName in self.__selectedTagNames:
+						# Do nothing if tag has not changed
+						return False
+					self.__selectedTagNames.add(tagName)
+				else:
+					if tagName not in self.__selectedTagNames:
+						# Do nothing if tag has not changed
+						return False
+					self.__selectedTagNames.remove(tagName)
+	
+				self.dataChanged.emit(index, index)
+				self.selectionChanged.emit(self.__selectedTagNames)
+				return True 
+	
+			elif role == QtCore.Qt.EditRole:
+				# Save changes to tag name in database
+				return super(TagModel, self).setData(index, value, role)
 
 		return False
-
-	def _selectedTagNames(self):
-		""" Returns a list of tag names from selected tagid list
-		"""
-		tagNames = []
-		index = self.index(0, enum.kTagsColumn_TagId)
-		for tagId in self.__selectedTagIds:
-			match = self.match(index, QtCore.Qt.DisplayRole, tagId, 1, QtCore.Qt.MatchExactly)
-			if match:
-				tagNames.append(self.index(match[0].row(), enum.kTagsColumn_TagName).data().toString())
-
-		print tagNames
-		return tagNames
 
 	def data(self, item, role=QtCore.Qt.DisplayRole):
 
@@ -501,8 +490,7 @@ class TagModel(QtSql.QSqlTableModel):
 					return QtCore.QVariant(amount)
 
 		if  role == QtCore.Qt.CheckStateRole and item.column() == enum.kTagsColumn_TagName:
-			tagId = self.index(item.row(), enum.kTagsColumn_TagId).data().toPyObject()
-			if tagId in self.__selectedTagIds:
+			if item.data().toPyObject() in self.__selectedTagNames:
 				return QtCore.Qt.Checked
 			else:
 				return QtCore.Qt.Unchecked
@@ -564,7 +552,7 @@ class TagModel(QtSql.QSqlTableModel):
 		query.addBindValue(db.userId)
 
 		if not query.exec_():
-			raise query.lastError().text()
+			raise Exception(query.lastError().text())
 		
 		query.next()
 		insertId = query.value(0).toPyObject() 
@@ -760,7 +748,6 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 
 		if self._creditFilter is not None:
 			amount = self.sourceModel().index(sourceRow, enum.kRecordColumn_Amount).data(QtCore.Qt.UserRole).toPyObject()
-			print self._creditFilter, amount < 0.0
 			if self._creditFilter != (amount >= 0.0):
 				return False
 
