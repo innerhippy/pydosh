@@ -355,8 +355,12 @@ class RecordModel(QtSql.QSqlTableModel):
 				return super(RecordModel, self).data(item).toString()
 
 		elif role == QtCore.Qt.UserRole:
-			if item.column() in (enum.kRecordColumn_Tags, enum.kRecordColumn_Amount):
+			if item.column() == enum.kRecordColumn_Tags:
 				# Return the raw data for these columns
+				tags = super(RecordModel, self).data(item)
+				return tags if tags.toString() else QtCore.QVariant()
+
+			elif item.column() == enum.kRecordColumn_Amount:
 				return super(RecordModel, self).data(item)
 
 		elif role == QtCore.Qt.BackgroundColorRole:
@@ -461,13 +465,26 @@ class TagModel(QtSql.QSqlTableModel):
 				self.__selectedTagIds.remove(tagId)
 
 			self.dataChanged.emit(index, index)
-			self.selectionChanged.emit(self.__selectedTagIds)
+			self.selectionChanged.emit(self._selectedTagNames())
 			return True 
 
 		if role == QtCore.Qt.EditRole and index.column() == enum.kTagsColumn_TagName:
 			return super(TagModel, self).setData(index, value, role)
 
 		return False
+
+	def _selectedTagNames(self):
+		""" Returns a list of tag names from selected tagid list
+		"""
+		tagNames = []
+		index = self.index(0, enum.kTagsColumn_TagId)
+		for tagId in self.__selectedTagIds:
+			match = self.match(index, QtCore.Qt.DisplayRole, tagId, 1, QtCore.Qt.MatchExactly)
+			if match:
+				tagNames.append(self.index(match[0].row(), enum.kTagsColumn_TagName).data().toString())
+
+		print tagNames
+		return tagNames
 
 	def data(self, item, role=QtCore.Qt.DisplayRole):
 
@@ -635,25 +652,23 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 		self._creditFilter = None
 		self._description = None
 		self._amountFilter = None
+		self._tagFilter = None
 
 	def clearFilters(self):
 		self.__reset()
 		self.invalidateFilter()
 
-	def setStartDate(self, startDate, invalidate=True):
+	def setStartDate(self, startDate):
 		self._startDate = startDate
-		if invalidate:
-			self.invalidateFilter()
+		self.invalidateFilter()
 
-	def setEndDate(self, date, invalidate=True):
+	def setEndDate(self, date):
 		self._endDate = date
-		if invalidate:
-			self.invalidateFilter()
+		self.invalidateFilter()
 
-	def setInsertDate(self, date, invalidate=True):
+	def setInsertDate(self, date):
 		self._insertDate = date
-		if invalidate:
-			self.invalidateFilter()
+		self.invalidateFilter()
 
 	def setAccountFilter(self, accountIds):
 		self._accountids = accountIds
@@ -668,6 +683,10 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 				False - filter with no tags
 		"""
 		self._hasTags = value
+		self.invalidateFilter()
+
+	def setTagFilter(self, tags):
+		self._tagFilter = tags
 		self.invalidateFilter()
 
 	def setCheckedFilter(self, value):
@@ -760,6 +779,11 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 				# Use operator to perform match
 				if not self._amountOperator(float(amount), float(self._amountFilter)):
 					return False
+				
+		if self._tagFilter:
+			tags = self.sourceModel().index(sourceRow, enum.kRecordColumn_Tags).data(QtCore.Qt.UserRole).toString()
+			if not set(self._tagFilter).intersection(set(tags.split(','))):
+				return False
 		return True
 
 	def lessThan(self, left, right):

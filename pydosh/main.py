@@ -84,7 +84,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				self.endDateEdit,
 		)
 
-		self.filterTagIds = set()
+#		self.filterTagIds = set()
 		self.maxInsertDate = None
 
 		with self.blockAllSignals():
@@ -132,7 +132,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 			model = TagModel(self)
 			model.tagsChanged.connect(self.tagModelChanged)
-			model.selectionChanged.connect(self.setTagFilter)
+			model.selectionChanged.connect(self.tableView.model().setTagFilter)
+#			model.selectionChanged.connect(self.setTagFilter)
 			proxyModel = QtGui.QSortFilterProxyModel(self)
 			proxyModel.setSourceModel(model)
 			proxyModel.sort(enum.kTagsColumn_Amount_out, QtCore.Qt.AscendingOrder)
@@ -259,9 +260,11 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		selected = self.dateCombo.itemData(self.dateCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
 
 		# Clear the filters but don't trigger a re-draw just yet
-		self.tableView.model().setStartDate(None, invalidate=False)
-		self.tableView.model().setEndDate(None, invalidate=False)
-		self.tableView.model().setInsertDate(None, invalidate=False)
+		self.tableView.model().blockSignals(True)
+		self.tableView.model().setStartDate(None)
+		self.tableView.model().setEndDate(None)
+		self.tableView.model().setInsertDate(None)
+		self.tableView.model().blockSignals(False)
 
 		if selected == enum.kDate_All:
 			self.startDateEdit.setDate(self.startDateEdit.minimumDate())
@@ -670,13 +673,13 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 #					"(CAST(r.amount AS char(10)) LIKE '%s%%' OR CAST(r.amount AS char(10)) LIKE '-%s%%')" %
 #					(amountFilter, amountFilter))
 
-		if self.filterTagIds:
-			queryFilter.append("""
-				r.recordid IN (
-					SELECT recordid
-					FROM recordtags
-					WHERE tagid in (%s))
-				""" % ', '.join([str(tagid) for tagid in self.filterTagIds]))
+#		if self.filterTagIds:
+#			queryFilter.append("""
+#				r.recordid IN (
+#					SELECT recordid
+#					FROM recordtags
+#					WHERE tagid in (%s))
+#				""" % ', '.join([str(tagid) for tagid in self.filterTagIds]))
 
 		with self.keepSelection():
 			model.sourceModel().setFilter('\nAND '.join(queryFilter))
@@ -796,11 +799,11 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			# If there's no selection available then close the tag menu
 			item.listWidget().parent().close()
 
-	def setTagFilter(self, tagIds):
-		""" Filter model by tags in response to tagView selection changed
-		"""
-		self.filterTagIds = tagIds
-		self.setFilter()
+#	def setTagFilter(self, tagIds):
+#		""" Filter model by tags in response to tagView selection changed
+#		"""
+#		self.filterTagIds = tagIds
+#		self.setFilter()
 
 	def scrollTo(self, text):
 		# Tell the model to highlight or un-highlight matching rows
