@@ -436,11 +436,10 @@ class TagModel(QtSql.QSqlTableModel):
 		self.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
 		super(TagModel, self).select()
 
-#	def setFilter(self, recordIds):
-#		""" Limits the tag model to a list of recordids
-#			The query requires a 
-#		"""
-#		super(TagModel, self).setFilter(','.join(str(rec) for rec in recordIds))
+	def setRecordFilter(self, recordIds):
+		""" List of record ids to limit tag data to display
+		"""
+		self.setFilter(','.join([str(rec) for rec in recordIds]))
 
 	def clearSelection(self):
 		for row in xrange(self.rowCount()):

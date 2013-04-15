@@ -1,8 +1,8 @@
 from contextlib  import contextmanager
 import operator
-from version import __VERSION__
 from PyQt4 import QtGui, QtCore, QtSql
-from utils import showWaitCursorDecorator, showWaitCursor, blockSignals
+from version import __VERSION__
+import utils
 from models import RecordModel, SortProxyModel, CheckComboModel, TagModel
 from csvdecoder import Decoder, DecoderException
 from database import db
@@ -87,7 +87,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 #		self.filterTagIds = set()
 		self.maxInsertDate = None
 
-		with self.blockAllSignals():
+		with utils.blockSignals(*self.__signalsToBlock):
 
 			model = RecordModel(self)
 			model.setTable('records')
@@ -260,11 +260,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		selected = self.dateCombo.itemData(self.dateCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
 
 		# Clear the filters but don't trigger a re-draw just yet
-		self.tableView.model().blockSignals(True)
-		self.tableView.model().setStartDate(None)
-		self.tableView.model().setEndDate(None)
-		self.tableView.model().setInsertDate(None)
-		self.tableView.model().blockSignals(False)
+		with utils.blockSignals(self.tableView.model()):
+			self.tableView.model().setStartDate(None)
+			self.tableView.model().setEndDate(None)
+			self.tableView.model().setInsertDate(None)
 
 		if selected == enum.kDate_All:
 			self.startDateEdit.setDate(self.startDateEdit.minimumDate())
@@ -350,7 +349,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		settings.setValue('options/importaccounttype', combo.currentText())
 		settings.setValue('options/importdirectory', dialog.directory().absolutePath())
 
-		with showWaitCursor():
+		with utils.showWaitCursor():
 			try:
 				decoder = Decoder(
 						dateField,
@@ -422,21 +421,11 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				QtGui.QMessageBox.Yes|QtGui.QMessageBox.No) != QtGui.QMessageBox.Yes:
 			return
 
-		with showWaitCursor():
+		with utils.showWaitCursor():
 			indexes = [proxyModel.mapToSource(index) for index in selectionModel.selectedRows()]
 			if not proxyModel.sourceModel().deleteRecords(indexes):
 				QtGui.QMessageBox.critical(self, 'Database Error',
 					proxyModel.sourceModel().lastError().text(), QtGui.QMessageBox.Ok)
-
-	@contextmanager
-	def blockAllSignals(self):
-		try:
-			for widget in self.__signalsToBlock:
-				widget.blockSignals(True)
-			yield
-		finally:
-			for widget in self.__signalsToBlock:
-				widget.blockSignals(False)
 
 	@contextmanager
 	def keepSelection(self):
@@ -492,7 +481,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.endDateEdit.setDate(endDate)
 			self.maxInsertDate = maxInsertDateTime
 
-	@showWaitCursorDecorator
+	@utils.showWaitCursorDecorator
 	def toggleSelected(self, *args):
 
 		""" Toggle checked status on all selected rows in view.
@@ -516,7 +505,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def reset(self):
 		""" Reset all filters and combo boxes to a default state
 		"""
-		with self.blockAllSignals():
+		with utils.blockSignals(self.__signalsToBlock):
 			self.populateDates()
 			self.checkedCombo.setCurrentIndex(enum.kCheckedStatus_All)
 			self.tagsCombo.setCurrentIndex(enum.kCheckedStatus_All)
@@ -599,7 +588,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.outTotalLabel.setText(QtCore.QString("%L1").arg(outTotal, 0, 'f', 2))
 		self.recordCountLabel.setText('%d / %d' % (self.tableView.model().rowCount(), model.rowCount()))
 
-	@showWaitCursorDecorator
+	@utils.showWaitCursorDecorator
 	def recordsChanged(self, *args):
 		print 'recordsChanged called', self.sender()
 
@@ -628,8 +617,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		for i in xrange(model.rowCount()):
 			recordIds.append(model.index(i, enum.kRecordColumn_RecordId).data().toPyObject())
 
-		recordIdsAsString = ','.join([str(rec) for rec in recordIds])
-		self.tagView.model().sourceModel().setFilter(recordIdsAsString)
+		self.tagView.model().sourceModel().setRecordFilter(recordIds)
 
 
 	def addTag(self):
