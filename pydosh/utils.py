@@ -13,35 +13,20 @@ def flattenArgs(items):
 		else:
 			yield item
 
-class _BlockSignals(object):
-	_refs = {}
-	def __init__(self):
-		super(_BlockSignals, self).__init__()
-
-	@contextmanager
-	def __call__(self, *widgets):
-		for widget in widgets:
-			self._refs.setdefault(widget, 0)
-			self._refs[widget] += 1
-	
-			try:
-				widget.blockSignals(True)
-				yield
-			finally:
-				if self._refs[widget] == 1:
-					self._refs.pop(widget)
-					widget.blockSignals(False)
-				else:
-					# don't unblock - another call to block is in progress
-					self._refs[widget] -= 1
-
-_blockSignals = None
-
-def blockSignals(*widgets):
-	global _blockSignals
-	if _blockSignals is None:
-		_blockSignals = _BlockSignals()
-	return _blockSignals(*widgets)
+@contextmanager
+def signalsBlocked(*args):
+	""" Block signals with context manager
+		Args: 
+			args: widget or widgets
+	"""
+	states = [(target, target.signalsBlocked()) for target in flattenArgs(args) if target is not None]
+	try:
+		for target, _ in states:
+			target.blockSignals(True)
+		yield
+	finally:
+		for target, blockedState in states:
+			target.blockSignals(blockedState)
 
 def showWaitCursorDecorator(f):
 	""" Decorator for display a wait cursor whilst in a slow function

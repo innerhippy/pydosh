@@ -3,7 +3,7 @@ from ui_settings import Ui_Settings
 from ui_login import Ui_Login
 from ui_import import Ui_Import
 import enum
-from utils import showWaitCursor
+import utils
 from database import db, DatabaseNotInitialisedException, ConnectionException
 from delegates import AccountDelegate
 from models import AccountModel, ImportModel
@@ -67,17 +67,16 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		proxyModel = self.view.model()
 		dataModel = proxyModel.sourceModel()
 
-		selectionModel.blockSignals(True)
-		for index in selectionModel.selectedRows():
-			# de-select any that have errors or duplicates
-			if not dataModel.canImport(proxyModel.mapToSource(index)):
-				selectionModel.select(index, QtGui.QItemSelectionModel.Deselect | QtGui.QItemSelectionModel.Rows)
+		with utils.signalsBlocked(selectionModel):
+			for index in selectionModel.selectedRows():
+				# de-select any that have errors or duplicates
+				if not dataModel.canImport(proxyModel.mapToSource(index)):
+					selectionModel.select(index, QtGui.QItemSelectionModel.Deselect | QtGui.QItemSelectionModel.Rows)
 
-		# get the new selection
-		numSelected = len(selectionModel.selectedRows())
-		self.selectedCounter.setNum(numSelected)
-		self.importCancelButton.setEnabled(bool(numSelected))
-		selectionModel.blockSignals(False)
+			# get the new selection
+			numSelected = len(selectionModel.selectedRows())
+			self.selectedCounter.setNum(numSelected)
+			self.importCancelButton.setEnabled(bool(numSelected))
 
 	def __close(self):
 		self.done(self.view.model().sourceModel().dataSaved)
@@ -279,7 +278,7 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 		db.port = self.portSpinBox.value()
 
 		try:
-			with showWaitCursor():
+			with utils.showWaitCursor():
 				db.connect()
 		except DatabaseNotInitialisedException:
 			if QtGui.QMessageBox.question(

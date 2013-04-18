@@ -3,7 +3,7 @@ import operator
 from PyQt4 import QtCore, QtGui, QtSql
 import enum
 from database import db
-from utils import blockSignals
+import utils
 import pydosh_rc
 
 class ImportException(Exception):
@@ -384,7 +384,7 @@ class RecordModel(QtSql.QSqlTableModel):
 		"""
 		status = False
 		if role == QtCore.Qt.CheckStateRole and index.column() == enum.kRecordColumn_Checked:
-			with blockSignals(self):
+			with utils.signalsBlocked(self):
 				if value.toPyObject() == QtCore.Qt.Checked:
 					status = (
 						super(RecordModel, self).setData(index, 1, QtCore.Qt.EditRole) and 
@@ -396,7 +396,8 @@ class RecordModel(QtSql.QSqlTableModel):
 					status = (
 						super(RecordModel, self).setData(index, 0, QtCore.Qt.EditRole) and
 						super(RecordModel, self).setData(self.index(index.row(), enum.kRecordColumn_CheckDate),
-														QtCore.QVariant(), QtCore.Qt.EditRole)
+														QtCore.QVariant(), 
+														QtCore.Qt.EditRole)
 					)
 		if status:
 			self.dataChanged.emit(self.index(index.row(), 0), self.index(index.row(), self.columnCount()))
@@ -641,25 +642,43 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 		self._amountFilter = None
 		self._tagFilter = None
 
+	def prn(self):
+		print (
+			'_startDate', self._startDate, 
+			'_endDate', self._endDate, 
+			'_insertDate', self._insertDate, 
+			'_accountids', self._accountids, 
+			'_hasTags', self._hasTags, 
+			'_checked', self._checked,
+			'_creditFilter', self._creditFilter, 
+			'_description', self._description, 
+			'_amountFilter', self._amountFilter, 
+			'_tagFilter', self._tagFilter
+			) 
+
 	def clearFilters(self):
 		self.__reset()
 		self.invalidateFilter()
 
 	def setStartDate(self, startDate):
-		self._startDate = startDate
-		self.invalidateFilter()
+		if startDate != self._startDate:
+			self._startDate = startDate
+			self.invalidateFilter()
 
 	def setEndDate(self, date):
-		self._endDate = date
-		self.invalidateFilter()
+		if date != self._endDate:
+			self._endDate = date
+			self.invalidateFilter()
 
 	def setInsertDate(self, date):
-		self._insertDate = date
-		self.invalidateFilter()
+		if date != self._insertDate:
+			self._insertDate = date
+			self.invalidateFilter()
 
 	def setAccountFilter(self, accountIds):
-		self._accountids = accountIds
-		self.invalidateFilter()
+		if accountIds != self._accountids:
+			self._accountids = accountIds
+			self.invalidateFilter()
 			
 	def setHasTagsFilter(self, value):
 		""" Set basic tag filter
@@ -669,12 +688,14 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 				True  - filter with tags
 				False - filter with no tags
 		"""
-		self._hasTags = value
-		self.invalidateFilter()
+		if value != self._hasTags:
+			self._hasTags = value
+			self.invalidateFilter()
 
 	def setTagFilter(self, tags):
-		self._tagFilter = tags
-		self.invalidateFilter()
+		if tags != self._tagFilter:
+			self._tagFilter = tags
+			self.invalidateFilter()
 
 	def setCheckedFilter(self, value):
 		""" Checked records filter
@@ -684,8 +705,9 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 				True  - filter only checked
 				False - filter not checked
 		"""
-		self._checked = value
-		self.invalidateFilter()
+		if value != self._checked:
+			self._checked = value
+			self.invalidateFilter()
 	
 	def setCreditFilter(self, value):
 		""" Credit amount filter
@@ -695,40 +717,44 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 				True  - filter on credit
 				False - filter on debit
 		"""
-		self._creditFilter = value
-		self.invalidateFilter()
+		if value != self._creditFilter:
+			self._creditFilter = value
+			self.invalidateFilter()
 
 	def setDescriptionFilter(self, text):
 		""" Filter by description (case insensitive)
 		"""
-		self._description = text
-		self.invalidateFilter()
+		if text != self._description:
+			self._description = text
+			self.invalidateFilter()
 
 	def setAmountFilter(self, text, op=None):
 		""" Set amount filter with optional operator
 			If operator is None then a string comparison is done on amount start
 		""" 
-		self._amountFilter = text
-		self._amountOperator = op
-		self.invalidateFilter()
+		if text != self._amountFilter or op != self._amountOperator:
+			self._amountFilter = text
+			self._amountOperator = op
+			self.invalidateFilter()
 
 	def invalidateFilter(self):
 		""" Override invalidateFilter so that we can emit the filterChanged signal
 		"""
+		print 'filter invalidated...'
 		super(SortProxyModel, self).invalidateFilter()
 		self.filterChanged.emit()
 
 	def filterAcceptsRow(self, sourceRow, parent):
 		if self._startDate:
-			if self.sourceModel().index(sourceRow, enum.kRecordColumn_Date, parent).data() < self._startDate:
+			if self.sourceModel().index(sourceRow, enum.kRecordColumn_Date, parent).data().toDate() < self._startDate:
 				return False
 
 		if self._endDate:
-			if self.sourceModel().index(sourceRow, enum.kRecordColumn_Date, parent).data() > self._endDate:
+			if self.sourceModel().index(sourceRow, enum.kRecordColumn_Date, parent).data().toDate() > self._endDate:
 				return False
 
 		if self._insertDate:
-			if self.sourceModel().index(sourceRow, enum.kRecordColumn_InsertDate).data() != self._insertDate:
+			if self.sourceModel().index(sourceRow, enum.kRecordColumn_InsertDate, parent).data().toDateTime() != self._insertDate:
 				return False
 
 		if self._accountids:
@@ -770,6 +796,7 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 			tags = self.sourceModel().index(sourceRow, enum.kRecordColumn_Tags).data(QtCore.Qt.UserRole).toString()
 			if not set(self._tagFilter).intersection(set(tags.split(','))):
 				return False
+
 		return True
 
 	def lessThan(self, left, right):

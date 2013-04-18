@@ -1,4 +1,5 @@
 from PyQt4 import QtCore, QtGui
+import utils
 import pydosh_rc
 from models import CheckComboModel
 
@@ -50,12 +51,9 @@ class MultiComboBox(QtGui.QComboBox):
 		modelIndex = self.model().index(0, self.modelColumn(), self.rootModelIndex())
 		modelIndexList = self.model().match(modelIndex, QtCore.Qt.CheckStateRole, searchState, -1, QtCore.Qt.MatchExactly)
 
-		self.model().blockSignals(True)
-
-		for index in modelIndexList:
-			self.setItemData(index.row(), assignState, QtCore.Qt.CheckStateRole)
-
-		self.model().blockSignals(False)
+		with utils.signalsBlocked(self.model()):
+			for index in modelIndexList:
+				self.setItemData(index.row(), assignState, QtCore.Qt.CheckStateRole)
 
 		self.__updateCheckedItems()
 
