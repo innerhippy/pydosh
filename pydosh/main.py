@@ -184,7 +184,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		accountIds = [index.data(QtCore.Qt.UserRole).toPyObject() for index in self.accountCombo.checkedIndexes()]
 		self.tableView.model().setAccountFilter(accountIds)
 
-
 	def tagSelectionChanged(self, index):
 		""" Basic tag filter (has tags or not)
 		"""
@@ -263,51 +262,47 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.startDateEdit.setDate(self.endDateEdit.date().addMonths(-1))
 
 	def setDateRange(self, index=None):
-#		print 'setDateRange'
-#		import pdb
-#		pdb.set_trace()
+
 		if index is None:
 			index = self.dateCombo.currentIndex()
 
-		with utils.signalsBlocked(self.tableView.model()):
-			if index == enum.kDate_All:
-				self.startDateEdit.setEnabled(True)
-				self.endDateEdit.setEnabled(True)
-				self.startDateEdit.setDate(self.startDateEdit.minimumDate())
-				self.endDateEdit.setDate(self.endDateEdit.maximumDate())
-	
-			elif index == enum.kDate_PreviousMonth:
-				self.startDateEdit.setDate(self.endDateEdit.date().addMonths(-1))
-				self.endDateEdit.setEnabled(True)
-				self.startDateEdit.setEnabled(False)
-	
-			elif index == enum.kDate_PreviousYear:
-				self.startDateEdit.setDate(self.endDateEdit.date().addYears(-1))
-				self.startDateEdit.setEnabled(True)
-				self.endDateEdit.setEnabled(True)
-	
-			elif index == enum.kdate_LastImport:
-				self.startDateEdit.setEnabled(False)
-				self.endDateEdit.setEnabled(False)
+		proxyModel = self.tableView.model()
 
-		# Set the filters on the proxy model
-		if index == enum.kdate_LastImport:
-			self.tableView.model().setStartDate(None)
-			self.tableView.model().setEndDate(None)
-			self.tableView.model().setInsertDate(self.maxInsertDate)
-		else:
-			self.tableView.model().setInsertDate(None)
+		if index == enum.kDate_All:
+			self.startDateEdit.setEnabled(True)
+			self.endDateEdit.setEnabled(True)
+			self.startDateEdit.setDate(self.startDateEdit.minimumDate())
+			self.endDateEdit.setDate(self.endDateEdit.maximumDate())
 
-			if self.startDateEdit.date() == self.startDateEdit.maximumDate():
-				self.tableView.model().setStartDate(None)
-			else:
-				self.tableView.model().setStartDate(self.startDateEdit.date())
+			proxyModel.setInsertDate(None)
+			proxyModel.setStartDate(None)
+			proxyModel.setEndDate(None)
 
-			if self.endDateEdit.date() == self.endDateEdit.maximumDate():
-				self.tableView.model().setEndDate(None)
-			else:
-				self.tableView.model().setEndDate(self.endDateEdit.date())
+		elif index == enum.kDate_PreviousMonth:
+			self.startDateEdit.setDate(self.endDateEdit.date().addMonths(-1))
+			self.endDateEdit.setEnabled(True)
+			self.startDateEdit.setEnabled(False)
 
+			proxyModel.setInsertDate(None)
+			proxyModel.setStartDate(self.startDateEdit.date())
+			proxyModel.setEndDate(self.endDateEdit.date())
+
+		elif index == enum.kDate_PreviousYear:
+			self.startDateEdit.setDate(self.endDateEdit.date().addYears(-1))
+			self.startDateEdit.setEnabled(True)
+			self.endDateEdit.setEnabled(True)
+
+			proxyModel.setInsertDate(None)
+			proxyModel.setStartDate(self.startDateEdit.date())
+			proxyModel.setEndDate(self.endDateEdit.date())
+
+		elif index == enum.kdate_LastImport:
+			self.startDateEdit.setEnabled(False)
+			self.endDateEdit.setEnabled(False)
+
+			proxyModel.setInsertDate(self.maxInsertDate)
+			proxyModel.setStartDate(None)
+			proxyModel.setEndDate(None)
 
 	def settingsDialog(self):
 		""" Launch the settings dialog widget to configure account information
@@ -315,8 +310,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		dialog = SettingsDialog(self)
 		if dialog.exec_():
 			self.reset()
-		#self.setFilter()
-#		self.tableView.model().sourceModel().select()
 
 	def importDialog(self):
 		""" Launch the import dialog
@@ -553,10 +546,14 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.DescendingOrder)
 
 		# Need signals to clear highlight filter on model
-		self.scrolltoEdit.clear()
+			self.scrolltoEdit.clear()
 
 		#self.tagView.model().sourceModel().clearSelection()
 		self.tableView.model().sourceModel().select()
+
+		self.tableView.setVisible(False)
+		self.tableView.resizeColumnsToContents()
+		self.tableView.setVisible(True)
 
 	def addActions(self):
 		quitAction = QtGui.QAction(QtGui.QIcon(':/icons/exit.png'), '&Quit', self)
@@ -610,13 +607,15 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	@utils.showWaitCursorDecorator
 	def recordsChanged(self, *args):
-		print 'recordsChanged called', self.tableView.model().prn()
+		print 'recordsChanged called' #, self.tableView.model().prn()
 
 		self.updateTagFilter()
 
 		self.tagView.updateGeometry()
 		self.tagView.resizeColumnsToContents()
+		self.tableView.setVisible(False)
 		self.tableView.resizeColumnsToContents()
+		self.tableView.setVisible(True)
 		
 		self.displayRecordCount()
 
