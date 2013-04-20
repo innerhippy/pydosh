@@ -740,7 +740,6 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 	def invalidateFilter(self):
 		""" Override invalidateFilter so that we can emit the filterChanged signal
 		"""
-		print 'filter invalidated...'
 		super(SortProxyModel, self).invalidateFilter()
 		self.filterChanged.emit()
 

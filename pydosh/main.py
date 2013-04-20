@@ -259,12 +259,13 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			)
 
 	def endDateChanged(self, date):
-		selected = self.dateCombo.itemData(self.dateCombo.currentIndex(), QtCore.Qt.UserRole).toPyObject()
-		if selected == enum.kDate_PreviousMonth:
+		if self.dateCombo.currentIndex() == enum.kDate_PreviousMonth:
 			self.startDateEdit.setDate(self.endDateEdit.date().addMonths(-1))
 
 	def setDateRange(self, index=None):
-
+#		print 'setDateRange'
+#		import pdb
+#		pdb.set_trace()
 		if index is None:
 			index = self.dateCombo.currentIndex()
 
@@ -537,6 +538,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		""" Reset all filters and combo boxes to a default state
 		"""
 		with utils.signalsBlocked(self.__signalsToBlock):
+			self.tableView.model().clearFilters()
 			self.populateDates()
 			self.dateCombo.setCurrentIndex(enum.kDate_PreviousMonth)
 			self.setDateRange()
@@ -549,11 +551,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.startDateEdit.setEnabled(True)
 			self.endDateEdit.setEnabled(True)
 			self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.DescendingOrder)
-
-		#self.dateCombo.setCurrentIndex(enum.kDate_PreviousMonth)
-
-		# ClearFilters
-		self.tableView.model().clearFilters()
 
 		# Need signals to clear highlight filter on model
 		self.scrolltoEdit.clear()
@@ -613,7 +610,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	@utils.showWaitCursorDecorator
 	def recordsChanged(self, *args):
-		print 'recordsChanged called', self.sender()
+		print 'recordsChanged called', self.tableView.model().prn()
 
 		self.updateTagFilter()
 
