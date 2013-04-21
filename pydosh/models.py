@@ -6,6 +6,8 @@ from database import db
 import utils
 import pydosh_rc
 
+import pdb
+
 class ImportException(Exception):
 	""" General exception for record import
 	"""
@@ -42,12 +44,13 @@ class ImportRecord(object):
 		return '%r' % str(self)
 
 class ImportModel(QtCore.QAbstractTableModel):
-	def __init__(self, parent=None):
+	def __init__(self, records, parent=None):
 		super(ImportModel, self).__init__(parent=parent)
 		self.__records = []
 		self.__recordsRollback = None
 		self.dataSaved = False
 		self.__currentTimestamp = None
+		self.__loadRecords(records)
 
 	def saveRecord(self, accountId, index):
 		""" Saves the import record to the database
@@ -100,7 +103,17 @@ class ImportModel(QtCore.QAbstractTableModel):
 		self.__recordsRollback = deepcopy(self.__records)
 		self.__currentTimestamp = None
 
-	def loadRecords(self, records):
+	def flags(self, index):
+		""" Only allow selection on records that can be imported
+		"""
+		flags = super(ImportModel, self).flags(index)
+
+		if not self.__canImport(index):
+			return flags ^ QtCore.Qt.ItemIsSelectable
+		return flags
+
+
+	def __loadRecords(self, records):
 		""" Import the records into our model
 			An input record is a tuple containing
 			(rawData, date, description, txDate, debit, credit, error,)
@@ -133,7 +146,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 		# Take a copy of the records in case we want to rollback
 		self.save()
 
-	def canImport(self, index):
+	def __canImport(self, index):
 		""" Returns True if the record at index can be imported,
 			ie no error and hasn't been imported yet
 		"""
@@ -143,19 +156,16 @@ class ImportModel(QtCore.QAbstractTableModel):
 	def rowCount(self, parent=QtCore.QModelIndex()):
 		return len(self.__records)
 
-	@property
 	def numBadRecords(self):
 		""" Returns the number of records with csv import errors
 		"""
 		return len([rec for rec in self.__records if not rec.valid])
 
-	@property
 	def numRecordsImported(self):
 		""" Returns the number of records that have already been imported
 		"""
 		return len([rec for rec in self.__records if rec.imported])
 
-	@property
 	def numRecordsToImport(self):
 		""" Returns the number of records left that can be imported
 		"""
@@ -178,17 +188,17 @@ class ImportModel(QtCore.QAbstractTableModel):
 
 		if role == QtCore.Qt.DisplayRole:
 			if item.column() == 0:
-				return self.__recordStatusToText(item)
+				return QtCore.QVariant(self.__recordStatusToText(item))
 			elif item.column() == 1:
-				return self.__records[item.row()].date
+				return QtCore.QVariant(self.__records[item.row()].date)
 			elif item.column() == 2:
-				return self.__records[item.row()].txdate
+				return QtCore.QVariant(self.__records[item.row()].txdate)
 			elif item.column() == 3:
-				return self.__records[item.row()].desc
+				return QtCore.QVariant(self.__records[item.row()].desc)
 			elif item.column() == 4:
-				return self.__records[item.row()].credit
+				return QtCore.QVariant(self.__records[item.row()].credit)
 			elif item.column() == 5:
-				return self.__records[item.row()].debit
+				return QtCore.QVariant(self.__records[item.row()].debit)
 
 		return QtCore.QVariant()
 
@@ -221,10 +231,11 @@ class ImportModel(QtCore.QAbstractTableModel):
 
 		if not rec.valid:
 			return rec.error
-		elif rec.imported:
+
+		if rec.imported:
 			return "Imported"
-		else:
-			return 'ready'
+
+		return 'ready'
 
 class RecordModel(QtSql.QSqlTableModel):
 	def __init__(self, parent=None):
@@ -373,15 +384,10 @@ class RecordModel(QtSql.QSqlTableModel):
 				val = super(RecordModel, self).data(item).toString().replace(QtCore.QRegExp('[ ]+'), ' ')
 				return QtCore.QVariant(val)
 
-# 			elif item.column() == enum.kRecordColumn_Date:
-# 				return super(RecordModel, self).data(item).toDate()
-
 			elif item.column() == enum.kRecordColumn_Txdate:
 				# Reformat date to only display time if available
 				if super(RecordModel, self).data(item).toDateTime().time().toString() == "00:00:00":
 					return QtCore.QVariant(super(RecordModel, self).data(item).toDate())
-# 				else:
-# 					return QtCore.QVariant(super(RecordModel, self).data(item).toDateTime())
 
 		return super(RecordModel, self).data(item, role)
 
@@ -651,20 +657,6 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 		self._amountFilter = None
 		self._tagFilter = None
 
-	def prn(self):
-		print (
-			'_startDate', self._startDate, 
-			'_endDate', self._endDate, 
-			'_insertDate', self._insertDate, 
-			'_accountids', self._accountids, 
-			'_hasTags', self._hasTags, 
-			'_checked', self._checked,
-			'_creditFilter', self._creditFilter, 
-			'_description', self._description, 
-			'_amountFilter', self._amountFilter, 
-			'_tagFilter', self._tagFilter
-			) 
-
 	def clearFilters(self):
 		""" Clears all filters - does *not* call invalidate
 		"""
@@ -811,32 +803,34 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 	def lessThan(self, left, right):
 		""" Define the comparison to ensure column data is sorted correctly
 		"""
+		leftVal = None
+		rightVal = None
+
 		if left.column() == enum.kRecordColumn_Tags:
-			# TODO: check this is valid
-			leftVal = self.sourceModel().data(left, QtCore.Qt.UserRole).toString()
-			return self.sourceModel().data(left, QtCore.Qt.UserRole) < self.sourceModel().data(right, QtCore.Qt.UserRole)
-		
+			leftVal = len(left.data(QtCore.Qt.UserRole).toString().split(',', QtCore.QString.SkipEmptyParts))
+			rightVal = len(right.data(QtCore.Qt.UserRole).toString().split(',', QtCore.QString.SkipEmptyParts))
 
 		elif left.column() == enum.kRecordColumn_Checked:
-			return self.sourceModel().data(left, QtCore.Qt.CheckStateRole) < self.sourceModel().data(right, QtCore.Qt.CheckStateRole)
+			leftVal = left.data(QtCore.Qt.CheckStateRole).toPyObject()
+			rightVal = right.data(QtCore.Qt.CheckStateRole).toPyObject()
 
 		elif left.column() == enum.kRecordColumn_Amount:
-			leftVal,_ = self.sourceModel().index(left.row(), enum.kRecordColumn_Amount).data(QtCore.Qt.UserRole).toDouble()
-			rightVal,_ = self.sourceModel().index(right.row(), enum.kRecordColumn_Amount).data(QtCore.Qt.UserRole).toDouble()
-			return leftVal < rightVal
+			leftVal,_ = left.data(QtCore.Qt.UserRole).toDouble()
+			rightVal,_ = right.data(QtCore.Qt.UserRole).toDouble()
 
 		elif left.column() == enum.kRecordColumn_Date:
-			leftVal =  self.sourceModel().data(left)
-			rightVal = self.sourceModel().index(right.row(), enum.kRecordColumn_Date).data().toDate()
-			#print leftVal, rightVal, type(leftVal), type(rightVal), leftVal < rightVal
-			if leftVal == leftVal:
-				return (self.sourceModel().index(left.row(), enum.kRecordColumn_RecordId).data().toPyObject()
-					< self.sourceModel().index(right.row(), enum.kRecordColumn_RecordId).data().toPyObject())
-			else:
-				return leftVal < leftVal
+			leftVal =  left.data().toDate()
+			rightVal = right.data().toDate()
+
+			if leftVal == rightVal:
+				# Dates are the same - sort by recordId just to ensure the results are consistent
+				leftVal = self.sourceModel().index(left.row(), enum.kRecordColumn_RecordId).data().toPyObject()
+				rightVal = self.sourceModel().index(right.row(), enum.kRecordColumn_RecordId).data().toPyObject()
+
+		if leftVal or rightVal:
+			return leftVal < rightVal
 
 		return super(SortProxyModel, self).lessThan(left, right)
-
 
 class AccountModel(QtSql.QSqlTableModel):
 	def __init__(self, parent=None):
