@@ -414,7 +414,7 @@ class RecordModel(QtSql.QSqlTableModel):
 														QtCore.Qt.EditRole)
 					)
 		if status:
-			self.dataChanged.emit(self.index(index.row(), 0), self.index(index.row(), self.columnCount()))
+			self.dataChanged.emit(index, index)
 
 		return status
 
@@ -453,8 +453,10 @@ class TagModel(QtSql.QSqlTableModel):
 
 	def setRecordFilter(self, recordIds):
 		""" List of record ids to limit tag data to display
+			If no record ids are given then we still need to set 
+			"0" to ensure that no record ids are matched
 		"""
-		self.setFilter(','.join([str(rec) for rec in recordIds]))
+		self.setFilter(','.join([str(rec) for rec in recordIds or [0]]))
 
 	def clearSelection(self):
 		for row in xrange(self.rowCount()):
@@ -635,12 +637,12 @@ class TagModel(QtSql.QSqlTableModel):
 		return self.select()
 
 
-class SortProxyModel(QtGui.QSortFilterProxyModel):
+class RecordProxyModel(QtGui.QSortFilterProxyModel):
 	# Signal emitted whenever there is a change to the filter
 	filterChanged = QtCore.pyqtSignal()
 
 	def __init__(self, parent=None):
-		super(SortProxyModel, self).__init__(parent=parent)
+		super(RecordProxyModel, self).__init__(parent=parent)
 		self.__reset()
 
 	def __reset(self):
@@ -742,7 +744,7 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 	def invalidateFilter(self):
 		""" Override invalidateFilter so that we can emit the filterChanged signal
 		"""
-		super(SortProxyModel, self).invalidateFilter()
+		super(RecordProxyModel, self).invalidateFilter()
 		self.filterChanged.emit()
 
 	def filterAcceptsRow(self, sourceRow, parent):
@@ -830,7 +832,7 @@ class SortProxyModel(QtGui.QSortFilterProxyModel):
 		if leftVal or rightVal:
 			return leftVal < rightVal
 
-		return super(SortProxyModel, self).lessThan(left, right)
+		return super(RecordProxyModel, self).lessThan(left, right)
 
 class AccountModel(QtSql.QSqlTableModel):
 	def __init__(self, parent=None):
@@ -872,46 +874,46 @@ class AccountModel(QtSql.QSqlTableModel):
 
 		return QtCore.QVariant()
 
-class CheckComboModel(QtSql.QSqlTableModel):
-
+class AccountsModel(QtSql.QSqlTableModel):
+	""" Model for accounts which stores selection.
+		Underlying model is QSqlTableModel
+	"""
 	def __init__(self, parent=None):
-		super(CheckComboModel, self).__init__(parent=parent)
+		super(AccountsModel, self).__init__(parent=parent)
 		self._checkedItems = set()
-		self.__userRoleColumn = None
-
-	def setUserRoleColumn(self, column):
-		""" Set the database table column to use for UserRole data
-		"""
-		self.__userRoleColumn = column
 
 	def flags(self, index):
-		return super(CheckComboModel, self).flags(index) | QtCore.Qt.ItemIsUserCheckable
+		""" Enable checkable account names
+		"""
+		flags = super(AccountsModel, self).flags(index)
+
+		if index.column() == enum.kAccountTypeColumn_AccountName:
+			flags |= QtCore.Qt.ItemIsUserCheckable
+
+		return flags
 
 	def data(self, index, role):
 		if not index.isValid():
 			return QtCore.QVariant()
 
 		if role == QtCore.Qt.CheckStateRole:
-			if index.row() in self._checkedItems:
-				return QtCore.QVariant(QtCore.Qt.Checked)
-			else:
-				return QtCore.QVariant(QtCore.Qt.Unchecked)
+			if index.column() == enum.kAccountTypeColumn_AccountName:
+				if index.row() in self._checkedItems:
+					return QtCore.QVariant(QtCore.Qt.Checked)
+				else:
+					return QtCore.QVariant(QtCore.Qt.Unchecked)
 
-		# TODO: check this makes sense
-		if role == QtCore.Qt.UserRole and self.__userRoleColumn is not None:
-			return self.record(index.row()).value(self.__userRoleColumn).toPyObject()
-
-		return super(CheckComboModel, self).data(index, role)
+		return super(AccountsModel, self).data(index, role)
 
 	def setData(self, index, value, role):
 		if role == QtCore.Qt.CheckStateRole:
-
-			if value.toPyObject() == QtCore.Qt.Checked:
-				self._checkedItems.add(index.row())
-			else:
-				self._checkedItems.remove(index.row())
-
-			self.dataChanged.emit(index, index)
-			return True
+			if index.column() == enum.kAccountTypeColumn_AccountName:
+				if value.toPyObject() == QtCore.Qt.Checked:
+					self._checkedItems.add(index.row())
+				else:
+					self._checkedItems.remove(index.row())
+	
+				self.dataChanged.emit(index, index)
+				return True
 
 		return False

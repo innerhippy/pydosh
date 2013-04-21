@@ -1,12 +1,12 @@
 from PyQt4 import QtCore, QtGui
 import utils
 import pydosh_rc
-from models import CheckComboModel
 
 class MultiComboBox(QtGui.QComboBox):
 	""" Extension of QComboBox widget that allows for multiple selection
 	"""
-	selectionChanged = QtCore.pyqtSignal()
+	# Signal containing list of selected indexes
+	selectionChanged = QtCore.pyqtSignal('PyQt_PyObject')
 
 	def __init__(self, parent=None):
 		super(MultiComboBox, self).__init__(parent=parent)
@@ -113,15 +113,7 @@ class MultiComboBox(QtGui.QComboBox):
 			state = value.toPyObject()
 			self.setItemData(index, QtCore.Qt.Checked if state == QtCore.Qt.Unchecked else QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
 
-	def checkedItems(self):
-		items = []
-		if self.model():
-			currentIndex = self.model().index(0, self.modelColumn(), self.rootModelIndex())
-			indexes = self.model().match(currentIndex, QtCore.Qt.CheckStateRole, QtCore.Qt.Checked, -1, QtCore.Qt.MatchExactly)
-			items = [index.data().toString() for index in indexes]
-		return items
-
-	def checkedIndexes(self):
+	def __checkedItems(self):
 		indexes = []
 		if self.model():
 			currentIndex = self.model().index(0, self.modelColumn(), self.rootModelIndex())
@@ -153,14 +145,14 @@ class MultiComboBox(QtGui.QComboBox):
 			signalMap[contextMenuAction]()
 
 	def __updateCheckedItems(self):
-		items = self.checkedItems()
+		items = self.__checkedItems()
 
 		if items:
-			self.setEditText(', '.join([str(item) for item in items]))
+			self.setEditText(QtCore.QStringList([index.data().toString() for index in items]).join(', '))
 		else:
 			self.setEditText(self._defaultText)
 
-		self.selectionChanged.emit()
+		self.selectionChanged.emit(items)
 
 	def showPopup(self):
 		self.__persistDropdown = QtGui.QApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier
@@ -169,10 +161,6 @@ class MultiComboBox(QtGui.QComboBox):
 	def hidePopup(self):
 		if not self.__persistDropdown:
 			super(MultiComboBox, self).hidePopup()
-
-	def __str__(self):
-		return ', '.join([str(item) for item in self.checkedItems()])
-
 
 def main():
 	from searchlineedit import SearchLineEdit
