@@ -11,6 +11,8 @@ from dialogs import SettingsDialog, ImportDialog
 import enum
 import pydosh_rc
 
+import pdb
+
 class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def __init__(self, parent=None):
 		super(PydoshWindow, self).__init__(parent=parent)
@@ -242,6 +244,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		if self.dateCombo.currentIndex() == enum.kDate_PreviousMonth:
 			self.startDateEdit.setDate(self.endDateEdit.date().addMonths(-1))
 
+	@utils.showWaitCursorDecorator
 	def setDateRange(self, index=None):
 		""" Set date fields according to date combo selection mode
 		"""
@@ -249,47 +252,56 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			index = self.dateCombo.currentIndex()
 
 		proxyModel = self.tableView.model()
-		# Block signals from proxyModel and call reset at the end - this 
-		# will save multiple calls to re-display data
-		with utils.signalsBlocked(proxyModel):
+
+		# Block signals from date combos to stop them refreshing the model
+		with utils.signalsBlocked(self.endDateEdit, self.startDateEdit):
 			if index == enum.kDate_All:
 				self.startDateEdit.setEnabled(True)
 				self.endDateEdit.setEnabled(True)
+
+				proxyModel.setDateFilters()
+
 				self.startDateEdit.setDate(self.startDateEdit.minimumDate())
 				self.endDateEdit.setDate(self.endDateEdit.maximumDate())
 	
-				proxyModel.setInsertDate(None)
-				proxyModel.setStartDate(None)
-				proxyModel.setEndDate(None)
-	
 			elif index == enum.kDate_PreviousMonth:
-				self.startDateEdit.setDate(self.endDateEdit.date().addMonths(-1))
 				self.endDateEdit.setEnabled(True)
 				self.startDateEdit.setEnabled(False)
-	
-				proxyModel.setInsertDate(None)
-				proxyModel.setStartDate(self.startDateEdit.date())
-				proxyModel.setEndDate(self.endDateEdit.date())
-	
+
+				self.endDateEdit.setDate(self.endDateEdit.maximumDate())
+				self.startDateEdit.setDate(self.endDateEdit.date().addMonths(-1))
+
+				proxyModel.setDateFilters(startDate=self.startDateEdit.date(),
+										endDate=self.endDateEdit.date())
+
 			elif index == enum.kDate_PreviousYear:
-				self.startDateEdit.setDate(self.endDateEdit.date().addYears(-1))
 				self.startDateEdit.setEnabled(True)
 				self.endDateEdit.setEnabled(True)
-	
-				proxyModel.setInsertDate(None)
-				proxyModel.setStartDate(self.startDateEdit.date())
-				proxyModel.setEndDate(self.endDateEdit.date())
-	
+
+				self.endDateEdit.setDate(self.endDateEdit.maximumDate())
+				self.startDateEdit.setDate(self.endDateEdit.date().addYears(-1))
+
+				proxyModel.setDateFilters(startDate=self.startDateEdit.date(),
+										endDate=self.endDateEdit.date())
+
 			elif index == enum.kdate_LastImport:
 				self.startDateEdit.setEnabled(False)
 				self.endDateEdit.setEnabled(False)
-	
-				proxyModel.setInsertDate(self.maxInsertDate)
-				proxyModel.setStartDate(None)
-				proxyModel.setEndDate(None)
-	
-		# Reset the model. For some reason invalidateFilter doesn't quite work
-		proxyModel.reset()
+
+				proxyModel.setDateFilters(insertDate=self.maxInsertDate)
+
+				startDate = QtCore.QDate()
+				endDate = QtCore.QDate()
+
+				for row in xrange(proxyModel.rowCount()):
+					dateForRow = proxyModel.index(row, enum.kRecordColumn_Date).data().toDate()
+					if not endDate.isValid() or dateForRow > endDate:
+						endDate = dateForRow
+					if not startDate.isValid() or dateForRow < startDate:
+						startDate = dateForRow
+
+				self.startDateEdit.setDate(startDate)
+				self.endDateEdit.setDate(endDate)
 
 	def settingsDialog(self):
 		""" Launch the settings dialog widget to configure account information
@@ -375,6 +387,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.populateDates()
 			self.accountCombo.model().select()
 			self.tableView.model().sourceModel().select()
+			self.tableView.model().reset()
 
 	def recordSelectionChanged(self):
 		""" Only enable buttons if a selection has been made
@@ -432,6 +445,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			if not proxyModel.sourceModel().deleteRecords(indexes):
 				QtGui.QMessageBox.critical(self, 'Database Error',
 					proxyModel.sourceModel().lastError().text(), QtGui.QMessageBox.Ok)
+			
+			# Finally, re-populate date range in case this has changed
+			self.populateDates()
 
 	@contextmanager
 	def keepSelection(self):
@@ -484,9 +500,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 			self.startDateEdit.setDateRange(startDate, endDate)
 			self.endDateEdit.setDateRange(startDate, endDate)
-
-			self.startDateEdit.setDate(startDate)
-			self.endDateEdit.setDate(endDate)
 			self.maxInsertDate = maxInsertDateTime
 
 	@utils.showWaitCursorDecorator
@@ -612,6 +625,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		""" Records have changed - either from proxy filter or the records model.
 			Update the tag filter, resize columns and re-calculate summary
 		"""
+		print 'recordsChanged'
 		self.updateTagFilter()
 		self.displayRecordCount()
 
