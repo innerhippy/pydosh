@@ -636,6 +636,20 @@ class TagModel(QtSql.QSqlTableModel):
 		self.tagsChanged.emit()
 		return self.select()
 
+class TagProxyModel(QtGui.QSortFilterProxyModel):
+	# Signal emitted whenever there is a change to the filter
+	filterChanged = QtCore.pyqtSignal()
+
+	def __init__(self, parent=None):
+		super(TagProxyModel, self).__init__(parent=parent)
+
+	def lessThan(self, left, right):
+		""" Define the comparison to ensure column data is sorted correctly
+		"""
+		if left.column() in (enum.kTagsColumn_Amount_in, enum.kTagsColumn_Amount_out):
+			return left.data().toDouble()[0] > right.data().toDouble()[0]
+
+		return super(TagProxyModel, self).lessThan(left, right)
 
 class RecordProxyModel(QtGui.QSortFilterProxyModel):
 	# Signal emitted whenever there is a change to the filter

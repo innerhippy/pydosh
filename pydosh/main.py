@@ -3,7 +3,7 @@ import operator
 from PyQt4 import QtGui, QtCore, QtSql
 from version import __VERSION__
 import utils
-from models import RecordModel, RecordProxyModel, AccountsModel, TagModel
+from models import RecordModel, RecordProxyModel, AccountsModel, TagModel, TagProxyModel
 from csvdecoder import Decoder, DecoderException
 from database import db
 from ui_pydosh import Ui_pydosh
@@ -92,7 +92,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		# Set up tag model
 		tagModel = TagModel(self)
-		tagProxyModel = QtGui.QSortFilterProxyModel(self)
+		tagProxyModel = TagProxyModel(self)
 		tagProxyModel.setSourceModel(tagModel)
 		tagProxyModel.sort(enum.kTagsColumn_Amount_out, QtCore.Qt.AscendingOrder)
 		self.tagView.setModel(tagProxyModel)
@@ -372,6 +372,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			dialog.setWindowTitle(fileNames.join(', '))
 
 		if dialog.exec_():
+			self.populateDates()
 			self.accountCombo.model().select()
 			self.tableView.model().sourceModel().select()
 
