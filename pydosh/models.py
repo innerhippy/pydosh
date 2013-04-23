@@ -678,23 +678,21 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 		"""
 		self.__reset()
 
-	def setDateFilters(self, startDate=None, endDate=None, insertDate=None):
-
-		self._startDate = startDate
-		self._endDate = endDate
+	def setInsertDate(self, insertDate):
+		self._startDate = None
+		self._endDate = None
 		self._insertDate = insertDate
-
 		self.invalidateFilter()
 
 	def setStartDate(self, startDate):
-		if startDate != self._startDate:
-			self._startDate = startDate
-			self.invalidateFilter()
+		self._insertDate = None
+		self._startDate = startDate
+		self.invalidateFilter()
 
 	def setEndDate(self, date):
-		if date != self._endDate:
-			self._endDate = date
-			self.invalidateFilter()
+		self._insertDate = None
+		self._endDate = date
+		self.invalidateFilter()
 
 	def setAccountFilter(self, accountIds):
 		if accountIds != self._accountids:

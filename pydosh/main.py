@@ -65,7 +65,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.outTotalLabel.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Sunken)
 		self.recordCountLabel.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Sunken)
 
+		# Date ranges
 		self.maxInsertDate = None
+		self.populateDates()
 
 		# Set up record model
 		recordModel = RecordModel(self)
@@ -240,7 +242,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		""" End date has changed - if date mode is "previous" month, 
 			the update start date accordingly
 		"""
-		print 'called'
 		if self.dateCombo.currentIndex() == enum.kDate_PreviousMonth:
 			self.startDateEdit.setDate(self.endDateEdit.date().addMonths(-1))
 
@@ -253,53 +254,46 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		proxyModel = self.tableView.model()
 
-		# Block signals from date combos to stop them refreshing the model
-		with utils.signalsBlocked(self.endDateEdit, self.startDateEdit):
-			if index == enum.kDate_All:
-				self.startDateEdit.setEnabled(True)
-				self.endDateEdit.setEnabled(True)
+		if index == enum.kDate_All:
+			self.startDateEdit.setEnabled(True)
+			self.endDateEdit.setEnabled(True)
 
-				proxyModel.setDateFilters()
+			self.startDateEdit.setDate(self.startDateEdit.minimumDate())
+			self.endDateEdit.setDate(self.endDateEdit.maximumDate())
 
-				self.startDateEdit.setDate(self.startDateEdit.minimumDate())
-				self.endDateEdit.setDate(self.endDateEdit.maximumDate())
-	
-			elif index == enum.kDate_PreviousMonth:
-				self.endDateEdit.setEnabled(True)
-				self.startDateEdit.setEnabled(False)
+		elif index == enum.kDate_PreviousMonth:
+			self.endDateEdit.setEnabled(True)
+			self.startDateEdit.setEnabled(False)
 
-				self.endDateEdit.setDate(self.endDateEdit.maximumDate())
-				self.startDateEdit.setDate(self.endDateEdit.date().addMonths(-1))
+			self.endDateEdit.setDate(self.endDateEdit.maximumDate())
+			self.startDateEdit.setDate(self.endDateEdit.date().addMonths(-1))
 
-				proxyModel.setDateFilters(startDate=self.startDateEdit.date(),
-										endDate=self.endDateEdit.date())
+		elif index == enum.kDate_PreviousYear:
+			self.startDateEdit.setEnabled(True)
+			self.endDateEdit.setEnabled(True)
 
-			elif index == enum.kDate_PreviousYear:
-				self.startDateEdit.setEnabled(True)
-				self.endDateEdit.setEnabled(True)
+			self.endDateEdit.setDate(self.endDateEdit.maximumDate())
+			self.startDateEdit.setDate(self.endDateEdit.date().addYears(-1))
 
-				self.endDateEdit.setDate(self.endDateEdit.maximumDate())
-				self.startDateEdit.setDate(self.endDateEdit.date().addYears(-1))
+		elif index == enum.kdate_LastImport:
+			self.startDateEdit.setEnabled(False)
+			self.endDateEdit.setEnabled(False)
 
-				proxyModel.setDateFilters(startDate=self.startDateEdit.date(),
-										endDate=self.endDateEdit.date())
+			proxyModel.setInsertDate(insertDate=self.maxInsertDate)
 
-			elif index == enum.kdate_LastImport:
-				self.startDateEdit.setEnabled(False)
-				self.endDateEdit.setEnabled(False)
+			startDate = QtCore.QDate()
+			endDate = QtCore.QDate()
 
-				proxyModel.setDateFilters(insertDate=self.maxInsertDate)
+			# Find the min/max dates for the last import from the proxy model 
+			for row in xrange(proxyModel.rowCount()):
+				dateForRow = proxyModel.index(row, enum.kRecordColumn_Date).data().toDate()
+				if not endDate.isValid() or dateForRow > endDate:
+					endDate = dateForRow
+				if not startDate.isValid() or dateForRow < startDate:
+					startDate = dateForRow
 
-				startDate = QtCore.QDate()
-				endDate = QtCore.QDate()
-
-				for row in xrange(proxyModel.rowCount()):
-					dateForRow = proxyModel.index(row, enum.kRecordColumn_Date).data().toDate()
-					if not endDate.isValid() or dateForRow > endDate:
-						endDate = dateForRow
-					if not startDate.isValid() or dateForRow < startDate:
-						startDate = dateForRow
-
+			# This is for information only, so don't trigger a query on the proxy
+			with utils.signalsBlocked(self.endDateEdit, self.startDateEdit):
 				self.startDateEdit.setDate(startDate)
 				self.endDateEdit.setDate(endDate)
 
@@ -384,10 +378,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			dialog.setWindowTitle(fileNames.join(', '))
 
 		if dialog.exec_():
-			self.populateDates()
 			self.accountCombo.model().select()
 			self.tableView.model().sourceModel().select()
-			self.tableView.model().reset()
+			self.populateDates()
+			self.setDateRange()
 
 	def recordSelectionChanged(self):
 		""" Only enable buttons if a selection has been made
@@ -448,6 +442,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			
 			# Finally, re-populate date range in case this has changed
 			self.populateDates()
+			self.setDateRange()
 
 	@contextmanager
 	def keepSelection(self):
@@ -550,17 +545,19 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		with utils.signalsBlocked(signalsToBlock):
 			self.tableView.model().clearFilters()
-			self.populateDates()
+			
 			self.dateCombo.setCurrentIndex(enum.kDate_PreviousMonth)
+			# Signals blocked so need to reset filter manually
 			self.setDateRange()
+			self.tableView.model().setStartDate(self.startDateEdit.date())
+			self.tableView.model().setEndDate(self.endDateEdit.date())
+
 			self.checkedCombo.setCurrentIndex(enum.kCheckedStatus_All)
 			self.tagsCombo.setCurrentIndex(enum.kCheckedStatus_All)
-			self.accountCombo.clearAll()
 			self.inoutCombo.setCurrentIndex(enum.kInOutStatus_All)
+			self.accountCombo.clearAll()
 			self.amountEdit.clear()
 			self.descEdit.clear()
-			self.startDateEdit.setEnabled(True)
-			self.endDateEdit.setEnabled(True)
 			self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.DescendingOrder)
 
 		# Need signals to clear highlight filter on model
@@ -625,7 +622,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		""" Records have changed - either from proxy filter or the records model.
 			Update the tag filter, resize columns and re-calculate summary
 		"""
-		print 'recordsChanged'
 		self.updateTagFilter()
 		self.displayRecordCount()
 
