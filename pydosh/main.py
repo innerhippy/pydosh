@@ -42,14 +42,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.removeTagButton.setEnabled(False)
 
 		self.accountCombo.setDefaultText('all')
-		self.scrolltoEdit.textChanged.connect(self.scrollTo)
-		self.amountEdit.controlKeyPressed.connect(self.controlKeyPressed)
-		self.toggleCheckButton.clicked.connect(self.toggleSelected)
-		self.deleteButton.clicked.connect(self.deleteRecords)
-		self.dateCombo.currentIndexChanged.connect(self.setDateRange)
-		self.reloadButton.clicked.connect(self.reset)
-		self.addTagButton.clicked.connect(self.addTag)
-		self.removeTagButton.clicked.connect(self.removeTag)
 
 		self.connectionStatusText.setText('connected to %s@%s' % (db.database, db.hostname))
 
@@ -130,6 +122,13 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		#
 		# Set up connections
 		#
+		self.scrolltoEdit.textChanged.connect(self.scrollTo)
+		self.toggleCheckButton.clicked.connect(self.toggleSelected)
+		self.deleteButton.clicked.connect(self.deleteRecords)
+		self.dateCombo.currentIndexChanged.connect(self.setDateRange)
+		self.reloadButton.clicked.connect(self.reset)
+		self.addTagButton.clicked.connect(self.addTag)
+		self.removeTagButton.clicked.connect(self.removeTag)
 		recordModel.dataChanged.connect(self.recordsChanged)
 		recordProxyModel.filterChanged.connect(self.recordsChanged)
 		recordProxyModel.modelReset.connect(self.recordsChanged)
@@ -146,11 +145,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.checkedCombo.currentIndexChanged.connect(self.checkedSelectionChanged)
 		self.inoutCombo.currentIndexChanged.connect(self.inOutSelectionChanged)
 		self.descEdit.textChanged.connect(recordProxyModel.setDescriptionFilter)
+		self.amountEdit.controlKeyPressed.connect(self.controlKeyPressed)
 		self.amountEdit.textChanged.connect(self.amountFilterChanged)
-
-# 		from signaltracer import SignalTracer
-# 		self.tracer = SignalTracer()
-# 		self.tracer.monitor(recordModel, recordProxyModel, self.tableView.selectionModel())
 
 		self.reset()
 
@@ -526,7 +522,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		with self.keepSelection():
 			self.tableView.model().sourceModel().reset()
 
-	def reset(self):
+	@utils.showWaitCursorDecorator
+	def reset(self, *args):
 		""" Reset all filters and combo boxes to a default state
 		"""
 		signalsToBlock = (
@@ -544,6 +541,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		)
 
 		with utils.signalsBlocked(signalsToBlock):
+			self.tagView.model().sourceModel().clearSelection()
 			self.tableView.model().clearFilters()
 			
 			self.dateCombo.setCurrentIndex(enum.kDate_PreviousMonth)
@@ -642,6 +640,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			recordIds.append(model.index(i, enum.kRecordColumn_RecordId).data().toPyObject())
 
 		self.tagView.model().sourceModel().setRecordFilter(recordIds)
+		self.tagView.resizeColumnsToContents()
 
 
 	def addTag(self):
@@ -672,9 +671,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 						'There are %d records assigned to this tag\nSure you want to delete it?' % len(assignedRecords),
 						QtGui.QMessageBox.Yes|QtGui.QMessageBox.No) != QtGui.QMessageBox.Yes:
 					continue
-			tagId = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kTagsColumn_TagId).data().toPyObject()
-			proxyModel.sourceModel().removeTag(tagId)
-
+			with utils.showWaitCursor():
+				tagId = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kTagsColumn_TagId).data().toPyObject()
+				proxyModel.sourceModel().removeTag(tagId)
 
 	def tagEditPopup(self, pos):
 		self.tableView.viewport().mapToGlobal(pos)
@@ -716,6 +715,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		menu.addAction(action)
 		menu.exec_(self.tableView.viewport().mapToGlobal(pos))
 
+	@utils.showWaitCursorDecorator
 	def saveTagChanges(self, item):
 		""" Save tag changes to tag model
 		"""
