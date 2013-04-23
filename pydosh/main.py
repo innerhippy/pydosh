@@ -603,7 +603,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		inTotal = 0.0
 		outTotal = 0.0
 
-		model = self.tableView.model().sourceModel()
+		model = self.tableView.model()
 		for row in xrange(model.rowCount()):
 			amount = model.index(row, enum.kRecordColumn_Amount).data(QtCore.Qt.UserRole).toPyObject()
 			if amount > 0.0:
