@@ -90,13 +90,12 @@ class Decoder(QtCore.QObject):
 
 
 	def __getAmountField(self, field, comp):
-		value, ok = QtCore.QString(field).toDouble()
-		if not ok:
-			return
+		value, ok = QtCore.QVariant(field).toDouble()
 
-		value *= self.__currencySign
-
-		if comp(value, 0.0):
-			return value
+		if ok:
+			value *= self.__currencySign
+	
+			if comp(value, 0.0):
+				return value
 
 		return None
