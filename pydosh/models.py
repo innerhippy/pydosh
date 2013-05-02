@@ -44,13 +44,12 @@ class ImportRecord(object):
 		return '%r' % str(self)
 
 class ImportModel(QtCore.QAbstractTableModel):
-	def __init__(self, records, parent=None):
+	def __init__(self, parent=None):
 		super(ImportModel, self).__init__(parent=parent)
 		self.__records = []
 		self.__recordsRollback = None
 		self.dataSaved = False
 		self.__currentTimestamp = None
-		self.__loadRecords(records)
 
 	def saveRecord(self, accountId, index):
 		""" Saves the import record to the database
@@ -113,7 +112,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 		return flags
 
 
-	def __loadRecords(self, records):
+	def loadRecords(self, records):
 		""" Import the records into our model
 			An input record is a tuple containing
 			(rawData, date, description, txDate, debit, credit, error,)
@@ -763,7 +762,6 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 		self.filterChanged.emit()
 
 	def filterAcceptsRow(self, sourceRow, parent):
-	#	print QtCore.QDateTime.currentDateTime()
 		if self._startDate:
 			if self.sourceModel().index(sourceRow, enum.kRecordColumn_Date, parent).data().toDate() < self._startDate:
 				return False
@@ -850,9 +848,9 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 
 		return super(RecordProxyModel, self).lessThan(left, right)
 
-class AccountModel(QtSql.QSqlTableModel):
+class AccountEditModel(QtSql.QSqlTableModel):
 	def __init__(self, parent=None):
-		super(AccountModel, self).__init__(parent=parent)
+		super(AccountEditModel, self).__init__(parent=parent)
 
 	def data(self, item, role=QtCore.Qt.DisplayRole):
 		if not item.isValid():
@@ -861,14 +859,14 @@ class AccountModel(QtSql.QSqlTableModel):
 		if role == QtCore.Qt.BackgroundColorRole and self.isDirty(item):
 				return QtCore.QVariant(QtGui.QColor(255,156,126))
 
-		return super(AccountModel, self).data(item, role)
+		return super(AccountEditModel, self).data(item, role)
 
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
 		# Don't flag cell as changed when it hasn't
 		if role == QtCore.Qt.EditRole and index.data(QtCore.Qt.DisplayRole) == value:
 			return False
 
-		return super(AccountModel, self).setData(index, value, role)
+		return super(AccountEditModel, self).setData(index, value, role)
 
 	def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
 
@@ -914,7 +912,8 @@ class AccountsModel(QtSql.QSqlTableModel):
 
 		if role == QtCore.Qt.CheckStateRole:
 			if index.column() == enum.kAccountTypeColumn_AccountName:
-				if index.row() in self._checkedItems:
+				accountName = self.index(index.row(), enum.kAccountTypeColumn_AccountName).data().toString()
+				if accountName in self._checkedItems:
 					return QtCore.QVariant(QtCore.Qt.Checked)
 				else:
 					return QtCore.QVariant(QtCore.Qt.Unchecked)
@@ -922,12 +921,15 @@ class AccountsModel(QtSql.QSqlTableModel):
 		return super(AccountsModel, self).data(index, role)
 
 	def setData(self, index, value, role):
+		""" Set check state and preserve account name for use in data()
+		"""
 		if role == QtCore.Qt.CheckStateRole:
 			if index.column() == enum.kAccountTypeColumn_AccountName:
+				accountName = self.index(index.row(), enum.kAccountTypeColumn_AccountName).data().toString()
 				if value.toPyObject() == QtCore.Qt.Checked:
-					self._checkedItems.add(index.row())
+					self._checkedItems.add(accountName)
 				else:
-					self._checkedItems.remove(index.row())
+					self._checkedItems.remove(accountName)
 	
 				self.dataChanged.emit(index, index)
 				return True

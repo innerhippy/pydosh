@@ -4,14 +4,11 @@ from PyQt4 import QtGui, QtCore, QtSql
 from version import __VERSION__
 import utils
 from models import RecordModel, RecordProxyModel, AccountsModel, TagModel, TagProxyModel
-from csvdecoder import Decoder, DecoderException
 from database import db
 from ui_pydosh import Ui_pydosh
 from dialogs import SettingsDialog, ImportDialog
 import enum
 import pydosh_rc
-
-import pdb
 
 class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def __init__(self, parent=None):
@@ -104,7 +101,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.tagView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 		self.tagView.setStyleSheet('QTableView {background-color: transparent;}')
 		self.tagView.setShowGrid(False)
-
 
 		# Set up account model
 		accountModel = AccountsModel(self)
@@ -302,25 +298,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def importDialog(self):
 		""" Launch the import dialog
 		"""
-		combo = QtGui.QComboBox(self)
-		model = QtSql.QSqlTableModel(self)
-		model.setTable('accounttypes')
-		model.select()
-		combo.setModel(model)
-		combo.setModelColumn(enum.kAccountTypeColumn_AccountName)
-
-		# find the previous accounttype that was used (if any)
+		# try and set last import directory
 		settings = QtCore.QSettings()
-		accounttype = settings.value("options/importaccounttype").toString()
-
-		index = combo.findText(accounttype)
-
-		if index != -1:
-			combo.setCurrentIndex(index)
-		else:
-			combo.setCurrentIndex(0)
-
-		label = QtGui.QLabel('Account type:')
 		importDir = settings.value("options/importdirectory").toString()
 
 		if importDir.isEmpty():
@@ -328,53 +307,20 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		dialog = QtGui.QFileDialog(self, 'Open File', importDir, "*.csv")
 		dialog.setFileMode(QtGui.QFileDialog.ExistingFiles)
-		dialog.setOption(QtGui.QFileDialog.DontUseNativeDialog)
-
-		gridbox = dialog.layout()
-
-		if gridbox:
-			gridbox.addWidget(label)
-			gridbox.addWidget(combo)
 
 		if not dialog.exec_():
 			return
 
-		accountId, ok = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_AccountTypeId).data().toInt()
-		if not ok:
-			QtGui.QMessageBox.critical(self, 'Import Error', 'No account type specified', QtGui.QMessageBox.Ok)
-			return
-
 		fileNames = QtCore.QStringList([QtCore.QFileInfo(f).fileName() for f in dialog.selectedFiles()])
-		dateField = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DateField).data()
-		descriptionField = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DescriptionField).data()
-		creditField = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_CreditField).data()
-		debitField = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DebitField).data()
-		currencySign = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_CurrencySign).data()
-		dateFormat = combo.model().index(combo.currentIndex(), enum.kAccountTypeColumn_DateFormat).data()
 
 		# Save the settings for next time
-		settings.setValue('options/importaccounttype', combo.currentText())
 		settings.setValue('options/importdirectory', dialog.directory().absolutePath())
 
-		with utils.showWaitCursor():
-			try:
-				decoder = Decoder(
-						dateField,
-						descriptionField,
-						creditField,
-						debitField,
-						currencySign,
-						dateFormat,
-						dialog.selectedFiles())
-			except DecoderException, exc:
-				QtGui.QMessageBox.critical(self, 'Import Error', str(exc), QtGui.QMessageBox.Ok)
-				return
-
-			dialog = ImportDialog(decoder.records, accountId, self)
-			dialog.setWindowTitle(fileNames.join(', '))
+		dialog = ImportDialog(dialog.selectedFiles(), self)
+		dialog.setWindowTitle(fileNames.join(', '))
 
 		if dialog.exec_():
-			self.accountCombo.model().select()
+			self.accountCombo.reset()
 			self.tableView.model().sourceModel().select()
 			self.populateDates()
 			self.setDateRange()
@@ -436,7 +382,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				QtGui.QMessageBox.critical(self, 'Database Error',
 					proxyModel.sourceModel().lastError().text(), QtGui.QMessageBox.Ok)
 			
-			# Finally, re-populate date range in case this has changed
+			# Finally, re-populate accounts and date range in case this has changed
+			self.accountCombo.reset()
 			self.populateDates()
 			self.setDateRange()
 
@@ -545,6 +492,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.model().clearFilters()
 			
 			self.dateCombo.setCurrentIndex(enum.kDate_PreviousMonth)
+
 			# Signals blocked so need to reset filter manually
 			self.setDateRange()
 			self.tableView.model().setStartDate(self.startDateEdit.date())

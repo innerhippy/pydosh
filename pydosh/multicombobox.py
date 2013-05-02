@@ -25,6 +25,18 @@ class MultiComboBox(QtGui.QComboBox):
 
 		self.activated[int].connect(self.__toggleCheckState)
 
+	def reset(self):
+		""" Reset the model and clear selection if necessary
+		"""
+		itemsBefore = [index.data().toString() for index in self.__checkedItems()]
+
+		self.model().select()
+
+		itemsAfter = [index.data().toString() for index in self.__checkedItems()]
+
+		if itemsBefore != itemsAfter:
+			self.clearAll()
+
 	def setModel(self, model):
 		super(MultiComboBox, self).setModel(model)
 		# This is a bit odd, but seem to need it
@@ -110,8 +122,11 @@ class MultiComboBox(QtGui.QComboBox):
 		value = self.itemData(index, QtCore.Qt.CheckStateRole)
 
 		if value.isValid():
-			state = value.toPyObject()
-			self.setItemData(index, QtCore.Qt.Checked if state == QtCore.Qt.Unchecked else QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
+			if value.toPyObject() == QtCore.Qt.Unchecked:
+				state = QtCore.Qt.Checked
+			else:
+				state = QtCore.Qt.Unchecked
+			self.setItemData(index, state, QtCore.Qt.CheckStateRole)
 
 	def __checkedItems(self):
 		indexes = []
@@ -146,7 +161,6 @@ class MultiComboBox(QtGui.QComboBox):
 
 	def __updateCheckedItems(self):
 		items = self.__checkedItems()
-
 		if items:
 			self.setEditText(QtCore.QStringList([index.data().toString() for index in items]).join(', '))
 		else:
