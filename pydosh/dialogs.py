@@ -44,7 +44,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 
 		for filename in files:
 			csvfile = QtCore.QFile(filename)
-	
+
 			if not csvfile.open(QtCore.QIODevice.ReadOnly | QtCore.QIODevice.Text):
 				raise Exception('Cannot open file %r' % filename)
 

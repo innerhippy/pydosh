@@ -50,9 +50,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.addActions()
 
-		self.inTotalLabel.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Sunken)
-		self.outTotalLabel.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Sunken)
-		self.recordCountLabel.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Sunken)
+		styleSheet = 'QLabel {font: bold;}'
+		self.inTotalLabel.setStyleSheet(styleSheet)
+		self.outTotalLabel.setStyleSheet(styleSheet)
+		self.recordCountLabel.setStyleSheet(styleSheet)
 
 		# Date ranges
 		self.maxInsertDate = None
@@ -125,9 +126,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.reloadButton.clicked.connect(self.reset)
 		self.addTagButton.clicked.connect(self.addTag)
 		self.removeTagButton.clicked.connect(self.removeTag)
-		recordModel.dataChanged.connect(self.recordsChanged)
-		recordProxyModel.filterChanged.connect(self.recordsChanged)
-		recordProxyModel.modelReset.connect(self.recordsChanged)
+		recordModel.dataChanged.connect(self.updateTagFilter)
+		recordProxyModel.filterChanged.connect(self.updateTagFilter)
+		recordProxyModel.modelReset.connect(self.updateTagFilter)
 		self.tableView.selectionModel().selectionChanged.connect(self.recordSelectionChanged)
 		self.tableView.customContextMenuRequested.connect(self.tagEditPopup)
 		tagModel.tagsChanged.connect(self.tagModelChanged)
@@ -320,8 +321,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		dialog.setWindowTitle(fileNames.join(', '))
 
 		if dialog.exec_():
-			self.accountCombo.reset()
 			self.tableView.model().sourceModel().select()
+			self.accountCombo.reset()
 			self.populateDates()
 			self.setDateRange()
 
@@ -551,7 +552,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		inTotal = 0.0
 		outTotal = 0.0
 
-		model = self.tableView.model().sourceModel()
+		model = self.tableView.model()
 		for row in xrange(model.rowCount()):
 			amount = model.index(row, enum.kRecordColumn_Amount).data(QtCore.Qt.UserRole).toPyObject()
 			if amount > 0.0:
@@ -561,15 +562,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.inTotalLabel.setText(QtCore.QString("%L1").arg(inTotal, 0, 'f', 2))
 		self.outTotalLabel.setText(QtCore.QString("%L1").arg(outTotal, 0, 'f', 2))
-		self.recordCountLabel.setText('%d / %d' % (self.tableView.model().rowCount(), model.rowCount()))
-
-	@utils.showWaitCursorDecorator
-	def recordsChanged(self, *args):
-		""" Records have changed - either from proxy filter or the records model.
-			Update the tag filter, resize columns and re-calculate summary
-		"""
-		self.updateTagFilter()
-		self.displayRecordCount()
+		self.recordCountLabel.setText('%d / %d' % (model.rowCount(), self.tableView.model().sourceModel().rowCount()))
 
 	def tagModelChanged(self):
 		""" Tag model has changed - call select on record model to refresh the changes (in tag column)
@@ -578,7 +571,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		with self.keepSelection():
 			self.tableView.model().sourceModel().select()
 
-	def updateTagFilter(self):
+	@utils.showWaitCursorDecorator
+	def updateTagFilter(self, *args):
 		""" Tell the tag model to limit tag amounts to current displayed records
 		"""
 		recordIds = []
@@ -589,6 +583,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.tagView.model().sourceModel().setRecordFilter(recordIds)
 		self.tagView.resizeColumnsToContents()
+		self.displayRecordCount()
 
 
 	def addTag(self):
