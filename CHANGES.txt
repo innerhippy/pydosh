@@ -20,3 +20,7 @@ v1.4, Apr 8 2013
 v1.5, Apr 23 2013
   - major changes to record proxy model
 
+v1.6, May 03 2013
+  - Changed import dialog - account type selected on main record window
+  - Records summary driven by proxy model, not source model
+  - Added notes for postgres initialisation
