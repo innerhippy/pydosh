@@ -10,7 +10,7 @@
 
 # Dynamic PyQt files
 pydosh/ui_*.py
-pydosh/pydosh_rc.py
+pydosh/*_rc.py
 
 # Setuptools distribution folder.
 /dist/

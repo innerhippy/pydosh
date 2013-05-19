@@ -8,7 +8,15 @@ pydosh/pydosh_rc.py: ui/pydosh.qrc
 	pyrcc4 $? -o $@
 
 clean:
-	rm -rf $(ALL_TARGETS) pydosh/*.pyc pydosh/ui_*.py dist/ pydosh.egg-info/ deb_dist/ build/ pydosh*.dmg
+	rm -rf $(ALL_TARGETS) \
+	pydosh/*.pyc \
+	pydosh/ui_*.py \
+	dist/ \
+	pydosh/*_rc.py \
+	pydosh.egg-info/ \
+	deb_dist/ \
+	build/ \
+	pydosh*.dmg
 
 $(UI_TARGETS): pydosh/ui_%.py: ui/%.ui
 	pyuic4 $< -o $@

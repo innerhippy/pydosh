@@ -7,6 +7,7 @@ from models import RecordModel, RecordProxyModel, AccountsModel, TagModel, TagPr
 from database import db
 from ui_pydosh import Ui_pydosh
 from dialogs import SettingsDialog, ImportDialog
+import stylesheet
 import enum
 import pydosh_rc
 
@@ -515,38 +516,36 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.tableView.resizeColumnsToContents()
 
 	def addActions(self):
-		quitAction = QtGui.QAction(QtGui.QIcon(':/icons/exit.png'), '&Quit', self)
-		quitAction.setShortcut('Alt+q')
-		quitAction.setStatusTip('Exit the program')
-		quitAction.triggered.connect(self.close)
+		menu = self.menuBar().addMenu('&Settings')
 
-		settingsAction = QtGui.QAction(QtGui.QIcon(':/icons/wrench.png'), '&Settings', self)
-		settingsAction.setShortcut('Alt+s')
-		settingsAction.setStatusTip('Change the settings')
-		settingsAction.triggered.connect(self.settingsDialog)
+		action = menu.addAction(QtGui.QIcon(':/icons/import.png'), '&Import')
+		action.setShortcut('Alt+i')
+		action.setStatusTip('Import Bank statements')
+		action.triggered.connect(self.importDialog)
 
-		importAction = QtGui.QAction(QtGui.QIcon(':/icons/import.png'), '&Import', self)
-		importAction.setShortcut('Alt+i')
-		importAction.setStatusTip('Import Bank statements')
-		importAction.triggered.connect(self.importDialog)
+		action = menu.addAction(QtGui.QIcon(':/icons/wrench.png'), '&Accounts')
+		action.setShortcut('Alt+s')
+		action.setStatusTip('Account setup')
+		action.triggered.connect(self.settingsDialog)
 
-		aboutAction = QtGui.QAction(QtGui.QIcon(':/icons/help.png'), '&About', self)
-		aboutAction.setStatusTip('About')
-		aboutAction.triggered.connect(self.showAbout)
+		styleMenu = menu.addMenu(QtGui.QIcon(':/icons/brush.png'), 'Style')
+		styleMenu.addAction('default', self.setStyle)
+		styleMenu.addAction('dark', self.setStyle)
 
-		self.addAction(settingsAction)
-		self.addAction(importAction)
-		self.addAction(quitAction)
-		self.addAction(aboutAction)
+		action = menu.addAction(QtGui.QIcon(':/icons/exit.png'), '&Quit')
+		action.setShortcut('Alt+q')
+		action.setStatusTip('Exit the program')
+		action.triggered.connect(self.close)
 
-		# File menu
-		fileMenu = self.menuBar().addMenu('&Tools')
-		fileMenu.addAction(settingsAction)
-		fileMenu.addAction(importAction)
-		fileMenu.addAction(quitAction)
+		menu = self.menuBar().addMenu('&Help')
+		action = menu.addAction(QtGui.QIcon(':/icons/help.png'), '&About')
+		action.setStatusTip('About')
+		action.triggered.connect(self.showAbout)
 
-		helpMenu = self.menuBar().addMenu('&Help')
-		helpMenu.addAction(aboutAction)
+	def setStyle(self):
+		action = self.sender()
+		if action:
+			stylesheet.setStylesheet(action.text())
 
 	def displayRecordCount(self):
 		inTotal = 0.0

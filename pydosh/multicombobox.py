@@ -176,6 +176,21 @@ class MultiComboBox(QtGui.QComboBox):
 		if not self.__persistDropdown:
 			super(MultiComboBox, self).hidePopup()
 
+
+class MyCombo(QtGui.QComboBox):
+	def __init__(self, parent=None):
+		super(MyCombo, self).__init__(parent=parent)
+
+	def paintEvent(self, event):
+		painter = QtGui.QStylePainter(self)
+		opt = QtGui.QStyleOptionComboBox()
+		self.initStyleOption(opt)
+		#painter.drawComplexControl(QtGui.QStyle.CC_ComboBox, opt)
+		#painter.drawControl(QtGui.QStyle.CE_ComboBoxLabel, opt)
+#		super(MyCombo, self).paintEvent(event)
+
+
+
 def main():
 	from searchlineedit import SearchLineEdit
 #	from  signaltracer import SignalTracer
@@ -184,17 +199,29 @@ def main():
 	#app.setStyle(QtGui.QStyleFactory.create("Plastique"))
 	#pdb.set_trace()
 	#lineEdit = SearchLineEdit()
-	widget = MultiComboBox()
+	combo = MyCombo()
+	import pdb
+	pdb.set_trace()
+	combo.setFrame(False)
+#	combo.setStyleSheet ("QComboBox::drop-down {border-width: 0px;} QComboBox::down-arrow {image: url(noimg); border-width: 0px;}")
 	#tracer.monitor(lineEdit, widget, lineEdit.clearButton)
 
 	#widget.setLineEdit(lineEdit)
 	#lineEdit.clearButtonPressed.connect(widget.clearAll)
-	widget.addItems(['item %d' %i for i in xrange(2)])
+	label = QtGui.QLabel('releaseTime')
+	combo.addItem(QtGui.QIcon('in.png'), '')
+	combo.addItem(QtGui.QIcon('ca.png'), '')
+	combo.addItem(QtGui.QIcon('gb.png'), '')
+	combo.addItem(QtGui.QIcon('us.png'), '')
+	#widget.addItems(['item %d' %i for i in xrange(2)])
 #	widget.setDefaultText('all')
 
 	dialog = QtGui.QDialog()
 	layout = QtGui.QVBoxLayout()
-	layout.addWidget(widget)
+	hLayout = QtGui.QHBoxLayout()
+	hLayout.addWidget(label)
+	hLayout.addWidget(combo)
+	layout.addLayout(hLayout)
 
 	dialog.setLayout(layout)
 	dialog.show()
