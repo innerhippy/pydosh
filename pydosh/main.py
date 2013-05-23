@@ -7,6 +7,7 @@ from models import RecordModel, RecordProxyModel, AccountsModel, TagModel, TagPr
 from database import db
 from ui_pydosh import Ui_pydosh
 from dialogs import SettingsDialog, ImportDialog
+from delegates import RecordStyleDelegate
 import stylesheet
 import enum
 import pydosh_rc
@@ -84,6 +85,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.tableView.setSortingEnabled(True)
 		self.tableView.horizontalHeader().setResizeMode(enum.kRecordColumn_Description, QtGui.QHeaderView.Stretch)
 		self.tableView.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+		print self.tableView.debitColour.green(), self.tableView.creditColour
+		#self.tableView.setAlternatingRowColors(True)
 
 		# Set up tag model
 		tagModel = TagModel(self)
@@ -529,8 +532,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		action.triggered.connect(self.settingsDialog)
 
 		styleMenu = menu.addMenu(QtGui.QIcon(':/icons/brush.png'), 'Style')
-		styleMenu.addAction('default', self.setStyle)
-		styleMenu.addAction('dark', self.setStyle)
+		for style in stylesheet.styleSheetNames():
+			styleMenu.addAction(style, self.setStyle)
 
 		action = menu.addAction(QtGui.QIcon(':/icons/exit.png'), '&Quit')
 		action.setShortcut('Alt+q')
@@ -543,6 +546,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		action.triggered.connect(self.showAbout)
 
 	def setStyle(self):
+		""" Triggered from menu action when user selects a style/theme
+		"""
 		action = self.sender()
 		if action:
 			stylesheet.setStylesheet(action.text())

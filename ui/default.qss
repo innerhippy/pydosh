@@ -1,0 +1,4 @@
+RecordTableView{
+	qproperty-creditColour: rgb(0, 153, 0);
+	qproperty-debitColour: rgb(153, 0, 0);
+}

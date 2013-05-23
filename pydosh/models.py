@@ -356,12 +356,28 @@ class RecordModel(QtSql.QSqlTableModel):
 				# Raw data - signed amount
 				return super(RecordModel, self).data(item, QtCore.Qt.DisplayRole)
 
-		elif role == QtCore.Qt.BackgroundColorRole:
+#		elif role == QtCore.Qt.BackgroundColorRole:
+		elif role == QtCore.Qt.ForegroundRole:	
 			# Indicate credit/debit with row colour
-			if self.index(item.row(), enum.kRecordColumn_Amount).data(QtCore.Qt.UserRole).toPyObject() > 0.0:
-				return QtCore.QVariant(QtGui.QColor("#b6ffac"))
-			else:
-				return QtCore.QVariant(QtGui.QColor("#ffd3cf"))
+#			pal = QtGui.QPalette()
+#			print isinstance(self.view(), QtGui.QWidget)
+#			r = self.palette().color(QtGui.QPalette.Active, QtGui.QPalette.Window)
+#			print r.red(), r.blue(), r.green(),
+#			r = self.palette().color(QtGui.QPalette.Active, QtGui.QPalette.AlternateBase)
+#			print r.red(), r.blue(), r.green()
+			if item.column() == enum.kRecordColumn_Amount:
+				if item.data(QtCore.Qt.UserRole).toPyObject() > 0.0:
+					#				return pal.color(QtGui.QPalette.Active, QtGui.QPalette.Window)
+					return QtCore.QVariant(QtGui.QColor(0, 255, 0))
+	
+				else:
+	#				return pal.color(QtGui.QPalette.Active, QtGui.QPalette.AlternateBase)
+					#return QtCore.QVariant(QtGui.QColor(100, 200, 100))
+					return QtCore.QVariant(QtGui.QColor(255, 0, 0))
+					
+#			else:
+#				return QtCore.QVariant(QtGui.QColor(153, 0, 0))
+#				return QtCore.QVariant(QtGui.QColor("#ffd3cf"))
 
 		elif role == QtCore.Qt.DecorationRole:
 			if item.column() == enum.kRecordColumn_Tags:

@@ -17,8 +17,13 @@
 		<file>../icons/brush.png</file>
 		<file>../sql/accounttypes_data.sql</file>
 		<file>../sql/schema.sql</file>
-		<file>darkstyle.qss</file>
 	</qresource>
+
+	<qresource prefix="/style">
+		<file alias="Dark">darkstyle.qss</file>
+		<file alias="Default">default.qss</file>
+	</qresource>
+
 	<qresource prefix="qss_icons">
 		<file>rc/up_arrow_disabled.png</file>
 		<file>rc/Hmovetoolbar.png</file>
