@@ -175,12 +175,13 @@ class ImportModel(QtCore.QAbstractTableModel):
 		if not item.isValid():
 			return QtCore.QVariant()
 
-		if role == QtCore.Qt.BackgroundColorRole:
-			if not self.__records[item.row()].valid:
-				return QtGui.QColor("#ffd3cf")
-			elif self.__records[item.row()].imported:
-				return QtGui.QColor("#b6ffac")
-			return QtCore.QVariant()
+		if role == QtCore.Qt.ForegroundRole:
+			if item.column() == 0:
+				if not self.__records[item.row()].valid:
+					return QtCore.QVariant(QtGui.QColor(255, 0, 0))
+				elif self.__records[item.row()].imported:
+					return QtCore.QVariant(QtGui.QColor(255, 165, 0))
+				return QtCore.QVariant(QtGui.QColor(0, 255, 0))
 
 		if role == QtCore.Qt.ToolTipRole:
 			return QtCore.QVariant(self.__records[item.row()].data)
@@ -857,8 +858,8 @@ class AccountEditModel(QtSql.QSqlTableModel):
 		if not item.isValid():
 			return QtCore.QVariant()
 
-		if role == QtCore.Qt.BackgroundColorRole and self.isDirty(item):
-				return QtCore.QVariant(QtGui.QColor(255,156,126))
+		if role == QtCore.Qt.ForegroundRole and self.isDirty(item):
+			return QtCore.QVariant(QtGui.QColor(255, 165, 0))
 
 		return super(AccountEditModel, self).data(item, role)
 
