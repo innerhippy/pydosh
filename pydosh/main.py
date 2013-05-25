@@ -73,6 +73,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		# Set up record view
 		self.tableView.verticalHeader().hide()
+		self.tableView.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 		self.tableView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
 		self.tableView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 		self.tableView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
@@ -101,6 +102,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.tagView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 		self.tagView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
 		self.tagView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+		self.tagView.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 		self.tagView.setStyleSheet('QTableView {background-color: transparent;}')
 		self.tagView.setShowGrid(False)
 
@@ -529,8 +531,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		action.triggered.connect(self.settingsDialog)
 
 		styleMenu = menu.addMenu(QtGui.QIcon(':/icons/brush.png'), 'Style')
-		styleMenu.addAction('default', self.setStyle)
-		styleMenu.addAction('dark', self.setStyle)
+		for style in stylesheet.styleSheetNames():
+			styleMenu.addAction(style, self.setStyle)
 
 		action = menu.addAction(QtGui.QIcon(':/icons/exit.png'), '&Quit')
 		action.setShortcut('Alt+q')
@@ -543,6 +545,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		action.triggered.connect(self.showAbout)
 
 	def setStyle(self):
+		""" Triggered from menu action when user selects a style/theme
+		"""
 		action = self.sender()
 		if action:
 			stylesheet.setStylesheet(action.text())

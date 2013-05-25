@@ -356,12 +356,13 @@ class RecordModel(QtSql.QSqlTableModel):
 				# Raw data - signed amount
 				return super(RecordModel, self).data(item, QtCore.Qt.DisplayRole)
 
-		elif role == QtCore.Qt.BackgroundColorRole:
-			# Indicate credit/debit with row colour
-			if self.index(item.row(), enum.kRecordColumn_Amount).data(QtCore.Qt.UserRole).toPyObject() > 0.0:
-				return QtCore.QVariant(QtGui.QColor("#b6ffac"))
-			else:
-				return QtCore.QVariant(QtGui.QColor("#ffd3cf"))
+		elif role == QtCore.Qt.ForegroundRole:	
+			if item.column() == enum.kRecordColumn_Amount:
+				# Indicate credit/debit with colour
+				if item.data(QtCore.Qt.UserRole).toPyObject() > 0.0:
+					return QtCore.QVariant(QtGui.QColor(0, 255, 0))
+				else:
+					return QtCore.QVariant(QtGui.QColor(255, 0, 0))
 
 		elif role == QtCore.Qt.DecorationRole:
 			if item.column() == enum.kRecordColumn_Tags:

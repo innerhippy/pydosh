@@ -13,7 +13,7 @@
   <property name="windowTitle">
    <string>pydosh</string>
   </property>
-  <widget class="QWidget" name="centralwidget">
+  <widget class="QWidget" name="widget_6">
    <layout class="QGridLayout" name="gridLayout_4">
     <item row="0" column="0">
      <widget class="QWidget" name="widget_3" native="true">
@@ -281,10 +281,16 @@
          <property name="title">
           <string>Records</string>
          </property>
-         <layout class="QVBoxLayout" name="verticalLayout">
+         <layout class="QVBoxLayout" name="_2">
           <item>
            <widget class="QWidget" name="widget" native="true">
-            <layout class="QHBoxLayout" name="horizontalLayout_2">
+            <layout class="QHBoxLayout" name="_4">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
              <item>
               <widget class="QToolButton" name="toggleCheckButton">
                <property name="toolTip">
@@ -509,12 +515,12 @@ p, li { white-space: pre-wrap; }
          <property name="title">
           <string>Tags</string>
          </property>
-         <layout class="QVBoxLayout" name="verticalLayout_2">
+         <layout class="QVBoxLayout" name="_3">
           <item>
-           <widget class="QWidget" name="widget_6" native="true">
+           <widget class="QWidget" name="widget_2" native="true">
             <layout class="QHBoxLayout" name="horizontalLayout">
-             <property name="margin">
-              <number>9</number>
+             <property name="leftMargin">
+              <number>0</number>
              </property>
              <item>
               <widget class="QToolButton" name="addTagButton">
@@ -561,9 +567,6 @@ p, li { white-space: pre-wrap; }
               <horstretch>0</horstretch>
               <verstretch>0</verstretch>
              </sizepolicy>
-            </property>
-            <property name="frameShape">
-             <enum>QFrame::NoFrame</enum>
             </property>
            </widget>
           </item>

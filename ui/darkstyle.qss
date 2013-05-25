@@ -134,7 +134,7 @@ QGroupBox {
 
 QGroupBox::title {
 	subcontrol-origin: margin;
-	subcontrol-position: top center;
+	subcontrol-position: top left;
 	padding-left: 10px;
 	padding-right: 10px;
 }
@@ -563,8 +563,7 @@ QAbstractSpinBox::down-arrow:hover
 	image: url(:/qss_icons/rc/down_arrow.png);
 }
 
-
-QLabel
+QLabel, QDateEdit::drop-down
 {
 	border: 0px solid black;
 }

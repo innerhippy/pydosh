@@ -1,11 +1,11 @@
-UI_TARGETS = $(patsubst %.ui,pydosh/ui_%.py,$(notdir $(wildcard ui/*.ui)))
-ALL_TARGETS = $(UI_TARGETS) pydosh/pydosh_rc.py
+UI_TARGETS=$(patsubst %.ui,pydosh/ui_%.py,$(notdir $(wildcard ui/*.ui)))
+ALL_TARGETS=$(UI_TARGETS) pydosh/pydosh_rc.py
 VERSION=$(shell python -c 'from pydosh import version; print version.__VERSION__')
 
-all: $(ALL_TARGETS) 
+all: $(ALL_TARGETS)
 
-pydosh/pydosh_rc.py: ui/pydosh.qrc
-	pyrcc4 $? -o $@
+pydosh/pydosh_rc.py: ui/pydosh.qrc ui/*.qss
+	pyrcc4 $< -o $@
 
 clean:
 	rm -rf $(ALL_TARGETS) \
