@@ -451,27 +451,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		"""
 		selectionModel = self.tableView.selectionModel()
 		proxyModel = self.tableView.model()
-
-		editStrategy = proxyModel.sourceModel().editStrategy()
-		proxyModel.sourceModel().setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
-
-		with utils.signalsBlocked(proxyModel.sourceModel()):
-			for proxyIndex in selectionModel.selectedRows():
-				# Need the index of checked column
-				proxyIndex = proxyModel.index(proxyIndex.row(), enum.kRecordColumn_Checked)
-				index = proxyModel.mapToSource(proxyIndex)
-
-				if index.data(QtCore.Qt.CheckStateRole).toPyObject() == QtCore.Qt.Checked:
-					proxyModel.sourceModel().setData(index, QtCore.QVariant(QtCore.Qt.Unchecked), QtCore.Qt.CheckStateRole)
-				elif index.data(QtCore.Qt.CheckStateRole).toPyObject() == QtCore.Qt.Unchecked:
-					proxyModel.sourceModel().setData(index, QtCore.QVariant(QtCore.Qt.Checked), QtCore.Qt.CheckStateRole)
-		
-			proxyModel.sourceModel().submitAll()
-
-		proxyModel.sourceModel().setEditStrategy(editStrategy)
+		modelIndexes = [proxyModel.mapToSource(index) for index in selectionModel.selectedRows()]
 
 		with self.keepSelection():
-			self.tableView.model().sourceModel().reset()
+			proxyModel.sourceModel().toggleChecked(modelIndexes)
 
 	@utils.showWaitCursorDecorator
 	def reset(self, *args):

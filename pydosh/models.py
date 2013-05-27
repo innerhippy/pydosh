@@ -392,32 +392,50 @@ class RecordModel(QtSql.QSqlTableModel):
 
 		return super(RecordModel, self).data(item, role)
 
+	def toggleChecked(self, indexes):
+		checkedRecords = []
+		unCheckedRecords = []
+
+		for index in indexes:
+			recordId = self.index(index.row(), enum.kRecordColumn_RecordId).data().toPyObject()
+			if self.index(index.row(), enum.kRecordColumn_Checked).data(QtCore.Qt.CheckStateRole) == QtCore.Qt.Checked:
+				checkedRecords.append(recordId)
+			else:
+				unCheckedRecords.append(recordId)
+
+		with db.transaction():
+			if unCheckedRecords:
+				query = QtSql.QSqlQuery()
+				query.prepare("""
+					UPDATE records
+					   SET checked=1, checkdate=CURRENT_TIMESTAMP
+					 WHERE recordid IN (?)
+					""")
+				query.addBindValue(unCheckedRecords)
+				if not query.execBatch(QtSql.QSqlQuery.ValuesAsColumns):
+					raise Exception(query.lastError().text())
+	
+			if checkedRecords:
+				query = QtSql.QSqlQuery()
+				query.prepare("""
+					UPDATE records
+					   SET checked=0, checkdate=NULL
+					 WHERE recordid IN (?)
+					""")
+				query.addBindValue(checkedRecords)
+				if not query.execBatch(QtSql.QSqlQuery.ValuesAsColumns):
+					raise Exception(query.lastError().text())
+		
+		self.select()
+		for index in indexes:
+			checkedIndex = self.index(index.row(), enum.kRecordColumn_Checked)
+			self.dataChanged.emit(checkedIndex, checkedIndex)
+
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
 		""" Save new checkstate role changes in database
-		
-			Only send a single dataChanged signal for the whole row, not two separate
 		"""
-		status = False
-		if role == QtCore.Qt.CheckStateRole and index.column() == enum.kRecordColumn_Checked:
-			with utils.signalsBlocked(self):
-				if value.toPyObject() == QtCore.Qt.Checked:
-					status = (
-						super(RecordModel, self).setData(index, 1, QtCore.Qt.EditRole) and 
-						super(RecordModel, self).setData(self.index(index.row(), enum.kRecordColumn_CheckDate),
-														QtCore.QDateTime.currentDateTimeUtc(), 
-														QtCore.Qt.EditRole)
-					)
-				elif value.toPyObject() == QtCore.Qt.Unchecked:
-					status = (
-						super(RecordModel, self).setData(index, 0, QtCore.Qt.EditRole) and
-						super(RecordModel, self).setData(self.index(index.row(), enum.kRecordColumn_CheckDate),
-														QtCore.QVariant(), 
-														QtCore.Qt.EditRole)
-					)
-		if status:
-			self.dataChanged.emit(index, index)
-
-		return status
+		self.toggleChecked([index])
+		return True
 
 	def headerData (self, section, orientation, role=QtCore.Qt.DisplayRole):
 		""" Set the header labels for the view
