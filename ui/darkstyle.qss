@@ -541,24 +541,25 @@ QAbstractSpinBox:down-button
 	subcontrol-position: center left;
 }
 
-QAbstractSpinBox::up-arrow,QAbstractSpinBox::up-arrow:disabled,QAbstractSpinBox::up-arrow:off {
+QAbstractSpinBox::up-arrow, QAbstractSpinBox::up-arrow:disabled, QAbstractSpinBox::up-arrow:off, QHeaderView::up-arrow
+{
 	image: url(:/qss_icons/rc/up_arrow_disabled.png);
 	width: 10px;
 	height: 10px;
 }
-QAbstractSpinBox::up-arrow:hover
+QAbstractSpinBox::up-arrow:hover, QHeaderView::up-arrow:hover
 {
 	image: url(:/qss_icons/rc/up_arrow.png);
 }
 
 
-QAbstractSpinBox::down-arrow,QAbstractSpinBox::down-arrow:disabled,QAbstractSpinBox::down-arrow:off
+QAbstractSpinBox::down-arrow, QAbstractSpinBox::down-arrow:disabled, QAbstractSpinBox::down-arrow:off, QHeaderView::down-arrow
 {
 	image: url(:/qss_icons/rc/down_arrow_disabled.png);
 	width: 10px;
 	height: 10px;
 }
-QAbstractSpinBox::down-arrow:hover
+QAbstractSpinBox::down-arrow:hover, QHeaderView::down-arrow:hover
 {
 	image: url(:/qss_icons/rc/down_arrow.png);
 }
