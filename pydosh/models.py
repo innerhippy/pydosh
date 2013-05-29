@@ -425,12 +425,14 @@ class RecordModel(QtSql.QSqlTableModel):
 				query.addBindValue(checkedRecords)
 				if not query.execBatch(QtSql.QSqlQuery.ValuesAsColumns):
 					raise Exception(query.lastError().text())
-		
+
 		self.select()
+
 		for index in indexes:
 			checkedIndex = self.index(index.row(), enum.kRecordColumn_Checked)
 			self.dataChanged.emit(checkedIndex, checkedIndex)
 
+	@utils.showWaitCursorDecorator
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
 		""" Save new checkstate role changes in database
 		"""
@@ -671,6 +673,7 @@ class TagProxyModel(QtGui.QSortFilterProxyModel):
 		return super(TagProxyModel, self).lessThan(left, right)
 
 class RecordProxyModel(QtGui.QSortFilterProxyModel):
+
 	# Signal emitted whenever there is a change to the filter
 	filterChanged = QtCore.pyqtSignal()
 
@@ -691,6 +694,7 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 		self._description = None
 		self._amountFilter = None
 		self._tagFilter = None
+		self._amountOperator = None
 
 	def clearFilters(self):
 		""" Clears all filters - does *not* call invalidate
@@ -746,7 +750,7 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 		if value != self._checked:
 			self._checked = value
 			self.invalidateFilter()
-	
+
 	def setCreditFilter(self, value):
 		""" Credit amount filter
 
@@ -779,6 +783,7 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 		""" Override invalidateFilter so that we can emit the filterChanged signal
 		"""
 		super(RecordProxyModel, self).invalidateFilter()
+		self.sort(self.sortColumn(), self.sortOrder())
 		self.filterChanged.emit()
 
 	def filterAcceptsRow(self, sourceRow, parent):
@@ -864,7 +869,7 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 				rightVal = self.sourceModel().index(right.row(), enum.kRecordColumn_RecordId).data().toPyObject()
 
 		if leftVal or rightVal:
-			return leftVal < rightVal
+			return leftVal > rightVal
 
 		return super(RecordProxyModel, self).lessThan(left, right)
 

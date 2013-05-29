@@ -1,12 +1,13 @@
 from contextlib  import contextmanager
 import operator
 from PyQt4 import QtGui, QtCore, QtSql
+
 from version import __VERSION__
-import utils
-from models import RecordModel, RecordProxyModel, AccountsModel, TagModel, TagProxyModel
 from database import db
 from ui_pydosh import Ui_pydosh
-from dialogs import SettingsDialog, ImportDialog
+import utils
+import models 
+import dialogs
 import stylesheet
 import enum
 import pydosh_rc
@@ -61,34 +62,37 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.populateDates()
 
 		# Set up record model
-		recordModel = RecordModel(self)
+		recordModel = models.RecordModel(self)
 		recordModel.setTable('records')
 		recordModel.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
-		recordProxyModel = RecordProxyModel(self)
-		recordProxyModel.setDynamicSortFilter(True)
+		recordProxyModel = models.RecordProxyModel(self)
+
+		# "you should not update the source model through 
+		#  the proxy model when dynamicSortFilter is true"
+		recordProxyModel.setDynamicSortFilter(False)
 		recordProxyModel.setSourceModel(recordModel)
-		recordProxyModel.sort(enum.kRecordColumn_Date, QtCore.Qt.AscendingOrder)
+
 		self.tableView.setModel(recordProxyModel)
 		recordModel.select()
 
 		# Set up record view
 		self.tableView.verticalHeader().hide()
-		self.tableView.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-		self.tableView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
-		self.tableView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
-		self.tableView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
 		self.tableView.setColumnHidden(enum.kRecordColumn_RecordId, True)
 		self.tableView.setColumnHidden(enum.kRecordColumn_AccountTypeId, True)
 		self.tableView.setColumnHidden(enum.kRecordColumn_CheckDate, True)
 		self.tableView.setColumnHidden(enum.kRecordColumn_RawData, True)
 		self.tableView.setColumnHidden(enum.kRecordColumn_InsertDate, True)
 		self.tableView.setSortingEnabled(True)
+		self.tableView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+		self.tableView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+		self.tableView.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+		self.tableView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
 		self.tableView.horizontalHeader().setResizeMode(enum.kRecordColumn_Description, QtGui.QHeaderView.Stretch)
 		self.tableView.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
 
 		# Set up tag model
-		tagModel = TagModel(self)
-		tagProxyModel = TagProxyModel(self)
+		tagModel = models.TagModel(self)
+		tagProxyModel = models.TagProxyModel(self)
 		tagProxyModel.setSourceModel(tagModel)
 		tagProxyModel.sort(enum.kTagsColumn_Amount_out, QtCore.Qt.AscendingOrder)
 		self.tagView.setModel(tagProxyModel)
@@ -98,7 +102,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.tagView.setColumnHidden(enum.kTagsColumn_TagId, True)
 		self.tagView.setColumnHidden(enum.kTagsColumn_RecordIds, True)
 		self.tagView.setSortingEnabled(True)
-		self.tagView.sortByColumn(enum.kTagsColumn_TagName, QtCore.Qt.AscendingOrder)
 		self.tagView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 		self.tagView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
 		self.tagView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
@@ -107,7 +110,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.tagView.setShowGrid(False)
 
 		# Set up account model
-		accountModel = AccountsModel(self)
+		accountModel = models.AccountsModel(self)
 		accountModel.setTable('accounttypes')
 		accountModel.setFilter("""
 			accounttypeid IN (
@@ -296,7 +299,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def settingsDialog(self):
 		""" Launch the settings dialog widget to configure account information
 		"""
-		dialog = SettingsDialog(self)
+		dialog = dialogs.SettingsDialog(self)
 		dialog.exec_()
 
 	def importDialog(self):
@@ -320,7 +323,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		# Save the settings for next time
 		settings.setValue('options/importdirectory', dialog.directory().absolutePath())
 
-		dialog = ImportDialog(dialog.selectedFiles(), self)
+		dialog = dialogs.ImportDialog(dialog.selectedFiles(), self)
 		dialog.setWindowTitle(fileNames.join(', '))
 
 		if dialog.exec_():
@@ -365,8 +368,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				self.tableView.selectAll()
 				self.toggleSelected()
 
-			if proxyModel.rowCount() == 0 and isinstance(self.sender(), QtGui.QLineEdit):
-				self.sender().clear()
+			if proxyModel.rowCount() == 0:
+				self.amountEdit.clear()
 
 	def deleteRecords(self):
 		""" Delete selected records
@@ -491,7 +494,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.accountCombo.clearAll()
 			self.amountEdit.clear()
 			self.descEdit.clear()
-			self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.DescendingOrder)
+
+			self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.AscendingOrder)
+			self.tagView.sortByColumn(enum.kTagsColumn_TagName, QtCore.Qt.AscendingOrder)
 
 		# Need signals to clear highlight filter on model
 		self.scrolltoEdit.clear()
