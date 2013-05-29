@@ -436,8 +436,11 @@ class RecordModel(QtSql.QSqlTableModel):
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
 		""" Save new checkstate role changes in database
 		"""
-		self.toggleChecked([index])
-		return True
+		if role == QtCore.Qt.CheckStateRole and index.column() == enum.kRecordColumn_Checked:
+			self.toggleChecked([index])
+			return True
+
+		return False
 
 	def headerData (self, section, orientation, role=QtCore.Qt.DisplayRole):
 		""" Set the header labels for the view
