@@ -574,8 +574,8 @@ QAbstractSpinBox:down-button
 	subcontrol-position: center left;
 }
 
+QHeaderView::down-arrow,
 QAbstractSpinBox::up-arrow,
-QHeaderView::up-arrow,
 QAbstractSpinBox::up-arrow:disabled,
 QAbstractSpinBox::up-arrow:off
 {
@@ -583,15 +583,16 @@ QAbstractSpinBox::up-arrow:off
 	width: 10px;
 	height: 10px;
 }
-QAbstractSpinBox::up-arrow:hover,
-QHeaderView::up-arrow:hover
+
+QHeaderView::down-arrow:hover,
+QAbstractSpinBox::up-arrow:hover
+
 {
 	image: url(:/qss_icons/rc/up_arrow.png);
 }
 
-
-QAbstractSpinBox::down-arrow,
 QHeaderView::down-arrow,
+QAbstractSpinBox::down-arrow,
 QAbstractSpinBox::down-arrow:disabled,
 QAbstractSpinBox::down-arrow:off
 {
@@ -600,8 +601,8 @@ QAbstractSpinBox::down-arrow:off
 	height: 10px;
 }
 
-QAbstractSpinBox::down-arrow:hover,
-QHeaderView::down-arrow:hover
+QHeaderView::up-arrow:hover,
+QAbstractSpinBox::down-arrow:hover
 {
 	image: url(:/qss_icons/rc/down_arrow.png);
 }
