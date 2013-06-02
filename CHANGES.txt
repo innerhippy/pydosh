@@ -24,3 +24,10 @@ v1.6, May 03 2013
   - Changed import dialog - account type selected on main record window
   - Records summary driven by proxy model, not source model
   - Added notes for postgres initialisation
+
+v1.7, May 25 2013
+  - Added dark style, courtesy of QDarkStyle by Colin Duquesnoy
+
+v1.8, June 2 2013
+  - Direct SQL call for checked records, setData too slow  
+  - Added arrows for QHeaderView
