@@ -122,6 +122,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.accountCombo.setModelColumn(enum.kAccountTypeColumn_AccountName)
 		self.accountCombo.setModel(accountModel)
 
+		# Set delays on searchlinededit widgets
+		self.descEdit.setDelay(400)
+		self.amountEdit.setDelay(400)
+
 		#
 		# Set up connections
 		#
@@ -147,9 +151,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.tagsCombo.currentIndexChanged.connect(self.tagSelectionChanged)
 		self.checkedCombo.currentIndexChanged.connect(self.checkedSelectionChanged)
 		self.inoutCombo.currentIndexChanged.connect(self.inOutSelectionChanged)
-		self.descEdit.textChanged.connect(recordProxyModel.setDescriptionFilter)
+		self.descEdit.editingFinshed.connect(recordProxyModel.setDescriptionFilter)
 		self.amountEdit.controlKeyPressed.connect(self.controlKeyPressed)
-		self.amountEdit.textChanged.connect(self.amountFilterChanged)
+		self.amountEdit.editingFinshed.connect(self.amountFilterChanged)
 
 		self.reset()
 

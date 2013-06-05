@@ -28,6 +28,8 @@ v1.6, May 03 2013
 v1.7, May 25 2013
   - Added dark style, courtesy of QDarkStyle by Colin Duquesnoy
 
-v1.8, June 2 2013
+v1.8, June 5 2013
   - Direct SQL call for checked records, setData too slow  
   - Added arrows for QHeaderView
+  - setDelay on SearchLineEdit class to buffer input
+  - removed hover background colour for dark theme

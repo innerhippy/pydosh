@@ -4,6 +4,7 @@ import pydosh_rc
 class SearchLineEdit(QtGui.QLineEdit):
 	controlKeyPressed = QtCore.pyqtSignal(int)
 	clearButtonPressed = QtCore.pyqtSignal()
+	editingFinshed = QtCore.pyqtSignal('QString')
 
 	def __init__(self, parent=None):
 		super(SearchLineEdit, self).__init__(parent=parent)
@@ -23,11 +24,33 @@ class SearchLineEdit(QtGui.QLineEdit):
 		frameWidth = self.style().pixelMetric(QtGui.QStyle.PM_DefaultFrameWidth)
 		self.setStyleSheet(QtCore.QString("QLineEdit { padding-right: %1px; } ").arg(clearButton.sizeHint().width() + frameWidth + 1))
 
-#		msz = self.minimumSizeHint()
-#		self.setMinimumSize(max(msz.width(), clearButton.sizeHint().height() + frameWidth * 2 + 2),
-#				max(msz.height(), clearButton.sizeHint().height() + frameWidth * 2 + 2))
-
 		self.clearButton = clearButton
+
+		self.textChanged.connect(self._textChanged)
+		self._timer = QtCore.QTimer()
+		self._timer.setSingleShot(True)
+		self._timer.timeout.connect(self._emitChanges)
+		self.__delay = None
+
+	def setDelay(self, delay):
+		""" Sets the time delay to trigger the editingFinshed signal after the 
+			line edit has received user input.
+		"""
+		self.__delay = delay
+
+	def _textChanged(self, text):
+		if self.__delay:
+			if self._timer.isActive():
+				self._timer.stop()
+			self._timer.start(self.__delay)
+		else:
+			self._emitChanges()
+
+	def _emitChanges(self):
+		""" Slot to emit the editingFinished signal containg the
+			current edit text
+		"""
+		self.editingFinshed.emit(self.text())
 
 	def keyPressEvent(self, event):
 		if event.key() == QtCore.Qt.Key_Space:
