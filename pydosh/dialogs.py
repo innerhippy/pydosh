@@ -1,20 +1,33 @@
-import operator
+import re
 from PyQt4 import QtCore, QtGui, QtSql
 from ui_settings import Ui_Settings
 from ui_login import Ui_Login
 from ui_import import Ui_Import
 import enum
 import utils
-import csv
 from database import db, DatabaseNotInitialisedException, ConnectionException
 from delegates import AccountDelegate
 from models import AccountEditModel, ImportModel
+
+import csv
+
+def unicode_csv_reader(unicode_csv_data, dialect=csv.excel, **kwargs):
+	# csv.py doesn't do Unicode; encode temporarily as UTF-8:
+	csv_reader = csv.reader(utf_8_encoder(unicode_csv_data),
+						dialect=dialect, **kwargs)
+	for row in csv_reader:
+		# decode UTF-8 back to Unicode, cell by cell:
+		yield [unicode(cell, 'utf-8') for cell in row]
+
+def utf_8_encoder(unicode_csv_data):
+	for line in unicode_csv_data:
+		yield line.encode('utf-8')
 
 class UserCancelledException(Exception):
 	""" Exception to indicate user has cancelled the current operation
 	"""
 
-class ImportError(Exception):
+class DecoderError(Exception):
 	""" General Decoder exceptions
 	"""
 
@@ -53,7 +66,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 				dataDict = self.__rawData.setdefault(filename, [])
 				dataDict.append(rawdata)
 
-				row = csv.reader([str(rawdata)]).next()
+				row =  unicode_csv_reader([rawdata.data().decode('utf8')]).next()
 				items = [QtGui.QStandardItem(item) for item in row]
 				model.appendRow(items)
 
@@ -61,6 +74,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.selectAllButton.setEnabled(False)
 
 		self.view.setModel(model)
+		self.view.resizeColumnsToContents()
 
 		self.accountTypeComboBox.currentIndexChanged.connect(self.setAccountType)
 		self.importCancelButton.clicked.connect(self.__importCancelPressed)
@@ -99,38 +113,56 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			self.view.horizontalHeader().setStretchLastSection(True)
 			self.view.sortByColumn(0, QtCore.Qt.AscendingOrder)
 			self.view.resizeColumnsToContents()
-	
 			self.view.selectionModel().selectionChanged.connect(self.__recordsSelected)
-	
 			self.importCancelButton.setEnabled(False)
-			
 			self.selectAllButton.setEnabled(bool(model.numRecordsToImport()))
-	
 			self.__setCounters()
 
-	def __processRecords(self, dateIdx, descriptionIdx, creditidx, debitIdx, currencySign, dateFormat):
+		# Hide txDate colum if we don't need it
+		for row in xrange(model.rowCount()):
+			if model.index(row, enum.kImportColumn_TxDate).data().isValid():
+				self.view.setColumnHidden(enum.kImportColumn_TxDate, False)
+				break
+		else:
+			self.view.setColumnHidden(enum.kImportColumn_TxDate, True)
+
+	def __processRecords(self, dateIdx, descriptionIdx, creditIdx, debitIdx, currencySign, dateFormat):
 		""" Decode the raw csv data according to the account configuration.
 			Returns a list of tuples containing verified data ready to be saved to database
 		"""
 		records = []
+
+		currencySign = currencySign if creditIdx == debitIdx else None 
 		for filename, rawRecords in self.__rawData.iteritems():
 			for lineno, rawdata in enumerate(rawRecords):
 				if not rawdata:
 					continue
 
 				dateField = descField = txDate = debitField = creditField = error = None
-				row = csv.reader([str(rawdata)]).next()
+				row = unicode_csv_reader([rawdata.data().decode('utf8')]).next()
 				try:
 					dateField  = self.__getDateField(row[dateIdx], dateFormat)
-					descField  = self.__getDescriptionField(row[descriptionIdx])
+					descField  = row[descriptionIdx]
 					txDate     = self.__getTransactionDate(row[descriptionIdx], dateField)
-					debitField = self.__getAmountField(row[debitIdx], currencySign, operator.lt)
-					creditField = self.__getAmountField(row[creditidx], currencySign, operator.gt)
-	
-					if debitField is None and creditField is None:
-						raise ImportError('No credit or debit found')
 
-				except Exception, exc:
+					if debitIdx == creditIdx:
+						amount = self.__getAmountField(row[debitIdx])
+						if amount is not None:
+							amount *= currencySign
+							if amount > 0.0:
+								creditField = amount
+							else:
+								debitField = amount
+					else:
+						debitField = self.__getAmountField(row[debitIdx])
+						creditField = self.__getAmountField(row[creditIdx])
+						debitField = abs(debitField) * -1 if debitField else None
+						creditField = abs(creditField) if creditField else None
+
+					if not debitField and not creditField:
+						raise DecoderError('No credit or debit found')
+
+				except DecoderError, exc:
 					error = '%s[%d]: %r' % (QtCore.QFileInfo(filename).fileName(), lineno, str(exc))
 
 				except Exception, exc:
@@ -149,14 +181,9 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		date = QtCore.QDate.fromString(field, dateFormat)
 
 		if not date.isValid():
-			raise ImportError('Invalid date: %r' % field)
+			raise DecoderError('Invalid date: %r' % field)
 
 		return date
-
-	def __getDescriptionField(self, field):
-		""" Remove bad character. Is this really required?
-		""" 
-		return field.replace("'",'')
 
 	def __getTransactionDate(self, field, dateField):
 		""" Try and extract a transaction date from the description field.
@@ -164,37 +191,45 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			When the year is not available (or 2 digits) then the value validated date field
 			is used
 		"""
+		timeDate = None
+
 		#Format is "23DEC09 1210"
 		rx = QtCore.QRegExp('(\\d\\d[A-Z]{3}\\d\\d \\d{4})')
 		if rx.indexIn(field) != -1:
-			return QtCore.QDateTime.fromString (rx.cap(1), "ddMMMyy hhmm").addYears(100)
+			timeDate = QtCore.QDateTime.fromString (rx.cap(1), "ddMMMyy hhmm").addYears(100)
 
-		# Format is "06NOV10"
-		rx = QtCore.QRegExp('(\\d{2}[A-Z]{3}\\d{2})')
-		if rx.indexIn(field) != -1:
-			return QtCore.QDateTime.fromString (rx.cap(1), "ddMMMyy").addYears(100)
+		if timeDate is None:
+			# Format is "06NOV10"
+			rx = QtCore.QRegExp('(\\d{2}[A-Z]{3}\\d{2})')
+			if rx.indexIn(field) != -1:
+				timeDate = QtCore.QDateTime.fromString (rx.cap(1), "ddMMMyy").addYears(100)
 
 		# Format is " 06NOV" <- note the stupid leading blank space..
-		rx = QtCore.QRegExp(' (\\d\\d[A-Z]{3})')
-		if rx.indexIn(field) != -1:
-			# Add the year from date field to the transaction date
-			return QtCore.QDateTime.fromString (rx.cap(1) + dateField.toString("yyyy"), "ddMMMyyyy")
+		if timeDate is None:
+			rx = QtCore.QRegExp(' (\\d\\d[A-Z]{3})')
+			if rx.indexIn(field) != -1:
+				# Add the year from date field to the transaction date
+				timeDate = QtCore.QDateTime.fromString (rx.cap(1) + dateField.toString("yyyy"), "ddMMMyyyy")
 
-		return None
+		if timeDate is not None and timeDate.isValid():
+			return timeDate
 
-	def __getAmountField(self, field, currencySign, comp):
+	def __getAmountField(self, field):
 		""" Extract and return amount (double), but only if the 
 			comp operator is satisfied. This is so that we can differentiate 
 			between credit and debit fields that hold the same column in the csv
 			file
 		"""
+		field = field.replace(',', '')
 		value, ok = QtCore.QVariant(field).toDouble()
+#		
+		if not ok:
+			match = re.search('([\d\-\.]+)', field)
+			if match:
+				value, ok = QtCore.QVariant(match.group(1)).toDouble()
 
 		if ok:
-			value *= currencySign
-	
-			if comp(value, 0.0):
-				return value
+			return value
 
 		return None
 
@@ -253,7 +288,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			self.selectAllButton.setEnabled(False)
 			self.importCancelButton.setText('Cancel')
 			self.importCancelButton.setEnabled(True)
-			
+
 			# Wrap the import in a transaction
 			with db.transaction():
 				for num, index in enumerate(indexes, 1):
@@ -263,7 +298,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 					self.__setCounters()
 					QtCore.QCoreApplication.processEvents()
 					self.progressBar.setValue(self.progressBar.value() +1)
-					
+
 					if self.__cancelImport:
 						raise UserCancelledException
 

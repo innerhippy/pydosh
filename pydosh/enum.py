@@ -11,6 +11,13 @@ kRecordColumn_Amount = 9
 kRecordColumn_InsertDate = 10
 kRecordColumn_RawData = 11
 
+kImportColumn_Status = 0
+kImportColumn_Date = 1
+kImportColumn_TxDate = 2
+kImportColumn_Credit = 3
+kImportColumn_Debit = 4
+kImportColumn_Description = 5 
+
 kDate_All = 0
 kDate_PreviousYear = 1
 kDate_PreviousMonth = 2

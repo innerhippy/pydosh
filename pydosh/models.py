@@ -184,21 +184,28 @@ class ImportModel(QtCore.QAbstractTableModel):
 				return QtCore.QVariant(QtGui.QColor(0, 255, 0))
 
 		if role == QtCore.Qt.ToolTipRole:
-			return QtCore.QVariant(self.__records[item.row()].data)
+			return QtCore.QVariant(QtCore.QString.fromUtf8(self.__records[item.row()].data))
 
 		if role == QtCore.Qt.DisplayRole:
-			if item.column() == 0:
+			if item.column() == enum.kImportColumn_Status:
 				return QtCore.QVariant(self.__recordStatusToText(item))
-			elif item.column() == 1:
+
+			elif item.column() == enum.kImportColumn_Date:
 				return QtCore.QVariant(self.__records[item.row()].date)
-			elif item.column() == 2:
+
+			elif item.column() == enum.kImportColumn_TxDate:
 				return QtCore.QVariant(self.__records[item.row()].txdate)
-			elif item.column() == 3:
+
+			elif item.column() == enum.kImportColumn_Credit:
+				amount =  self.__records[item.row()].credit
+				return QtCore.QVariant('%.02f' % amount if amount else None)
+
+			elif item.column() == enum.kImportColumn_Debit:
+				amount =  self.__records[item.row()].debit
+				return QtCore.QVariant('%.02f' % abs(amount) if amount else None)
+
+			elif item.column() == enum.kImportColumn_Description:
 				return QtCore.QVariant(self.__records[item.row()].desc)
-			elif item.column() == 4:
-				return QtCore.QVariant(self.__records[item.row()].credit)
-			elif item.column() == 5:
-				return QtCore.QVariant(self.__records[item.row()].debit)
 
 		return QtCore.QVariant()
 
@@ -209,18 +216,18 @@ class ImportModel(QtCore.QAbstractTableModel):
 
 	def headerData (self, section, orientation, role):
 		if role == QtCore.Qt.DisplayRole:
-			if section == 0:
+			if section == enum.kImportColumn_Status:
 				return "Status"
-			elif section == 1:
+			elif section == enum.kImportColumn_Date:
 				return "Date"
-			elif section == 2:
+			elif section == enum.kImportColumn_TxDate:
 				return "TxDate"
-			elif section == 3:
-				return "Description"
-			elif section == 4:
+			elif section == enum.kImportColumn_Credit:
 				return "Credit"
-			elif section == 5:
+			elif section == enum.kImportColumn_Debit:
 				return "Debit"
+			elif section == enum.kImportColumn_Description:
+				return "Description"
 		return QtCore.QVariant()
 
 	def __recordStatusToText(self, index):
