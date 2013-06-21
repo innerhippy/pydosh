@@ -83,7 +83,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 
 	def setAccountType(self, index):
 		""" Account selection has changed
-		
+
 			Get settings for the account and create new model to decode the data
 		"""
 		dateField = self.__accountsModel.index(index, enum.kAccountTypeColumn_DateField).data().toPyObject()
@@ -92,7 +92,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		debitField = self.__accountsModel.index(index, enum.kAccountTypeColumn_DebitField).data().toPyObject()
 		currencySign = self.__accountsModel.index(index, enum.kAccountTypeColumn_CurrencySign).data().toPyObject()
 		dateFormat = self.__accountsModel.index(index, enum.kAccountTypeColumn_DateFormat).data().toString()
-		
+
 		model = ImportModel(self)
 		db.commit.connect(model.save)
 		db.rollback.connect(model.reset)
@@ -100,11 +100,11 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		with utils.showWaitCursor():
 			records = self.__processRecords(dateField, descriptionField, creditField, debitField, currencySign, dateFormat)
 			model.loadRecords(records)
-	
+
 			proxy = QtGui.QSortFilterProxyModel(model)
 			proxy.setSourceModel(model)
 			proxy.setFilterKeyColumn(0)
-	
+
 			self.view.setModel(proxy)
 			self.view.verticalHeader().hide()
 			self.view.setSortingEnabled(True)
@@ -148,7 +148,10 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 					if debitIdx == creditIdx:
 						amount = self.__getAmountField(row[debitIdx])
 						if amount is not None:
+							# Use currency multiplier to ensure that credit is +ve (money in),
+							# debit -ve (money out)
 							amount *= currencySign
+
 							if amount > 0.0:
 								creditField = amount
 							else:
@@ -156,7 +159,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 					else:
 						debitField = self.__getAmountField(row[debitIdx])
 						creditField = self.__getAmountField(row[creditIdx])
-						debitField = abs(debitField) * -1 if debitField else None
+						debitField = abs(debitField) * -1.0 if debitField else None
 						creditField = abs(creditField) if creditField else None
 
 					if not debitField and not creditField:
@@ -215,15 +218,19 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			return timeDate
 
 	def __getAmountField(self, field):
-		""" Extract and return amount (double), but only if the 
-			comp operator is satisfied. This is so that we can differentiate 
-			between credit and debit fields that hold the same column in the csv
-			file
+		""" Extract and return amount (double). If a simple conversion doesn't
+			succeed, then try and parse the string to remove any currency sign
+			or other junk.
+
+			Returns None if field does not contain valid double.
 		"""
+
+		# Get rid of commas from amount field and try and covert to double
 		field = field.replace(',', '')
 		value, ok = QtCore.QVariant(field).toDouble()
-#		
+
 		if not ok:
+			# Probably has currency sign - extract all valid currency characters
 			match = re.search('([\d\-\.]+)', field)
 			if match:
 				value, ok = QtCore.QVariant(match.group(1)).toDouble()
