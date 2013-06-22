@@ -200,8 +200,6 @@ def main():
 	#pdb.set_trace()
 	#lineEdit = SearchLineEdit()
 	combo = MyCombo()
-	import pdb
-	pdb.set_trace()
 	combo.setFrame(False)
 #	combo.setStyleSheet ("QComboBox::drop-down {border-width: 0px;} QComboBox::down-arrow {image: url(noimg); border-width: 0px;}")
 	#tracer.monitor(lineEdit, widget, lineEdit.clearButton)

@@ -502,6 +502,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.AscendingOrder)
 			self.tagView.sortByColumn(enum.kTagsColumn_TagName, QtCore.Qt.AscendingOrder)
 
+		self.tableView.model().sourceModel().select()
 		# Need signals to clear highlight filter on model
 		self.scrolltoEdit.clear()
 		self.tableView.model().reset()

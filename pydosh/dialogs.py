@@ -127,20 +127,23 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			self.view.setColumnHidden(enum.kImportColumn_TxDate, True)
 
 	def __processRecords(self, dateIdx, descriptionIdx, creditIdx, debitIdx, currencySign, dateFormat):
-		""" Decode the raw csv data according to the account configuration.
-			Returns a list of tuples containing verified data ready to be saved to database
+		""" Generator to decode the raw csv data according to the account configuration.
+			Yields record containing verified data ready to be saved to database
 		"""
-		records = []
 
-		currencySign = currencySign if creditIdx == debitIdx else None 
 		for filename, rawRecords in self.__rawData.iteritems():
 			for lineno, rawdata in enumerate(rawRecords):
+
 				if not rawdata:
 					continue
 
-				dateField = descField = txDate = debitField = creditField = error = None
+				dateField = descField = txDate = debitField = creditField = None
 				row = unicode_csv_reader([rawdata.data().decode('utf8')]).next()
+
 				try:
+					if max(dateIdx, descriptionIdx, creditIdx, debitIdx) > len(row) -1:
+						raise DecoderError('Bad record')
+
 					dateField  = self.__getDateField(row[dateIdx], dateFormat)
 					descField  = row[descriptionIdx]
 					txDate     = self.__getTransactionDate(row[descriptionIdx], dateField)
@@ -167,16 +170,15 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 
 				except DecoderError, exc:
 					error = '%s[%d]: %r' % (QtCore.QFileInfo(filename).fileName(), lineno, str(exc))
+					yield (rawdata, dateField, descField, txDate, debitField, creditField, error,)
 
 				except Exception, exc:
 					QtGui.QMessageBox.critical(
 						self, 'Import Error', str(exc),
 						QtGui.QMessageBox.Ok)
-					return
 
-				finally:
-					records.append((rawdata, dateField, descField, txDate, debitField, creditField, error,))
-		return records
+				else:
+					yield (rawdata, dateField, descField, txDate, debitField, creditField, None,)
 
 	def __getDateField(self, field, dateFormat):
 		""" Extract date field using supplied format 

@@ -130,6 +130,7 @@ class ImportModel(QtCore.QAbstractTableModel):
 			existingRecords.append(query.value(0).toString())
 
 		recordsLoaded = set()
+
 		for record in set(records):
 			rec = ImportRecord(*record)
 

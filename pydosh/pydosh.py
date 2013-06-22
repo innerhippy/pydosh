@@ -3,16 +3,13 @@ from PyQt4 import QtGui, QtCore
 from dialogs import LoginDialog
 from main import PydoshWindow
 import stylesheet
-QtCore.pyqtRemoveInputHook()
+#QtCore.pyqtRemoveInputHook()
 import pydosh_rc
 
 def main():
 
 	app = QtGui.QApplication(sys.argv)
 	app.setWindowIcon(QtGui.QIcon(":/icons/pydosh.png"))
-
-#	if 'linux' in sys.platform:
-#		app.setStyle(QtGui.QStyleFactory.create("Plastique"))
 
 	QtCore.QCoreApplication.setApplicationName("pydosh")
 	QtCore.QCoreApplication.setOrganizationName("innerhippy")
@@ -25,7 +22,6 @@ def main():
 	loginDialog.raise_()
 
 	if loginDialog.exec_():
-		
 		window = PydoshWindow()
 		window.show()
 		return app.exec_()
