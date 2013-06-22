@@ -33,3 +33,7 @@ v1.8, June 5 2013
   - Added arrows for QHeaderView
   - setDelay on SearchLineEdit class to buffer input
   - removed hover background colour for dark theme
+
+v1.9, June 22 2013
+  - import records handle unicode (for currency signs)
+  - better error messages for bad csv records
