@@ -26,6 +26,8 @@ def main():
 class TreeItem(object):
 	def __init__(self, data=[]):
 		super(TreeItem, self).__init__()
+		if isinstance(data, basestring):
+			data = [data]
 		self._data = data
 		self._parent = None
 		self._children = []
@@ -44,8 +46,8 @@ class TreeItem(object):
 		return len(self._children)
 
 	def columnCount(self):
-		if self._parent is None:
-			return self._children[0].columnCount()
+#		if self._parent is None:
+#			return self._children[0].columnCount()
 		return len(self._data)
 
 	def data(self, column):
@@ -68,14 +70,35 @@ class TreeItem(object):
 		return '%s (%d)' % (', '.join(self._data), id(self))
 
 class TreeModel(QtCore.QAbstractItemModel):
-	def __init__(self, root, parent=None):
+	def __init__(self, files, parent=None):
 		super(TreeModel, self).__init__(parent=parent)
-		self._root = root
+		self._numColumns = 0
+		self._root = TreeItem()
+		for item in self.readFiles(files):
+			self._root.appendChild(item)
+
+	def getNodeItem(self, index):
+		if index.isValid():
+			return index.internalPointer()
+		return self._root
+
+	def readFiles(self, files):
+		for filename in files:
+			item = TreeItem(filename)
+			csvfile = QtCore.QFile(filename)
+
+			if not csvfile.open(QtCore.QIODevice.ReadOnly | QtCore.QIODevice.Text):
+				raise Exception('Cannot open file %r' % filename)
+
+			while not csvfile.atEnd():
+				rawdata = csvfile.readLine().trimmed()
+				data = unicode_csv_reader([rawdata.data().decode('utf8')]).next()
+				self._numColumns = max([self._numColumns, len(data)])
+				item.appendChild(TreeItem(data))
+			yield item
 
 	def columnCount(self, parent=QtCore.QModelIndex()):
-		if parent.isValid():
-			return parent.internalPointer().columnCount()
-		return self._root.columnCount()
+		return self._numColumns
 
 	def data(self, index, role=QtCore.Qt.DisplayRole):
 
@@ -85,7 +108,7 @@ class TreeModel(QtCore.QAbstractItemModel):
 		if role != QtCore.Qt.DisplayRole:
 			return QtCore.QVariant()
 		
-		item = index.internalPointer()
+		item = self.getNodeItem(index)
 		return item.data(index.column())
 
 	def flags(self, index):
@@ -96,7 +119,7 @@ class TreeModel(QtCore.QAbstractItemModel):
 
 	def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
 		if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
-			return self._root.data(section)
+			return section +1
 
 		return QtCore.QVariant()
 
@@ -105,11 +128,7 @@ class TreeModel(QtCore.QAbstractItemModel):
 		if not self.hasIndex(row, column, parent):
 			return QtCore.QModelIndex()
 
-		if not parent.isValid():
-			parentItem = self._root
-		else:
-			parentItem = parent.internalPointer()
-
+		parentItem = self.getNodeItem(parent)
 		childItem = parentItem.child(row)
 
 		if childItem:
@@ -122,7 +141,7 @@ class TreeModel(QtCore.QAbstractItemModel):
 		if not index.isValid():
 			return QtCore.QModelIndex()
 
-		childItem = index.internalPointer()
+		childItem = self.getNodeItem(index)
 		parentItem = childItem.parent()
 
 		if parentItem == self._root:
@@ -135,12 +154,8 @@ class TreeModel(QtCore.QAbstractItemModel):
 		if parent.column() > 0:
 			return 0
 
-		if not parent.isValid():
-			parentItem = self._root
-		else:
-			parentItem = parent.internalPointer()
-
-		return parentItem.childCount()
+		item = self.getNodeItem(parent)
+		return item.childCount()
 
 class Model(QtCore.QAbstractItemModel):
 	def __init__(self, csvFiles, parent=None):
@@ -163,9 +178,21 @@ class Model(QtCore.QAbstractItemModel):
 				items = [QtGui.QStandardItem(item) for item in row]
 #				model.appendRow(items)
 
+
+def main2():
+	app = QtGui.QApplication(sys.argv)
+	model = TreeModel(['test1.csv', 'test2.csv'])
+
+	tree = QtGui.QTreeView()
+	tree.setModel(model)
+
+	tree.show()
+
+	return app.exec_()
+
 if __name__ == "__main__":
 	import sys
-	main()
+	main2()
 
 #	# Start the app
 #	app = QtGui.QApplication(sys.argv)
