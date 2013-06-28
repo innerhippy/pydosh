@@ -7,37 +7,41 @@ from dialogs import unicode_csv_reader
 
 def main():
 	app = QtGui.QApplication(sys.argv)
-	root = QtCore.QObject()
-	root.setObjectName("root")
+#	root = QtCore.QObject()
+#	root.setObjectName("root")
+#
+#	foo = QtCore.QObject(root) 
+#	foo.setObjectName( "foo" )
+#	child = QtCore.QObject( foo )
+#	child.setObjectName( "Mark" )
+#	child = QtCore.QObject( foo )
+#	child.setObjectName( "Bob" )
+#	child = QtCore.QObject( foo )
+#	child.setObjectName( "Kent" )
+#	
+#	bar = QtCore.QObject(root)
+#	bar.setObjectName( "bar" )
+#
+#	child = QtCore.QObject( bar )
+#	child.setObjectName( "Ole" )
+#	child = QtCore.QObject( bar )
+#	child.setObjectName( "Trond" )
+#	child = QtCore.QObject( bar )
+#	child.setObjectName( "Kjetil" )
+#	child = QtCore.QObject( bar );
+#	child.setObjectName( "Lasse" )
+#
+#	baz = QtCore.QObject(root)
+#	baz.setObjectName( "baz" )
+#	child = QtCore.QObject( baz )
+#	child.setObjectName( "Bengt" )
+#	child = QtCore.QObject( baz )
+#	child.setObjectName( "Sven" )
 
-	foo = QtCore.QObject(root) 
-	foo.setObjectName( "foo" )
-	child = QtCore.QObject( foo )
-	child.setObjectName( "Mark" )
-	child = QtCore.QObject( foo )
-	child.setObjectName( "Bob" )
-	child = QtCore.QObject( foo )
-	child.setObjectName( "Kent" )
+	root = TreeItem()
+	row1 = root.addChild(TreeItem(['aaa'], root))
+	row2 = root.addChild(TreeItem(['bbb', 'ccc'], root))
 	
-	bar = QtCore.QObject(root)
-	bar.setObjectName( "bar" )
-
-	child = QtCore.QObject( bar )
-	child.setObjectName( "Ole" )
-	child = QtCore.QObject( bar )
-	child.setObjectName( "Trond" )
-	child = QtCore.QObject( bar )
-	child.setObjectName( "Kjetil" )
-	child = QtCore.QObject( bar );
-	child.setObjectName( "Lasse" )
-
-	baz = QtCore.QObject(root)
-	baz.setObjectName( "baz" )
-	child = QtCore.QObject( baz )
-	child.setObjectName( "Bengt" )
-	child = QtCore.QObject( baz )
-	child.setObjectName( "Sven" )
-
 	model = ObjectTreeModel(root)
 
 	tree = QtGui.QTreeView()
@@ -46,6 +50,36 @@ def main():
 	tree.show()
 
 	return app.exec_()
+
+class TreeItem(object):
+	def __init__(self, data=[], parent=None):
+		super(TreeItem, self).__init__()
+		self._data = data
+		self._parent = parent
+		self._children = []
+
+	def addChild(self, child):
+		self._children.append(child)
+
+	def child(self, row):
+		return self._children[row]
+
+	def childCount(self):
+		return len(self._children)
+	
+	def columnCount(self):
+		return len(self._data)
+
+	def data(self, column):
+		return self._data[column]
+
+	def parent(self):
+		return self._parent
+
+	def row(self):
+		if self._parent is not None:
+			return self._parent.index(self)
+		return 0
 
 class ObjectTreeModel(QtCore.QAbstractItemModel):
 	def __init__(self, root, parent=None):
@@ -85,25 +119,35 @@ class ObjectTreeModel(QtCore.QAbstractItemModel):
 
 	def rowCount(self, parent=QtCore.QModelIndex()):
 
-		if not parent.isValid():
-			parentObject = self.root
-		else:
-			parentObject = parent.internalPointer()
+		if parent.column() > 0:
+			return 0
 
-		return len(parentObject.children())
+		if not parent.isValid():
+			parent = self.root
+		else:
+			parent = parent.internalPointer()
+
+		return parent.childCount()
 
 	def columnCount(self, parent=QtCore.QModelIndex()):
-		return 2
+		if parent.isValid():
+			return parent.internalPointer().columnCount()
+		return self.root.columnCount()
 
 	def index(self, row, column, parent=QtCore.QModelIndex() ):
 
+		if not self.hasIndex(row, column, parent):
+			return QtCore.QModelIndex()
+
 		if not parent.isValid():
 			parentObject = self.root
 		else:
 			parentObject = parent.internalPointer()
 
-		if row < len(parentObject.children()):
-			return self.createIndex( row, column, parentObject.children()[row] )
+		childItem = parentObject.child(row)
+
+		if childItem:
+			return self.createIndex( row, column, childItem )
 		else:
 			return QtCore.QModelIndex()
 
@@ -112,15 +156,13 @@ class ObjectTreeModel(QtCore.QAbstractItemModel):
 		if not index.isValid():
 			return QtCore.QModelIndex()
 
-		indexObject = index.internalPointer()
-		parentObject = indexObject.parent()
+		child = index.internalPointer()
+		parent = child.parent()
 
-		if parentObject == self.root:
+		if parent == self.root:
 			return QtCore.QModelIndex()
 
-		grandParentObject = parentObject.parent()
-
-		return self.createIndex( grandParentObject.children().index( parentObject ), 0, parentObject )
+		return self.createIndex(parent.row(), 0, parent)
 
 
 class Model(QtCore.QAbstractItemModel):
