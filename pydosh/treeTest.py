@@ -72,7 +72,7 @@ class TreeItem(object):
 class TreeModel(QtCore.QAbstractItemModel):
 	def __init__(self, files, parent=None):
 		super(TreeModel, self).__init__(parent=parent)
-		self._numColumns = 0
+		self._numColumns = 1
 		self._root = TreeItem()
 		for item in self.readFiles(files):
 			self._root.appendChild(item)
@@ -93,11 +93,13 @@ class TreeModel(QtCore.QAbstractItemModel):
 			while not csvfile.atEnd():
 				rawdata = csvfile.readLine().trimmed()
 				data = unicode_csv_reader([rawdata.data().decode('utf8')]).next()
-				self._numColumns = max([self._numColumns, len(data)])
+				self._numColumns = max(self._numColumns, len(data))
 				item.appendChild(TreeItem(data))
 			yield item
 
 	def columnCount(self, parent=QtCore.QModelIndex()):
+#		return 1
+#		return self.getNodeItem(parent).columnCount()
 		return self._numColumns
 
 	def data(self, index, role=QtCore.Qt.DisplayRole):
@@ -118,9 +120,8 @@ class TreeModel(QtCore.QAbstractItemModel):
 		return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
 
 	def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
-		if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
-			return section +1
-
+#		if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
+#			return section +1
 		return QtCore.QVariant()
 
 	def index(self, row, column, parent=QtCore.QModelIndex() ):
