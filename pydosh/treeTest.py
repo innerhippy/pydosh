@@ -5,30 +5,12 @@ import sys
 
 from dialogs import unicode_csv_reader
 
-def main():
-	app = QtGui.QApplication(sys.argv)
-	root = TreeItem()#['one', 'two'])
-	root.appendChild(TreeItem(['aaa']))
-	row1 = TreeItem(['bbb', 'ccc'])
-	root.appendChild(row1)
-	row1.appendChild(TreeItem(['xxx']))
-	row1.appendChild(TreeItem(['yyy', 'zzz']))
-	
-	model = TreeModel(root)
-
-	tree = QtGui.QTreeView()
-	tree.setModel(model)
-
-	tree.show()
-
-	return app.exec_()
-
 class TreeItem(object):
-	def __init__(self, data=[]):
+	def __init__(self, data=None):
 		super(TreeItem, self).__init__()
 		if isinstance(data, basestring):
 			data = [data]
-		self._data = data
+		self._data = data or []
 		self._parent = None
 		self._children = []
 
@@ -51,28 +33,36 @@ class TreeItem(object):
 		return len(self._data)
 
 	def data(self, column):
-		if column >= len(self._data):
+		# ok
+		if self._parent is None:
+			pdb.set_trace()
+		try:
+			return self._data[column]
+		except IndexError:
 			return QtCore.QVariant()
-		return self._data[column]
 
 	def parent(self):
+		# ok
 		return self._parent
 
 	def indexOf(self, child):
+		# ok
 		return self._children.index(child)
 
 	def row(self):
+		# ok
 		if self._parent:
 			return self._parent.indexOf(self)
 		return 0
 
 	def __str__(self):
+		# not req
 		return '%s (%d)' % (', '.join(self._data), id(self))
 
 class TreeModel(QtCore.QAbstractItemModel):
 	def __init__(self, files, parent=None):
 		super(TreeModel, self).__init__(parent=parent)
-		self._numColumns = 1
+		self._numColumns = 0
 		self._root = TreeItem()
 		for item in self.readFiles(files):
 			self._root.appendChild(item)
@@ -98,8 +88,6 @@ class TreeModel(QtCore.QAbstractItemModel):
 			yield item
 
 	def columnCount(self, parent=QtCore.QModelIndex()):
-#		return 1
-#		return self.getNodeItem(parent).columnCount()
 		return self._numColumns
 
 	def data(self, index, role=QtCore.Qt.DisplayRole):
@@ -109,7 +97,7 @@ class TreeModel(QtCore.QAbstractItemModel):
 
 		if role != QtCore.Qt.DisplayRole:
 			return QtCore.QVariant()
-		
+
 		item = self.getNodeItem(index)
 		return item.data(index.column())
 
@@ -124,7 +112,7 @@ class TreeModel(QtCore.QAbstractItemModel):
 #			return section +1
 		return QtCore.QVariant()
 
-	def index(self, row, column, parent=QtCore.QModelIndex() ):
+	def index(self, row, column, parent=QtCore.QModelIndex()):
 
 		if not self.hasIndex(row, column, parent):
 			return QtCore.QModelIndex()
@@ -180,7 +168,7 @@ class Model(QtCore.QAbstractItemModel):
 #				model.appendRow(items)
 
 
-def main2():
+def main():
 	app = QtGui.QApplication(sys.argv)
 	model = TreeModel(['test1.csv', 'test2.csv'])
 
@@ -193,7 +181,7 @@ def main2():
 
 if __name__ == "__main__":
 	import sys
-	main2()
+	main()
 
 #	# Start the app
 #	app = QtGui.QApplication(sys.argv)
