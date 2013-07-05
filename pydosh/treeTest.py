@@ -6,11 +6,8 @@ import sys
 from dialogs import unicode_csv_reader
 
 class TreeItem(object):
-	def __init__(self, data=None):
+	def __init__(self):
 		super(TreeItem, self).__init__()
-		if isinstance(data, basestring):
-			data = [data]
-		self._data = data or []
 		self._parent = None
 		self._children = []
 
@@ -28,36 +25,49 @@ class TreeItem(object):
 		return len(self._children)
 
 	def columnCount(self):
-#		if self._parent is None:
-#			return self._children[0].columnCount()
-		return len(self._data)
+		raise NotImplementedError
 
 	def data(self, column):
-		# ok
-		if self._parent is None:
-			pdb.set_trace()
-		try:
-			return self._data[column]
-		except IndexError:
-			return QtCore.QVariant()
+		raise NotImplementedError
 
 	def parent(self):
-		# ok
 		return self._parent
 
 	def indexOf(self, child):
-		# ok
 		return self._children.index(child)
 
 	def row(self):
-		# ok
 		if self._parent:
 			return self._parent.indexOf(self)
 		return 0
 
-	def __str__(self):
-		# not req
-		return '%s (%d)' % (', '.join(self._data), id(self))
+class CsvFileItem(TreeItem):
+	def __init__(self, filename):
+		super(CsvFileItem, self).__init__()
+		self._filename = filename
+
+	def columnCount(self):
+		return 1
+
+	def data(self, column):
+		if column == 0:
+			return self._filename
+		return QtCore.QVariant()
+
+class CsvRecordItem(TreeItem):
+	def __init__(self, rawData):
+		super(CsvRecordItem, self).__init__()
+		self._rawData = rawData
+		self._fields = unicode_csv_reader([rawData.data().decode('utf8')]).next()
+
+	def columnCount(self):
+		return len(self._fields)
+
+	def data(self, column):
+		try:
+			return self._fields[column]
+		except IndexError:
+			return QtCore.QVariant()
 
 class TreeModel(QtCore.QAbstractItemModel):
 	def __init__(self, files, parent=None):
@@ -74,24 +84,23 @@ class TreeModel(QtCore.QAbstractItemModel):
 
 	def readFiles(self, files):
 		for filename in files:
-			item = TreeItem(filename)
+			item = CsvFileItem(filename)
 			csvfile = QtCore.QFile(filename)
 
 			if not csvfile.open(QtCore.QIODevice.ReadOnly | QtCore.QIODevice.Text):
 				raise Exception('Cannot open file %r' % filename)
 
 			while not csvfile.atEnd():
-				rawdata = csvfile.readLine().trimmed()
-				data = unicode_csv_reader([rawdata.data().decode('utf8')]).next()
-				self._numColumns = max(self._numColumns, len(data))
-				item.appendChild(TreeItem(data))
+				rawData = csvfile.readLine().trimmed()
+				recItem = CsvRecordItem(rawData)
+				self._numColumns = max(self._numColumns, recItem.columnCount())
+				item.appendChild(recItem)
 			yield item
 
 	def columnCount(self, parent=QtCore.QModelIndex()):
 		return self._numColumns
 
 	def data(self, index, role=QtCore.Qt.DisplayRole):
-
 		if not index.isValid():
 			return QtCore.QVariant()
 
@@ -108,8 +117,6 @@ class TreeModel(QtCore.QAbstractItemModel):
 		return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
 
 	def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
-#		if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
-#			return section +1
 		return QtCore.QVariant()
 
 	def index(self, row, column, parent=QtCore.QModelIndex()):
@@ -146,28 +153,6 @@ class TreeModel(QtCore.QAbstractItemModel):
 		item = self.getNodeItem(parent)
 		return item.childCount()
 
-class Model(QtCore.QAbstractItemModel):
-	def __init__(self, csvFiles, parent=None):
-		super(Model, self).__init__(parent=parent)
-
-#		pdb.set_trace()
-		for filename in csvFiles:
-			csvfile = QtCore.QFile(filename)
-
-			if not csvfile.open(QtCore.QIODevice.ReadOnly | QtCore.QIODevice.Text):
-				raise Exception('Cannot open file %r' % filename)
-
-			while not csvfile.atEnd():
-				rawdata = csvfile.readLine().trimmed()
-#				dataDict = self.__rawData.setdefault(filename, [])
-#				dataDict.append(rawdata)
-				print filename, rawdata
-
-				row = unicode_csv_reader([rawdata.data().decode('utf8')]).next()
-				items = [QtGui.QStandardItem(item) for item in row]
-#				model.appendRow(items)
-
-
 def main():
 	app = QtGui.QApplication(sys.argv)
 	model = TreeModel(['test1.csv', 'test2.csv'])
@@ -181,12 +166,4 @@ def main():
 
 if __name__ == "__main__":
 	import sys
-	main()
-
-#	# Start the app
-#	app = QtGui.QApplication(sys.argv)
-#	model = Model(['test1.csv', 'test2.csv'])
-#	window = QtGui.QTreeView()
-#	window.setModel(model)
-#	window.show()
-#	app.exec_()
+	sys.exit(main())
