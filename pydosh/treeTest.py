@@ -2,9 +2,16 @@ from PyQt4 import QtGui, QtCore
 QtCore.pyqtRemoveInputHook()
 import pdb
 import sys
+import re
 
+import csv
+import enum
 import utils
 from dialogs import unicode_csv_reader
+
+class DecoderError(Exception):
+	""" General Decoder exceptions
+	"""
 
 class TreeItem(object):
 	def __init__(self):
@@ -62,194 +69,137 @@ class CsvFileItem(TreeItem):
 			return self._filename
 		return QtCore.QVariant()
 
-class ImportRecord(object):
-	def __init__(self, *args):
-		super(ImportRecord, self).__init__()
-		self.data, self.date, self.desc, self.txdate, self.debit, self.credit, self.error = args
-		self.__isImported = False
-
-	@property
-	def valid(self):
-		return self.error is None
-
-	@property
-	def imported(self):
-		return self.__isImported
-
-	@imported.setter
-	def imported(self, value):
-		self.__isImported = value
-
-	@property
-	def checksum(self):
-		return QtCore.QString(QtCore.QCryptographicHash.hash(self.data, QtCore.QCryptographicHash.Md5).toHex())
-
-	def __eq__(self, other):
-		return self.checksum == other.checksum
-
-	def __str__(self):
-		return 'date=%r txdate=%r debit=%r credit=%r desc=%r' % (self.date, self.txdate, self.credit, self.debit, self.desc)
-
-	def __repr__(self):
-		return '%r' % str(self)
-
-
 class CsvRecordItem(TreeItem):
 	def __init__(self, rawData):
 		super(CsvRecordItem, self).__init__()
 		self._rawData = rawData
-		self._fields = unicode_csv_reader([rawData.data().decode('utf8')]).next()
+		self._fields = self._csvReader([rawData.data().decode('utf8')]).next()
+		self._imported = False
 		self._date = None
 		self._desc = None
 		self._txDate = None
 		self._credit = None
 		self._debit = None
 		self._error = None
+		self._processed = False
+
+	def _csvReader(self, data):
+		# csv.py doesn't do Unicode; encode temporarily as UTF-8:
+		for row in csv.reader(self._encoder(data), dialect=csv.excel):
+			# decode UTF-8 back to Unicode, cell by cell:
+			yield [unicode(cell, 'utf-8') for cell in row]
+	
+	def _encoder(self, data):
+		for line in data:
+			yield line.encode('utf-8')
+
+	@property
+	def _status(self):
+		if self._rawData is None:
+			return 'Invalid'
+		elif self._error is not None:
+			return 'Error'
+		elif self._imported:
+			return 'Imported'
+		return 'Ready'
+
+	def setImported(self, imported):
+		self._imported = imported
 
 	def isValid(self):
 		return self._rawData and not self._error
 
 	def columnCount(self):
-		return len(self._fields)
+		if self._processed == False:
+			return len(self._fields)
+		elif self._error:
+			return 1
+		return 5
 
 	def data(self, column):
-		try:
-			return self._fields[column]
-		except IndexError:
-			return QtCore.QVariant()
+		if self._processed:
+			if self._error is None:
+				if column == enum.kImportColumn_Status:
+					self._status
+				elif column == enum.kImportColumn_Date:
+					return self._date
+				elif column == enum.kImportColumn_TxDate:
+					return self._txDate
+				elif column == enum.kImportColumn_Credit:
+					return self._credit
+				elif column == enum.kImportColumn_Debit:
+					return self._debit
+				elif column == enum.kImportColumn_Description:
+					return self._desc
+			elif column == 0:
+				return self._error
+		else:
+			try:
+				return self._fields[column]
+			except IndexError:
+				pass
+
+		return QtCore.QVariant()
 
 	def process(self, dateIdx, descriptionIdx, creditIdx, debitIdx, currencySign, dateFormat):
+
 		if not self.isValid():
 			return
-
 		try:
 			if max(dateIdx, descriptionIdx, creditIdx, debitIdx) > len(self._fields) -1:
 				raise DecoderError('Bad Record')
 
 			self._date = self.__getDateField(self._fields[dateIdx], dateFormat)
+			self._desc = self._fields[descriptionIdx]
+			self._txDate = self.__getTransactionDate(self._fields[descriptionIdx], dateIdx)
 
-	def __getDateField(self, field, dateFormat):
-		""" Extract date field using supplied format 
-		"""
-		date = QtCore.QDate.fromString(field, dateFormat)
+			if debitIdx == creditIdx:
+				amount = self.__getAmountField(self._fields[debitIdx])
+				if amount is not None:
+					# Use currency multiplier to ensure that credit is +ve (money in),
+					# debit -ve (money out)
+					amount *= currencySign
 
-		if not date.isValid():
-			raise DecoderError('Invalid date: %r' % field)
-
-		return date
-
-
-
-class TreeModel(QtCore.QAbstractItemModel):
-	def __init__(self, files, parent=None):
-		super(TreeModel, self).__init__(parent=parent)
-		self._numColumns = 0
-		self._root = TreeItem()
-		for item in self.readFiles(files):
-			self._root.appendChild(item)
-
-	def setAccountType(self, index):
-		""" Account selection has changed
-
-			Get settings for the account and create new model to decode the data
-		"""
-		dateField = 0
-		descriptionField = 1
-		creditField = 2
-		debitField = 3
-		currencySign = 1
-		dateFormat = 'dd/MM/yyy'
-
-#		model = ImportModel(self)
-#		db.commit.connect(model.save)
-#		db.rollback.connect(model.reset)
-
-		with utils.showWaitCursor():
-			self._root.process(dateField, descriptionField, creditField, debitField, currencySign, dateFormat)
-
-		return
-		if True:
-			records = self.__processRecords(dateField, descriptionField, creditField, debitField, currencySign, dateFormat)
-			model.loadRecords(records)
-
-			proxy = QtGui.QSortFilterProxyModel(model)
-			proxy.setSourceModel(model)
-			proxy.setFilterKeyColumn(0)
-
-			self.view.setModel(proxy)
-			self.view.verticalHeader().hide()
-			self.view.setSortingEnabled(True)
-			self.view.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
-			self.view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
-			self.view.horizontalHeader().setStretchLastSection(True)
-			self.view.sortByColumn(0, QtCore.Qt.AscendingOrder)
-			self.view.resizeColumnsToContents()
-			self.view.selectionModel().selectionChanged.connect(self.__recordsSelected)
-			self.importCancelButton.setEnabled(False)
-			self.selectAllButton.setEnabled(bool(model.numRecordsToImport()))
-			self.__setCounters()
-
-		# Hide txDate colum if we don't need it
-		for row in xrange(model.rowCount()):
-			if model.index(row, enum.kImportColumn_TxDate).data().isValid():
-				self.view.setColumnHidden(enum.kImportColumn_TxDate, False)
-				break
-		else:
-			self.view.setColumnHidden(enum.kImportColumn_TxDate, True)
-
-	def __processRecords(self, dateIdx, descriptionIdx, creditIdx, debitIdx, currencySign, dateFormat):
-		""" Generator to decode the raw csv data according to the account configuration.
-			Yields record containing verified data ready to be saved to database
-		"""
-
-		for filename, rawRecords in self.__rawData.iteritems():
-			for lineno, rawdata in enumerate(rawRecords):
-
-				if not rawdata:
-					continue
-
-				dateField = descField = txDate = debitField = creditField = None
-				row = unicode_csv_reader([rawdata.data().decode('utf8')]).next()
-
-				try:
-					if max(dateIdx, descriptionIdx, creditIdx, debitIdx) > len(row) -1:
-						raise DecoderError('Bad record')
-
-					dateField  = self.__getDateField(row[dateIdx], dateFormat)
-					descField  = row[descriptionIdx]
-					txDate     = self.__getTransactionDate(row[descriptionIdx], dateField)
-
-					if debitIdx == creditIdx:
-						amount = self.__getAmountField(row[debitIdx])
-						if amount is not None:
-							# Use currency multiplier to ensure that credit is +ve (money in),
-							# debit -ve (money out)
-							amount *= currencySign
-
-							if amount > 0.0:
-								creditField = amount
-							else:
-								debitField = amount
+					if amount > 0.0:
+						self._credit = amount
 					else:
-						debitField = self.__getAmountField(row[debitIdx])
-						creditField = self.__getAmountField(row[creditIdx])
-						debitField = abs(debitField) * -1.0 if debitField else None
-						creditField = abs(creditField) if creditField else None
+						self._debit = amount
+			else:
+				debitField = self.__getAmountField(self._fields[debitIdx])
+				creditField = self.__getAmountField(self._fields[creditIdx])
+				self._debit = abs(debitField) * -1.0 if debitField else None
+				self._credit = abs(creditField) if creditField else None
 
-					if not debitField and not creditField:
-						raise DecoderError('No credit or debit found')
+			if not self._debit and not self._credit:
+				raise DecoderError('No credit or debit found')
 
-				except DecoderError, exc:
-					error = '%s[%d]: %r' % (QtCore.QFileInfo(filename).fileName(), lineno, str(exc))
-					yield (rawdata, dateField, descField, txDate, debitField, creditField, error,)
+		except DecoderError, exc:
+			self._error = str(exc)
+		else:
+			self._processed = True
 
-				except Exception, exc:
-					QtGui.QMessageBox.critical(
-						self, 'Import Error', str(exc),
-						QtGui.QMessageBox.Ok)
+	def __getAmountField(self, field):
+		""" Extract and return amount (double). If a simple conversion doesn't
+			succeed, then try and parse the string to remove any currency sign
+			or other junk.
 
-				else:
-					yield (rawdata, dateField, descField, txDate, debitField, creditField, None,)
+			Returns None if field does not contain valid double.
+		"""
+
+		# Get rid of commas from amount field and try and covert to double
+		field = field.replace(',', '')
+		value, ok = QtCore.QVariant(field).toDouble()
+
+		if not ok:
+			# Probably has currency sign - extract all valid currency characters
+			match = re.search('([\d\-\.]+)', field)
+			if match:
+				value, ok = QtCore.QVariant(match.group(1)).toDouble()
+
+		if ok:
+			return value
+
+		return None
 
 	def __getTransactionDate(self, field, dateField):
 		""" Try and extract a transaction date from the description field.
@@ -280,34 +230,59 @@ class TreeModel(QtCore.QAbstractItemModel):
 		if timeDate is not None and timeDate.isValid():
 			return timeDate
 
-	def __getAmountField(self, field):
-		""" Extract and return amount (double). If a simple conversion doesn't
-			succeed, then try and parse the string to remove any currency sign
-			or other junk.
-
-			Returns None if field does not contain valid double.
+	def __getDateField(self, field, dateFormat):
+		""" Extract date field using supplied format 
 		"""
+		date = QtCore.QDate.fromString(field, dateFormat)
 
-		# Get rid of commas from amount field and try and covert to double
-		field = field.replace(',', '')
-		value, ok = QtCore.QVariant(field).toDouble()
+		if not date.isValid():
+			raise DecoderError('Invalid date: %r' % field)
 
-		if not ok:
-			# Probably has currency sign - extract all valid currency characters
-			match = re.search('([\d\-\.]+)', field)
-			if match:
-				value, ok = QtCore.QVariant(match.group(1)).toDouble()
+		return date
 
-		if ok:
-			return value
 
-		return None
 
+class TreeModel(QtCore.QAbstractItemModel):
+	def __init__(self, files, parent=None):
+		super(TreeModel, self).__init__(parent=parent)
+		self._numColumns = 0
+		self._root = TreeItem()
+		self._checksums = [
+			'a045b8caa4bb7e7cc9ec7c2bca830f52',
+			'6b6b3bdfe23fcfed5708aa75a6b95c3c',
+			'229370b92c6aec07e81c2a7a8c60af0b',
+			'2b2ec49808ec4445fd22bcc5620688c9',
+			'0114272edba182214663366bc98c8334',
+			'ead9afb89739518e70667a602905f7fb'
+		]
+
+		for item in self.readFiles(files):
+			self._root.appendChild(item)
+
+	def setAccountType(self, index):
+		""" Account selection has changed
+
+			Get settings for the account and create new model to decode the data
+		"""
+		dateField = 0
+		descriptionField = 1
+		creditField = 2
+		debitField = 3
+		currencySign = 1
+		dateFormat = 'dd/MM/yyyy'
+
+		with utils.showWaitCursor():
+			self._root.process(dateField, descriptionField, creditField, debitField, currencySign, dateFormat)
+
+		self.dataChanged.emit(self.createIndex(0, 0), self.createIndex(self.rowCount() -1, self.columnCount() -1))
 
 	def getNodeItem(self, index):
 		if index.isValid():
 			return index.internalPointer()
 		return self._root
+
+	def checksum(self, data):
+		return QtCore.QString(QtCore.QCryptographicHash.hash(data, QtCore.QCryptographicHash.Md5).toHex())
 
 	def readFiles(self, files):
 		for filename in files:
@@ -320,6 +295,8 @@ class TreeModel(QtCore.QAbstractItemModel):
 			while not csvfile.atEnd():
 				rawData = csvfile.readLine().trimmed()
 				recItem = CsvRecordItem(rawData)
+				if self.checksum(rawData) in self._checksums:
+					recItem.setImported(True)
 				self._numColumns = max(self._numColumns, recItem.columnCount())
 				item.appendChild(recItem)
 			yield item
@@ -331,10 +308,19 @@ class TreeModel(QtCore.QAbstractItemModel):
 		if not index.isValid():
 			return QtCore.QVariant()
 
+		item = self.getNodeItem(index)
+#		if role == QtCore.Qt.ForegroundRole:
+#			if item.column() == 0:
+#				if not self.__records[item.row()].valid:
+#					return QtCore.QVariant(QtGui.QColor(255, 0, 0))
+#				elif self.__records[item.row()].imported:
+#					return QtCore.QVariant(QtGui.QColor(255, 165, 0))
+#				return QtCore.QVariant(QtGui.QColor(0, 255, 0))
+
 		if role != QtCore.Qt.DisplayRole:
 			return QtCore.QVariant()
 
-		item = self.getNodeItem(index)
+		
 		return item.data(index.column())
 
 	def flags(self, index):
@@ -382,7 +368,7 @@ class TreeModel(QtCore.QAbstractItemModel):
 
 def main():
 	app = QtGui.QApplication(sys.argv)
-	model = TreeModel(['test1.csv', 'test2.csv'])
+	model = TreeModel(['test1.csv', 'test2.csv', 'test3.csv'])
 
 	widget = QtGui.QWidget()
 	layout = QtGui.QVBoxLayout()
