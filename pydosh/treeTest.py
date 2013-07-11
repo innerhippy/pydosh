@@ -33,8 +33,8 @@ class TreeItem(object):
 	def child(self, row):
 		return self._children[row]
 
-#	def children(self):
-#		return iter(self._children)
+	def children(self):
+		return iter(self._children)
 
 	def childCount(self):
 		return len(self._children)
@@ -66,7 +66,7 @@ class CsvFileItem(TreeItem):
 
 	def data(self, column):
 		if column == 0:
-			return self._filename
+			return QtCore.QVariant(self._filename)
 		return QtCore.QVariant()
 
 class CsvRecordItem(TreeItem):
@@ -120,22 +120,22 @@ class CsvRecordItem(TreeItem):
 		if self._processed:
 			if self._error is None:
 				if column == enum.kImportColumn_Status:
-					self._status
+					return QtCore.QVariant(self._status)
 				elif column == enum.kImportColumn_Date:
-					return self._date
+					return QtCore.QVariant(self._date)
 				elif column == enum.kImportColumn_TxDate:
-					return self._txDate
+					return QtCore.QVariant(self._txDate)
 				elif column == enum.kImportColumn_Credit:
-					return self._credit
+					return QtCore.QVariant(self._credit)
 				elif column == enum.kImportColumn_Debit:
-					return self._debit
+					return QtCore.QVariant(self._debit)
 				elif column == enum.kImportColumn_Description:
-					return self._desc
+					return QtCore.QVariant(self._desc)
 			elif column == 0:
-				return self._error
+				return QtCore.QVariant(self._error)
 		else:
 			try:
-				return self._fields[column]
+				return QtCore.QVariant(self._fields[column])
 			except IndexError:
 				pass
 
@@ -274,7 +274,8 @@ class TreeModel(QtCore.QAbstractItemModel):
 		with utils.showWaitCursor():
 			self._root.process(dateField, descriptionField, creditField, debitField, currencySign, dateFormat)
 
-		self.dataChanged.emit(self.createIndex(0, 0), self.createIndex(self.rowCount() -1, self.columnCount() -1))
+		self.modelReset.emit()
+
 
 	def getNodeItem(self, index):
 		if index.isValid():
@@ -309,7 +310,8 @@ class TreeModel(QtCore.QAbstractItemModel):
 			return QtCore.QVariant()
 
 		item = self.getNodeItem(index)
-#		if role == QtCore.Qt.ForegroundRole:
+		if isinstance(item, CsvRecordItem):
+			if role == QtCore.Qt.ForegroundRole:
 #			if item.column() == 0:
 #				if not self.__records[item.row()].valid:
 #					return QtCore.QVariant(QtGui.QColor(255, 0, 0))
@@ -320,7 +322,10 @@ class TreeModel(QtCore.QAbstractItemModel):
 		if role != QtCore.Qt.DisplayRole:
 			return QtCore.QVariant()
 
-		
+		if index.column() == 0:
+#			pdb.set_trace()
+			print item.data(0).toString()
+
 		return item.data(index.column())
 
 	def flags(self, index):
@@ -380,8 +385,10 @@ def main():
 
 	tree = QtGui.QTreeView()
 	tree.setModel(model)
+	tree.expandAll()
 	layout.addWidget(tree)
 	combo.currentIndexChanged.connect(model.setAccountType)
+	model.modelReset.connect(tree.expandAll)
 
 	widget.setLayout(layout)
 	widget.show()
