@@ -43,9 +43,23 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 
 		self.progressBar.setVisible(False)
 
-		accountModel = QtSql.QSqlTableModel(self)
-		accountModel.setTable('accounttypes')
-		accountModel.select()
+		model = QtSql.QSqlTableModel()
+		model.setTable('accounttypes')
+		model.select()
+		self.accountTypeComboBox.addItem('Raw')
+		for row in xrange(model.rowCount()):
+			name = model.index(row, enum.kAccountTypeColumn_AccountName).data().toString()
+			dateIdx = model.index(row, enum.kAccountTypeColumn_DateField).data().toPyObject()
+			descIdx = model.index(row, enum.kAccountTypeColumn_DescriptionField).data().toPyObject()
+			creditIdx = model.index(row, enum.kAccountTypeColumn_CreditField).data().toPyObject()
+			debitIdx = model.index(row, enum.kAccountTypeColumn_DebitField).data().toPyObject()
+			currencySign = model.index(row, enum.kAccountTypeColumn_CurrencySign).data().toPyObject()
+			dateFormat = model.index(row, enum.kAccountTypeColumn_DateFormat).data().toString()
+			dataAsTuple = (dateIdx, descIdx, creditIdx, debitIdx, currencySign, dateFormat,)
+			self.accountTypeComboBox.addItem(name, QtCore.QVariant(dataAsTuple))
+
+		import pdb
+		pdb.set_trace()
 
 		self.accountTypeComboBox.setModel(accountModel)
 		self.accountTypeComboBox.setModelColumn(enum.kAccountTypeColumn_AccountName)
