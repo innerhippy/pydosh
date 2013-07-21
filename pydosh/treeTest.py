@@ -1,23 +1,55 @@
-from PyQt4 import QtGui, QtCore
+from PyQt4 import QtGui, QtCore, QtSql
 QtCore.pyqtRemoveInputHook()
 import pdb
 import sys
 import re
 
+from database import db
 import csv
 import enum
 import utils
-from dialogs import unicode_csv_reader
+#from dialogs import unicode_csv_reader
 
 class DecoderError(Exception):
 	""" General Decoder exceptions
 	"""
+def unicode_csv_reader(unicode_csv_data, dialect=csv.excel, **kwargs):
+	# csv.py doesn't do Unicode; encode temporarily as UTF-8:
+	csv_reader = csv.reader(utf_8_encoder(unicode_csv_data),
+						dialect=dialect, **kwargs)
+	for row in csv_reader:
+		# decode UTF-8 back to Unicode, cell by cell:
+		yield [unicode(cell, 'utf-8') for cell in row]
+
+def utf_8_encoder(unicode_csv_data):
+	for line in unicode_csv_data:
+		yield line.encode('utf-8')
 
 class TreeItem(object):
 	def __init__(self):
 		super(TreeItem, self).__init__()
 		self._parent = None
+		self._error = None
 		self._children = []
+
+	def isValid(self):
+		return True
+
+	def numRecordsToImport(self):
+		""" Returns the number of records left that can be imported
+		"""
+		num = 1 if self.canImport() else 0
+		for child in self._children:
+			num += child.numRecordsToImport()
+		return num
+
+	def numBadRecords(self):
+		""" Returns total number of bad records in tree model
+		"""
+		num = int(self.isValid())
+		for child in self._children:
+			num += child.numBadRecords()
+		return num
 
 	def process(self, dateField, descriptionField, creditField, debitField, currencySign, dateFormat):
 		for child in self._children:
@@ -67,6 +99,9 @@ class TreeItem(object):
 	def canImport(self):
 		return False
 
+	def isSelectable(self):
+		return False
+
 class CsvFileItem(TreeItem):
 	def __init__(self, filename):
 		super(CsvFileItem, self).__init__()
@@ -97,6 +132,9 @@ class CsvRecordItem(TreeItem):
 		self._error = None
 		self._processed = False
 		self.data = self._dataFuncRaw
+
+	def isSelectable(self):
+		return self._processed and self.canImport()
 
 	def canImport(self):
 		return self.isValid() and not self._imported
@@ -280,18 +318,21 @@ class CsvRecordItem(TreeItem):
 
 
 class TreeModel(QtCore.QAbstractItemModel):
+	#importChanged = QtCore.pyqtSignal(int)
+
 	def __init__(self, files, parent=None):
 		super(TreeModel, self).__init__(parent=parent)
 		self._headers = []
 		self._root = TreeItem()
-		self._checksums = [
-			'a045b8caa4bb7e7cc9ec7c2bca830f52',
-			'6b6b3bdfe23fcfed5708aa75a6b95c3c',
-			'229370b92c6aec07e81c2a7a8c60af0b',
-			'2b2ec49808ec4445fd22bcc5620688c9',
-			'0114272edba182214663366bc98c8334',
-			'ead9afb89739518e70667a602905f7fb'
-		]
+		self._checksums = []
+
+		# Import all record checksums
+		query = QtSql.QSqlQuery('SELECT checksum from records where userid=%d' % db.userId)
+		if query.lastError().isValid():
+			raise Exception(query.lastError().text())
+
+		while query.next():
+			self._checksums.append(query.value(0).toString())
 
 		for item in self.readFiles(files):
 			self._root.appendChild(item)
@@ -299,29 +340,29 @@ class TreeModel(QtCore.QAbstractItemModel):
 		self._numColumns = self._root.maxColumns()
 		self._headers = range(self._numColumns)
 
-	def accountChanged(self, index):
+	def numRecordsToImport(self):
+		return self._root.numRecordsToImport()
+
+	def numBadRecords(self):
+		return self._root.numBadRecords()
+
+	def accountChanged(self, accountData):
 		""" Account selection has changed
 
 			Get settings for the account and create new model to decode the data
 		"""
-		dateField = 0
-		descriptionField = 1
-		creditField = 2
-		debitField = 3
-		currencySign = 1
-		dateFormat = 'dd/MM/yyyy'
-
 		with utils.showWaitCursor():
-			if index == 0:
+			if accountData is None:
 				self._root.reset()
 				self._headers = range(self._root.maxColumns())
 			else:
+				dateField, descriptionField, creditField, debitField, currencySign, dateFormat = accountData
 				self._root.process(dateField, descriptionField, creditField, debitField, currencySign, dateFormat)
 				self._headers = ['Status', 'Date', 'Tx Date', 'Credit', 'Debit', 'Description']
 
 		self._numColumns = self._root.maxColumns()
 		self.modelReset.emit()
-
+		#self.importChanged.emit(self._root.numRecordsToImport())
 
 	def getNodeItem(self, index):
 		if index.isValid():
@@ -339,11 +380,13 @@ class TreeModel(QtCore.QAbstractItemModel):
 			if not csvfile.open(QtCore.QIODevice.ReadOnly | QtCore.QIODevice.Text):
 				raise Exception('Cannot open file %r' % filename)
 
+			i = 0
 			while not csvfile.atEnd():
+				i += 1
 				rawData = csvfile.readLine().trimmed()
 				recItem = CsvRecordItem(rawData)
 
-				if self.checksum(rawData) in self._checksums:
+				if self.checksum(rawData) in self._checksums or (i % 3):
 					recItem.setImported(True)
 
 				item.appendChild(recItem)
@@ -366,7 +409,7 @@ class TreeModel(QtCore.QAbstractItemModel):
 		if not index.isValid():
 			return 0
 
-		if self.getNodeItem(index).canImport():
+		if self.getNodeItem(index).isSelectable():
 			return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
 
 		return QtCore.Qt.ItemIsEnabled

@@ -38,7 +38,7 @@
     </spacer>
    </item>
    <item row="1" column="0" colspan="3">
-    <widget class="QTableView" name="view"/>
+    <widget class="QTreeView" name="view"/>
    </item>
    <item row="2" column="0" colspan="3">
     <widget class="QFrame" name="frame">
