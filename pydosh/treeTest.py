@@ -35,6 +35,9 @@ class TreeItem(object):
 	def isValid(self):
 		return True
 
+	def isImported(self):
+		return False
+
 	def numRecordsToImport(self):
 		""" Returns the number of records left that can be imported
 		"""
@@ -43,10 +46,16 @@ class TreeItem(object):
 			num += child.numRecordsToImport()
 		return num
 
+	def numRecordsImported(self):
+		num = self.isImported()
+		for child in self._children:
+			num += child.numRecordsImported()
+		return num
+
 	def numBadRecords(self):
 		""" Returns total number of bad records in tree model
 		"""
-		num = int(self.isValid())
+		num = int(not self.isValid())
 		for child in self._children:
 			num += child.numBadRecords()
 		return num
@@ -133,6 +142,9 @@ class CsvRecordItem(TreeItem):
 		self._processed = False
 		self.data = self._dataFuncRaw
 
+	def isImported(self):
+		return self._imported
+
 	def isSelectable(self):
 		return self._processed and self.canImport()
 
@@ -154,7 +166,7 @@ class CsvRecordItem(TreeItem):
 		if self._rawData is None:
 			return 'Invalid'
 		elif self._error is not None:
-			return 'Error'
+			return self._error
 		elif self._imported:
 			return 'Imported'
 		return 'Ready'
@@ -174,7 +186,6 @@ class CsvRecordItem(TreeItem):
 
 	def _dataFuncRaw(self, column, role):
 		if role == QtCore.Qt.DisplayRole:
-			#print 'unprocessed', column, self.isValid(), self.row()
 			try:
 				return QtCore.QVariant(self._fields[column])
 			except IndexError:
@@ -185,28 +196,25 @@ class CsvRecordItem(TreeItem):
 
 		if role == QtCore.Qt.ForegroundRole:
 			if column == enum.kImportColumn_Status:
-				if self._imported:
-					return QtCore.QVariant(QtGui.QColor(255, 165, 0))
-				elif not self.isValid():
+				if not self.isValid():
 					return QtCore.QVariant(QtGui.QColor(255, 0, 0))
+				elif self._imported:
+					return QtCore.QVariant(QtGui.QColor(255, 165, 0))
 				return QtCore.QVariant(QtGui.QColor(0, 255, 0))
 
 		elif role == QtCore.Qt.DisplayRole:
-			if self._error is None:
-				if column == enum.kImportColumn_Status:
-					return QtCore.QVariant(self._status)
-				elif column == enum.kImportColumn_Date:
-					return QtCore.QVariant(self._date)
-				elif column == enum.kImportColumn_TxDate:
-					return QtCore.QVariant(self._txDate)
-				elif column == enum.kImportColumn_Credit:
-					return QtCore.QVariant('%.02f' % self._credit if self._credit else None)
-				elif column == enum.kImportColumn_Debit:
-					return QtCore.QVariant('%.02f' % abs(self._debit) if self._debit else None)
-				elif column == enum.kImportColumn_Description:
-					return QtCore.QVariant(self._desc)
-			elif column == 0:
-				return QtCore.QVariant(self._error)
+			if column == enum.kImportColumn_Status:
+				return QtCore.QVariant(self._status)
+			elif column == enum.kImportColumn_Date:
+				return QtCore.QVariant(self._date)
+			elif column == enum.kImportColumn_TxDate:
+				return QtCore.QVariant(self._txDate)
+			elif column == enum.kImportColumn_Credit:
+				return QtCore.QVariant('%.02f' % self._credit if self._credit else None)
+			elif column == enum.kImportColumn_Debit:
+				return QtCore.QVariant('%.02f' % abs(self._debit) if self._debit else None)
+			elif column == enum.kImportColumn_Description:
+				return QtCore.QVariant(self._desc)
 
 		elif role == QtCore.Qt.ToolTipRole:
 			return QtCore.QVariant(QtCore.QString.fromUtf8(self._rawData))
@@ -346,6 +354,9 @@ class TreeModel(QtCore.QAbstractItemModel):
 	def numBadRecords(self):
 		return self._root.numBadRecords()
 
+	def numRecordsImported(self):
+		return self._root.numRecordsImported()
+
 	def accountChanged(self, accountData):
 		""" Account selection has changed
 
@@ -362,7 +373,6 @@ class TreeModel(QtCore.QAbstractItemModel):
 
 		self._numColumns = self._root.maxColumns()
 		self.modelReset.emit()
-		#self.importChanged.emit(self._root.numRecordsToImport())
 
 	def getNodeItem(self, index):
 		if index.isValid():

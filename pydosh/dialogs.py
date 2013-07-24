@@ -44,6 +44,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.__rawData = {}
 		self.__importInProgress = False
 		self.__cancelImport = False
+		self.__accountIdMap = {}
 #		self.__accountsModel = None
 
 		self.progressBar.setVisible(False)
@@ -65,6 +66,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			self.accountTypeComboBox.addItem(name, 
 				QtCore.QVariant((dateIdx, descIdx, creditIdx, debitIdx, currencySign, dateFormat,))
 			)
+			self.__accountIdMap[row] = model.index(row, enum.kAccountTypeColumn_AccountTypeId).data().toPyObject()
 
 #		self.accountTypeComboBox.setModel(accountModel)
 #		self.accountTypeComboBox.setModelColumn(enum.kAccountTypeColumn_AccountName)
@@ -111,6 +113,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 	def _accountSeletced(self, index):
 		model = self.view.model()
 		model.accountChanged(self.accountTypeComboBox.itemData(index).toPyObject())
+		self.selectAllButton.setEnabled(bool(model.numRecordsToImport()))
 		self.__setCounters()
 
 	def setImportChanged(self, num):
@@ -127,8 +130,8 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 #		model = self.view.model().sourceModel()
 		model = self.view.model()
 		self.errorsCounter.setNum(model.numBadRecords())
-#		self.importedCounter.setNum(model.numRecordsImported())
-#		self.toImportCounter.setNum(model.numRecordsToImport())
+		self.importedCounter.setNum(model.numRecordsImported())
+		self.toImportCounter.setNum(model.numRecordsToImport())
 
 	def _recordsSelected(self):
 		""" Enable button cancel when we have selection
@@ -152,8 +155,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 	def __importRecords(self):
 		""" Import selected rows to database
 		"""
-		index = self.accountTypeComboBox.currentIndex()
-		accountId = self.__accountsModel.index(index, enum.kAccountTypeColumn_AccountTypeId).data().toPyObject()
+		accountId = self.__accountIdMap[self.accountTypeComboBox.currentIndex()]
 		selectionModel = self.view.selectionModel()
 		indexes = selectionModel.selectedRows()
 
@@ -163,8 +165,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		try:
 			self.progressBar.setVisible(True)
 
-			proxyModel = self.view.model()
-			dataModel = proxyModel.sourceModel()
+			model = self.view.model()
 			self.progressBar.setValue(0)
 			self.progressBar.setMaximum(len(indexes))
 			self.view.clearSelection()
@@ -178,7 +179,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			# Wrap the import in a transaction
 			with db.transaction():
 				for num, index in enumerate(indexes, 1):
-					dataModel.saveRecord(accountId, proxyModel.mapToSource(index))
+					model.saveRecord(accountId, index)
 					self.view.scrollTo(index, QtGui.QAbstractItemView.EnsureVisible)
 					self.view.resizeColumnsToContents()
 					self.__setCounters()
@@ -196,7 +197,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 						raise UserCancelledException
 
 		except UserCancelledException:
-			dataModel.reset()
+			model.reset()
 
 		except Exception, exc:
 			QtGui.QMessageBox.critical(self, 'Import Error', str(exc), QtGui.QMessageBox.Ok)
