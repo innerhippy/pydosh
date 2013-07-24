@@ -66,12 +66,11 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			self.accountTypeComboBox.addItem(name, 
 				QtCore.QVariant((dateIdx, descIdx, creditIdx, debitIdx, currencySign, dateFormat,))
 			)
-			self.__accountIdMap[row] = model.index(row, enum.kAccountTypeColumn_AccountTypeId).data().toPyObject()
+			self.__accountIdMap[row +1] = model.index(row, enum.kAccountTypeColumn_AccountTypeId).data().toPyObject()
 
 #		self.accountTypeComboBox.setModel(accountModel)
 #		self.accountTypeComboBox.setModelColumn(enum.kAccountTypeColumn_AccountName)
 		self.accountTypeComboBox.setCurrentIndex(0)
-
 #		self.__accountsModel = accountModel
 		model = TreeModel(files)
 #		model = QtGui.QStandardItemModel()
@@ -144,7 +143,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		""" Exit with bool value to indicate if data was saved,
 			but not if it's our initial model
 		"""
-		self.done(True) #self.view.model().dataSaved)
+		self.done(self.view.model().dataSaved)
 #		model = self.view.model()
 #		
 #		if isinstance(model, QtGui.QStandardItemModel):
@@ -156,6 +155,8 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		""" Import selected rows to database
 		"""
 		accountId = self.__accountIdMap[self.accountTypeComboBox.currentIndex()]
+
+		model = self.view.model()
 		selectionModel = self.view.selectionModel()
 		indexes = selectionModel.selectedRows()
 
@@ -165,7 +166,6 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		try:
 			self.progressBar.setVisible(True)
 
-			model = self.view.model()
 			self.progressBar.setValue(0)
 			self.progressBar.setMaximum(len(indexes))
 			self.view.clearSelection()
@@ -181,7 +181,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 				for num, index in enumerate(indexes, 1):
 					model.saveRecord(accountId, index)
 					self.view.scrollTo(index, QtGui.QAbstractItemView.EnsureVisible)
-					self.view.resizeColumnsToContents()
+#					self.view.resizeColumnsToContents()
 					self.__setCounters()
 					QtCore.QCoreApplication.processEvents()
 					self.progressBar.setValue(self.progressBar.value() +1)
@@ -209,7 +209,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			self.importCancelButton.setText('Import')
 			self.progressBar.setVisible(False)
 
-			canImport = bool(dataModel.numRecordsToImport())
+			canImport = bool(model.numRecordsToImport())
 			self.importCancelButton.setEnabled(canImport)
 			self.selectAllButton.setEnabled(canImport)
 #	def setAccountType(self, index):

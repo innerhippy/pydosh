@@ -13,6 +13,11 @@ import utils
 class DecoderError(Exception):
 	""" General Decoder exceptions
 	"""
+
+class ImportException(Exception):
+	""" General exception for record import
+	"""
+
 def unicode_csv_reader(unicode_csv_data, dialect=csv.excel, **kwargs):
 	# csv.py doesn't do Unicode; encode temporarily as UTF-8:
 	csv_reader = csv.reader(utf_8_encoder(unicode_csv_data),
@@ -142,8 +147,25 @@ class CsvRecordItem(TreeItem):
 		self._processed = False
 		self.data = self._dataFuncRaw
 
+	def checksum(self):
+		return QtCore.QString(QtCore.QCryptographicHash.hash(self._rawData, QtCore.QCryptographicHash.Md5).toHex())
+
+	def dataDict(self):
+		return {
+			'date': 	self._date,
+			'desc': 	self._desc,
+			'credit': 	self._credit,
+			'debit': 	self._debit,
+			'txdate': 	self._txDate,
+			'raw': 		QtCore.QString.fromUtf8(self._rawData),
+			'checksum': self.checksum(),
+		}
+
 	def isImported(self):
 		return self._imported
+
+	def setImported(self, imported):
+		self._imported = imported
 
 	def isSelectable(self):
 		return self._processed and self.canImport()
@@ -233,7 +255,7 @@ class CsvRecordItem(TreeItem):
 				raise DecoderError('Bad Record')
 
 			self._date = self.__getDateField(self._fields[dateIdx], dateFormat)
-			self._desc = self._fields[descriptionIdx]
+			self._desc = QtCore.QString(self._fields[descriptionIdx])
 			self._txDate = self.__getTransactionDate(self._fields[descriptionIdx], dateIdx)
 
 			if debitIdx == creditIdx:
@@ -333,6 +355,8 @@ class TreeModel(QtCore.QAbstractItemModel):
 		self._headers = []
 		self._root = TreeItem()
 		self._checksums = []
+		self.__currentTimestamp = None
+		self.dataSaved = False
 
 		# Import all record checksums
 		query = QtSql.QSqlQuery('SELECT checksum from records where userid=%d' % db.userId)
@@ -347,6 +371,12 @@ class TreeModel(QtCore.QAbstractItemModel):
 
 		self._numColumns = self._root.maxColumns()
 		self._headers = range(self._numColumns)
+
+	def reset(self):
+#		self.__records = deepcopy(self.__recordsRollback)
+		self.dataSaved = False
+#		self.dataChanged.emit(self.createIndex(0, 0), self.createIndex(self.rowCount() -1, self.columnCount() - 1))
+		self.__currentTimestamp = None
 
 	def numRecordsToImport(self):
 		return self._root.numRecordsToImport()
@@ -373,6 +403,44 @@ class TreeModel(QtCore.QAbstractItemModel):
 
 		self._numColumns = self._root.maxColumns()
 		self.modelReset.emit()
+
+	def saveRecord(self, accountId, index):
+		""" Saves the import record to the database
+			Raises ImportException on error
+		"""
+		item = self.getNodeItem(index)
+		rec = item.dataDict()
+
+		# Ensure we record the same timestamp for this import
+		self.__currentTimestamp = self.__currentTimestamp or QtCore.QDateTime.currentDateTime()
+
+		query = QtSql.QSqlQuery()
+		query.prepare("""
+				INSERT INTO records
+				(date, userid, accounttypeid, description, txdate, amount, insertdate, rawdata, checksum)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+			""")
+
+		query.addBindValue(rec['date'])
+		query.addBindValue(db.userId)
+		query.addBindValue(accountId)
+		query.addBindValue(rec['desc'])
+		query.addBindValue(rec['txdate'])
+		query.addBindValue(rec['credit'] or rec['debit'])
+		query.addBindValue(self.__currentTimestamp)
+		query.addBindValue(rec['raw'])
+		query.addBindValue(rec['checksum'])
+
+		query.exec_()
+
+		if query.lastError().isValid():
+			raise ImportException(query.lastError().text())
+
+		item.setImported(True)
+		self.dataSaved = True
+
+		# Tell the view our data has changed
+		self.dataChanged.emit(self.createIndex(index.row(), 0), self.createIndex(index.row(), self.columnCount() - 1))
 
 	def getNodeItem(self, index):
 		if index.isValid():
