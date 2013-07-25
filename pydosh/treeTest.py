@@ -193,9 +193,6 @@ class CsvRecordItem(TreeItem):
 			return 'Imported'
 		return 'Ready'
 
-	def setImported(self, imported):
-		self._imported = imported
-
 	def isValid(self):
 		return self._rawData and not self._error
 
@@ -280,6 +277,7 @@ class CsvRecordItem(TreeItem):
 
 		except DecoderError, exc:
 			self._error = str(exc)
+
 		finally:
 			self._processed = True
 			self.data = self._dataFuncProcessed
@@ -374,8 +372,9 @@ class TreeModel(QtCore.QAbstractItemModel):
 
 	def reset(self):
 #		self.__records = deepcopy(self.__recordsRollback)
+		self._root.reset()
 		self.dataSaved = False
-#		self.dataChanged.emit(self.createIndex(0, 0), self.createIndex(self.rowCount() -1, self.columnCount() - 1))
+		self.dataChanged.emit(self.createIndex(0, 0), self.createIndex(self.rowCount() -1, self.columnCount() - 1))
 		self.__currentTimestamp = None
 
 	def numRecordsToImport(self):
@@ -440,11 +439,15 @@ class TreeModel(QtCore.QAbstractItemModel):
 		self.dataSaved = True
 
 		# Tell the view our data has changed
-		self.dataChanged.emit(self.createIndex(index.row(), 0), self.createIndex(index.row(), self.columnCount() - 1))
+		self.dataChanged.emit(
+				self.createIndex(index.row(), 0, item), 
+				self.createIndex(index.row(), self.columnCount() - 1, item),
+			)
 
 	def getNodeItem(self, index):
 		if index.isValid():
 			return index.internalPointer()
+
 		return self._root
 
 	def checksum(self, data):
