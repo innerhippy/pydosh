@@ -35,13 +35,17 @@ class TreeItem(object):
 		super(TreeItem, self).__init__()
 		self._parent = None
 		self._error = None
+		self._imported = False
 		self._children = []
 
 	def isValid(self):
 		return True
 
-	def isImported(self):
-		return False
+	def setImported(self, imported):
+		pass
+
+	def checksum(self):
+		return None
 
 	def numRecordsToImport(self):
 		""" Returns the number of records left that can be imported
@@ -51,8 +55,17 @@ class TreeItem(object):
 			num += child.numRecordsToImport()
 		return num
 
+	def setRecordsImported(self, checksums):
+		checksum = self.checksum()
+
+		if checksum is not None:
+			self.setImported(checksum in checksums)
+
+		for child in self._children:
+			child.setRecordsImported(checksums)
+
 	def numRecordsImported(self):
-		num = self.isImported()
+		num = int(self._imported)
 		for child in self._children:
 			num += child.numRecordsImported()
 		return num
@@ -65,9 +78,9 @@ class TreeItem(object):
 			num += child.numBadRecords()
 		return num
 
-	def process(self, dateField, descriptionField, creditField, debitField, currencySign, dateFormat):
+	def formatItem(self, dateField, descriptionField, creditField, debitField, currencySign, dateFormat):
 		for child in self._children:
-			child.process(dateField, descriptionField, creditField, debitField, currencySign, dateFormat)
+			child.formatItem(dateField, descriptionField, creditField, debitField, currencySign, dateFormat)
 
 	def reset(self):
 		for child in self._children:
@@ -126,26 +139,37 @@ class CsvFileItem(TreeItem):
 
 	def data(self, column, role):
 		if role == QtCore.Qt.DisplayRole and column == 0:
-			return QtCore.QVariant(self._filename)
+			return QtCore.QVariant(QtCore.QFileInfo(self._filename).fileName())
 		return QtCore.QVariant()
 
 class CsvRecordItem(TreeItem):
 	def __init__(self, rawData):
 		super(CsvRecordItem, self).__init__()
-		self._rawData = rawData
-		self._imported = False
-		self._fields = self._csvReader([rawData.data().decode('utf8')]).next()
-		self.reset()
-
-	def reset(self):
 		self._date = None
 		self._desc = None
 		self._txDate = None
 		self._credit = None
 		self._debit = None
 		self._error = None
-		self._processed = False
-		self.data = self._dataFuncRaw
+		self._rawData = rawData
+		self._fields = self._csvReader([rawData.data().decode('utf8')]).next()
+		self.reset()
+
+
+	def reset(self):
+		self._setFormatted(False)
+		return
+		self._date = None
+		self._desc = None
+		self._txDate = None
+		self._credit = None
+		self._debit = None
+		self._error = None
+		self._formatted = False
+
+	def _setFormatted(self, formatted):
+		self._formatted = formatted
+		self.data = self._dataFuncProcessed if formatted else self._dataFuncRaw
 
 	def checksum(self):
 		return QtCore.QString(QtCore.QCryptographicHash.hash(self._rawData, QtCore.QCryptographicHash.Md5).toHex())
@@ -161,14 +185,11 @@ class CsvRecordItem(TreeItem):
 			'checksum': self.checksum(),
 		}
 
-	def isImported(self):
-		return self._imported
-
 	def setImported(self, imported):
 		self._imported = imported
 
 	def isSelectable(self):
-		return self._processed and self.canImport()
+		return self._formatted and self.canImport()
 
 	def canImport(self):
 		return self.isValid() and not self._imported
@@ -197,7 +218,7 @@ class CsvRecordItem(TreeItem):
 		return self._rawData and not self._error
 
 	def columnCount(self):
-		if not self._processed:
+		if not self._formatted:
 			return len(self._fields)
 		elif self._error:
 			return 1
@@ -240,9 +261,9 @@ class CsvRecordItem(TreeItem):
 
 		return QtCore.QVariant()
 
-	def process(self, dateIdx, descriptionIdx, creditIdx, debitIdx, currencySign, dateFormat):
+	def formatItem(self, dateIdx, descriptionIdx, creditIdx, debitIdx, currencySign, dateFormat):
 
-		self.reset()
+#		self.reset()
 
 		if not self.isValid():
 			return
@@ -279,8 +300,8 @@ class CsvRecordItem(TreeItem):
 			self._error = str(exc)
 
 		finally:
-			self._processed = True
-			self.data = self._dataFuncProcessed
+			self._setFormatted(True)
+
 
 	def __getAmountField(self, field):
 		""" Extract and return amount (double). If a simple conversion doesn't
@@ -353,8 +374,8 @@ class TreeModel(QtCore.QAbstractItemModel):
 		self._headers = []
 		self._root = TreeItem()
 		self._checksums = []
+		self._checksumsSaved = None
 		self.__currentTimestamp = None
-		self.dataSaved = False
 
 		# Import all record checksums
 		query = QtSql.QSqlQuery('SELECT checksum from records where userid=%d' % db.userId)
@@ -364,18 +385,29 @@ class TreeModel(QtCore.QAbstractItemModel):
 		while query.next():
 			self._checksums.append(query.value(0).toString())
 
+		self._checksumsSaved = self._checksums[:]
+
 		for item in self.readFiles(files):
 			self._root.appendChild(item)
+
+		self._root.setRecordsImported(self._checksums)
 
 		self._numColumns = self._root.maxColumns()
 		self._headers = range(self._numColumns)
 
 	def reset(self):
-#		self.__records = deepcopy(self.__recordsRollback)
-		self._root.reset()
-		self.dataSaved = False
-		self.dataChanged.emit(self.createIndex(0, 0), self.createIndex(self.rowCount() -1, self.columnCount() - 1))
+		self._checksums = self._checksumsSaved[:]
+#		self._root.reset()
+		#self.beginResetModel()
+		self._root.setRecordsImported(self._checksums)
 		self.__currentTimestamp = None
+		#self.endResetModel()
+		#super(TreeModel, self).reset()
+		
+#		self.dataChanged.emit(
+#			self.createIndex(0, 0), 
+#			self.createIndex(self.rowCount() -1, self.columnCount() - 1)
+#		)
 
 	def numRecordsToImport(self):
 		return self._root.numRecordsToImport()
@@ -397,7 +429,7 @@ class TreeModel(QtCore.QAbstractItemModel):
 				self._headers = range(self._root.maxColumns())
 			else:
 				dateField, descriptionField, creditField, debitField, currencySign, dateFormat = accountData
-				self._root.process(dateField, descriptionField, creditField, debitField, currencySign, dateFormat)
+				self._root.formatItem(dateField, descriptionField, creditField, debitField, currencySign, dateFormat)
 				self._headers = ['Status', 'Date', 'Tx Date', 'Credit', 'Debit', 'Description']
 
 		self._numColumns = self._root.maxColumns()
@@ -435,14 +467,15 @@ class TreeModel(QtCore.QAbstractItemModel):
 		if query.lastError().isValid():
 			raise ImportException(query.lastError().text())
 
+		self._checksums.append(rec['checksum'])
 		item.setImported(True)
-		self.dataSaved = True
+#			self.dataChanged.emit(index, index)
 
 		# Tell the view our data has changed
-		self.dataChanged.emit(
-				self.createIndex(index.row(), 0, item), 
-				self.createIndex(index.row(), self.columnCount() - 1, item),
-			)
+#		self.dataChanged.emit(
+#				self.createIndex(index.row(), 0, item), 
+#				self.createIndex(index.row(), self.columnCount() - 1, item),
+#			)
 
 	def getNodeItem(self, index):
 		if index.isValid():
@@ -461,15 +494,9 @@ class TreeModel(QtCore.QAbstractItemModel):
 			if not csvfile.open(QtCore.QIODevice.ReadOnly | QtCore.QIODevice.Text):
 				raise Exception('Cannot open file %r' % filename)
 
-			i = 0
 			while not csvfile.atEnd():
-				i += 1
 				rawData = csvfile.readLine().trimmed()
 				recItem = CsvRecordItem(rawData)
-
-				if self.checksum(rawData) in self._checksums or (i % 3):
-					recItem.setImported(True)
-
 				item.appendChild(recItem)
 
 			yield item
@@ -501,7 +528,7 @@ class TreeModel(QtCore.QAbstractItemModel):
 				return self._headers[section]
 			except IndexError:
 				pass
-			 
+
 		return QtCore.QVariant()
 
 	def index(self, row, column, parent=QtCore.QModelIndex()):
@@ -538,14 +565,6 @@ class TreeModel(QtCore.QAbstractItemModel):
 		item = self.getNodeItem(parent)
 		return item.childCount()
 
-def resizeColumns(index):
-	if not index.isValid():
-		return
-	item = index.internalPointer()
-	print item.columnCount()
-	for column in xrange(item.columnCount()):
-		print column
-
 def main():
 	app = QtGui.QApplication(sys.argv)
 	model = TreeModel(['test1.csv', 'test2.csv', 'test3.csv'])
@@ -560,7 +579,6 @@ def main():
 	layout.addWidget(combo)
 
 	tree = QtGui.QTreeView()
-#	tree.expanded.connect(resizeColumns)
 	tree.setModel(model)
 	
 	tree.expandAll()
