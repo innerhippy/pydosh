@@ -293,6 +293,12 @@ class CsvRecordItem(TreeItem):
 	def formatItem(self, dateIdx, descriptionIdx, creditIdx, debitIdx, currencySign, dateFormat):
 
 #		self.reset()
+		self._date = None
+		self._desc = None
+		self._txDate = None
+		self._credit = None
+		self._debit = None
+		self._error = None
 
 		if not self.isValid():
 			return
@@ -329,7 +335,6 @@ class CsvRecordItem(TreeItem):
 			self._error = str(exc)
 
 		finally:
-			print 'yep'
 			self._setFormatted(True)
 
 
@@ -453,8 +458,8 @@ class ImportModel(QtCore.QAbstractItemModel):
 
 			Get settings for the account and create new model to decode the data
 		"""
-		print accountData
-		#self.beginResetModel()
+		self.beginResetModel()
+
 		with utils.showWaitCursor():
 			if accountData is None:
 				self._root.reset()
@@ -465,8 +470,8 @@ class ImportModel(QtCore.QAbstractItemModel):
 				self._headers = ['Status', 'Date', 'Tx Date', 'Credit', 'Debit', 'Description']
 
 		self._numColumns = self._root.maxColumns()
-		self.modelReset.emit()
-		#self.endResetModel()
+
+		self.endResetModel()
 
 	def saveRecord(self, accountId, index):
 		""" Saves the import record to the database
@@ -502,13 +507,7 @@ class ImportModel(QtCore.QAbstractItemModel):
 
 		self._checksums.append(rec['checksum'])
 		item.setImported(True)
-#			self.dataChanged.emit(index, index)
-
-		# Tell the view our data has changed
-#		self.dataChanged.emit(
-#				self.createIndex(index.row(), 0, item), 
-#				self.createIndex(index.row(), self.columnCount() - 1, item),
-#			)
+		self.dataChanged.emit(index, index)
 
 	def getNodeItem(self, index):
 		if index.isValid():

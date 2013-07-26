@@ -60,14 +60,10 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		#model.importChanged.connect(self.setImportChanged)
 		self.view.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 		self.view.expandAll()
-#		self.view.resizeColumnsToContents()
 
 		self.view.selectionModel().selectionChanged.connect(self._recordsSelected)
-		#self.accountTypeComboBox.currentIndexChanged.connect(model.accountChanged)
 		self.accountTypeComboBox.currentIndexChanged.connect(self._accountChanged)
-		
-		
-		
+
 		self.importCancelButton.clicked.connect(self.__importCancelPressed)
 		self.selectAllButton.clicked.connect(self.view.selectAll)
 		self.closeButton.clicked.connect(self.__close)
