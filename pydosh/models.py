@@ -1,12 +1,10 @@
-from exceptions import ImportException
+import re
 from PyQt4 import QtCore, QtGui, QtSql
 import enum
 import csv
 from database import db
 import utils
 import pydosh_rc
-
-import pdb
 
 class DecoderError(Exception):
 	""" General Decoder exceptions
@@ -123,7 +121,7 @@ class TreeItem(object):
 
 	def appendChild(self, child):
 		child.setParent(self)
-		self._children.append(child)	
+		self._children.append(child)
 
 	def child(self, row):
 		return self._children[row]
@@ -180,21 +178,13 @@ class CsvRecordItem(TreeItem):
 		self._credit = None
 		self._debit = None
 		self._error = None
+		self._formatted = False
 		self._rawData = rawData
 		self._fields = self._csvReader([rawData.data().decode('utf8')]).next()
 		self.reset()
 
-
 	def reset(self):
 		self._setFormatted(False)
-		return
-		self._date = None
-		self._desc = None
-		self._txDate = None
-		self._credit = None
-		self._debit = None
-		self._error = None
-		self._formatted = False
 
 	def _setFormatted(self, formatted):
 		self._formatted = formatted
@@ -292,7 +282,6 @@ class CsvRecordItem(TreeItem):
 
 	def formatItem(self, dateIdx, descriptionIdx, creditIdx, debitIdx, currencySign, dateFormat):
 
-#		self.reset()
 		self._date = None
 		self._desc = None
 		self._txDate = None
@@ -402,7 +391,6 @@ class CsvRecordItem(TreeItem):
 
 
 class ImportModel(QtCore.QAbstractItemModel):
-	#importChanged = QtCore.pyqtSignal(int)
 
 	def __init__(self, files, parent=None):
 		super(ImportModel, self).__init__(parent=parent)
@@ -432,17 +420,10 @@ class ImportModel(QtCore.QAbstractItemModel):
 
 	def reset(self):
 		self._checksums = self._checksumsSaved[:]
-#		self._root.reset()
-		#self.beginResetModel()
+		self.beginResetModel()
 		self._root.setRecordsImported(self._checksums)
+		self.endResetModel()
 		self.__currentTimestamp = None
-		#self.endResetModel()
-		#super(ImportModel, self).reset()
-		
-#		self.dataChanged.emit(
-#			self.createIndex(0, 0), 
-#			self.createIndex(self.rowCount() -1, self.columnCount() - 1)
-#		)
 
 	def numRecordsToImport(self):
 		return self._root.numRecordsToImport()
@@ -596,7 +577,6 @@ class ImportModel(QtCore.QAbstractItemModel):
 
 		item = self.getNodeItem(parent)
 		return item.childCount()
-
 
 
 class RecordModel(QtSql.QSqlTableModel):

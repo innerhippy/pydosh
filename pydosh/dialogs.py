@@ -1,7 +1,4 @@
-import pdb
-import re
 from PyQt4 import QtCore, QtGui, QtSql
-QtCore.pyqtRemoveInputHook()
 
 from ui_settings import Ui_Settings
 from ui_login import Ui_Login
@@ -23,7 +20,6 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 		self.setupUi(self)
 		self.__dataSaved = False
-		self.__rawData = {}
 		self.__importInProgress = False
 		self.__cancelImport = False
 		self.__accountIdMap = {}
@@ -57,7 +53,6 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.selectAllButton.setEnabled(False)
 		self.view.setModel(model)
 		model.modelReset.connect(self.view.expandAll)
-		#model.importChanged.connect(self.setImportChanged)
 		self.view.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 		self.view.expandAll()
 
@@ -67,7 +62,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.importCancelButton.clicked.connect(self.__importCancelPressed)
 		self.selectAllButton.clicked.connect(self.view.selectAll)
 		self.closeButton.clicked.connect(self.__close)
-		
+
 		self.accountTypeComboBox.setCurrentIndex(0)
 
 	def _accountChanged(self, index):
@@ -75,12 +70,9 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		model.accountChanged(self.accountTypeComboBox.itemData(index).toPyObject())
 		self.selectAllButton.setEnabled(bool(model.numRecordsToImport()))
 		self.__setCounters()
-		
+
 		for column in xrange(model.columnCount()):
 			self.view.resizeColumnToContents(column)
-
-	def setImportChanged(self, num):
-		print num
 
 	def __importCancelPressed(self):
 		if self.__importInProgress:

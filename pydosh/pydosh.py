@@ -3,7 +3,7 @@ from PyQt4 import QtGui, QtCore
 from dialogs import LoginDialog
 from main import PydoshWindow
 import stylesheet
-QtCore.pyqtRemoveInputHook()
+#QtCore.pyqtRemoveInputHook()
 import pydosh_rc
 
 def main():
