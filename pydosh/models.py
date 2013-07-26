@@ -1,12 +1,14 @@
-from copy import deepcopy
-import operator
+import re
 from PyQt4 import QtCore, QtGui, QtSql
 import enum
+import csv
 from database import db
 import utils
 import pydosh_rc
 
-import pdb
+class DecoderError(Exception):
+	""" General Decoder exceptions
+	"""
 
 class ImportException(Exception):
 	""" General exception for record import
@@ -43,19 +45,421 @@ class ImportRecord(object):
 	def __repr__(self):
 		return '%r' % str(self)
 
-class ImportModel(QtCore.QAbstractTableModel):
-	def __init__(self, parent=None):
+def unicode_csv_reader(unicode_csv_data, dialect=csv.excel, **kwargs):
+	# csv.py doesn't do Unicode; encode temporarily as UTF-8:
+	csv_reader = csv.reader(utf_8_encoder(unicode_csv_data),
+						dialect=dialect, **kwargs)
+	for row in csv_reader:
+		# decode UTF-8 back to Unicode, cell by cell:
+		yield [unicode(cell, 'utf-8') for cell in row]
+
+def utf_8_encoder(unicode_csv_data):
+	for line in unicode_csv_data:
+		yield line.encode('utf-8')
+
+class TreeItem(object):
+	def __init__(self):
+		super(TreeItem, self).__init__()
+		self._parent = None
+		self._error = None
+		self._imported = False
+		self._children = []
+
+	def isValid(self):
+		return True
+
+	def setImported(self, imported):
+		pass
+
+	def checksum(self):
+		return None
+
+	def numRecordsToImport(self):
+		""" Returns the number of records left that can be imported
+		"""
+		num = 1 if self.canImport() else 0
+		for child in self._children:
+			num += child.numRecordsToImport()
+		return num
+
+	def setRecordsImported(self, checksums):
+		checksum = self.checksum()
+
+		if checksum is not None:
+			self.setImported(checksum in checksums)
+
+		for child in self._children:
+			child.setRecordsImported(checksums)
+
+	def numRecordsImported(self):
+		num = int(self._imported)
+		for child in self._children:
+			num += child.numRecordsImported()
+		return num
+
+	def numBadRecords(self):
+		""" Returns total number of bad records in tree model
+		"""
+		num = int(not self.isValid())
+		for child in self._children:
+			num += child.numBadRecords()
+		return num
+
+	def formatItem(self, dateField, descriptionField, creditField, debitField, currencySign, dateFormat):
+		for child in self._children:
+			child.formatItem(dateField, descriptionField, creditField, debitField, currencySign, dateFormat)
+
+	def reset(self):
+		for child in self._children:
+			child.reset()
+
+	def setParent(self, parent):
+		self._parent = parent
+
+	def maxColumns(self):
+		return max([self.columnCount()] + [child.maxColumns() for child in self._children])
+
+	def appendChild(self, child):
+		child.setParent(self)
+		self._children.append(child)
+
+	def child(self, row):
+		return self._children[row]
+
+	def children(self):
+		return iter(self._children)
+
+	def childCount(self):
+		return len(self._children)
+
+	def columnCount(self):
+		return 0
+		raise NotImplementedError
+
+	def data(self, column, role):
+		raise NotImplementedError
+
+	def parent(self):
+		return self._parent
+
+	def indexOf(self, child):
+		return self._children.index(child)
+
+	def row(self):
+		if self._parent:
+			return self._parent.indexOf(self)
+		return 0
+
+	def canImport(self):
+		return False
+
+	def isSelectable(self):
+		return False
+
+class CsvFileItem(TreeItem):
+	def __init__(self, filename):
+		super(CsvFileItem, self).__init__()
+		self._filename = filename
+
+	def columnCount(self):
+		return 1
+
+	def data(self, column, role):
+		if role == QtCore.Qt.DisplayRole and column == 0:
+			return QtCore.QVariant(QtCore.QFileInfo(self._filename).fileName())
+		return QtCore.QVariant()
+
+class CsvRecordItem(TreeItem):
+	def __init__(self, rawData):
+		super(CsvRecordItem, self).__init__()
+		self._date = None
+		self._desc = None
+		self._txDate = None
+		self._credit = None
+		self._debit = None
+		self._error = None
+		self._formatted = False
+		self._rawData = rawData
+		self._fields = self._csvReader([rawData.data().decode('utf8')]).next()
+		self.reset()
+
+	def reset(self):
+		self._setFormatted(False)
+
+	def _setFormatted(self, formatted):
+		self._formatted = formatted
+		self.data = self._dataFuncProcessed if formatted else self._dataFuncRaw
+
+	def checksum(self):
+		return QtCore.QString(QtCore.QCryptographicHash.hash(self._rawData, QtCore.QCryptographicHash.Md5).toHex())
+
+	def dataDict(self):
+		return {
+			'date': 	self._date,
+			'desc': 	self._desc,
+			'credit': 	self._credit,
+			'debit': 	self._debit,
+			'txdate': 	self._txDate,
+			'raw': 		QtCore.QString.fromUtf8(self._rawData),
+			'checksum': self.checksum(),
+		}
+
+	def setImported(self, imported):
+		self._imported = imported
+
+	def isSelectable(self):
+		return self._formatted and self.canImport()
+
+	def canImport(self):
+		return self.isValid() and not self._imported
+
+	def _csvReader(self, data):
+		# csv.py doesn't do Unicode; encode temporarily as UTF-8:
+		for row in csv.reader(self._encoder(data), dialect=csv.excel):
+			# decode UTF-8 back to Unicode, cell by cell:
+			yield [unicode(cell, 'utf-8') for cell in row]
+	
+	def _encoder(self, data):
+		for line in data:
+			yield line.encode('utf-8')
+
+	@property
+	def _status(self):
+		if self._rawData is None:
+			return 'Invalid'
+		elif self._error is not None:
+			return self._error
+		elif self._imported:
+			return 'Imported'
+		return 'Ready'
+
+	def isValid(self):
+		return self._rawData and not self._error
+
+	def columnCount(self):
+		if not self._formatted:
+			return len(self._fields)
+		elif self._error:
+			return 1
+		return 6
+
+	def _dataFuncRaw(self, column, role):
+		if role == QtCore.Qt.DisplayRole:
+			try:
+				return QtCore.QVariant(self._fields[column])
+			except IndexError:
+				pass
+		return QtCore.QVariant()
+
+	def _dataFuncProcessed(self, column, role):
+
+		if role == QtCore.Qt.ForegroundRole:
+			if column == enum.kImportColumn_Status:
+				if not self.isValid():
+					return QtCore.QVariant(QtGui.QColor(255, 0, 0))
+				elif self._imported:
+					return QtCore.QVariant(QtGui.QColor(255, 165, 0))
+				return QtCore.QVariant(QtGui.QColor(0, 255, 0))
+
+		elif role == QtCore.Qt.DisplayRole:
+			if column == enum.kImportColumn_Status:
+				return QtCore.QVariant(self._status)
+			elif column == enum.kImportColumn_Date:
+				return QtCore.QVariant(self._date)
+			elif column == enum.kImportColumn_TxDate:
+				return QtCore.QVariant(self._txDate)
+			elif column == enum.kImportColumn_Credit:
+				return QtCore.QVariant('%.02f' % self._credit if self._credit else None)
+			elif column == enum.kImportColumn_Debit:
+				return QtCore.QVariant('%.02f' % abs(self._debit) if self._debit else None)
+			elif column == enum.kImportColumn_Description:
+				return QtCore.QVariant(self._desc)
+
+		elif role == QtCore.Qt.ToolTipRole:
+			return QtCore.QVariant(QtCore.QString.fromUtf8(self._rawData))
+
+		return QtCore.QVariant()
+
+	def formatItem(self, dateIdx, descriptionIdx, creditIdx, debitIdx, currencySign, dateFormat):
+
+		self._date = None
+		self._desc = None
+		self._txDate = None
+		self._credit = None
+		self._debit = None
+		self._error = None
+
+		if not self.isValid():
+			return
+
+		try:
+			if max(dateIdx, descriptionIdx, creditIdx, debitIdx) > len(self._fields) -1:
+				raise DecoderError('Bad Record')
+
+			self._date = self.__getDateField(self._fields[dateIdx], dateFormat)
+			self._desc = QtCore.QString(self._fields[descriptionIdx])
+			self._txDate = self.__getTransactionDate(self._fields[descriptionIdx], dateIdx)
+
+			if debitIdx == creditIdx:
+				amount = self.__getAmountField(self._fields[debitIdx])
+				if amount is not None:
+					# Use currency multiplier to ensure that credit is +ve (money in),
+					# debit -ve (money out)
+					amount *= currencySign
+
+					if amount > 0.0:
+						self._credit = amount
+					else:
+						self._debit = amount
+			else:
+				debitField = self.__getAmountField(self._fields[debitIdx])
+				creditField = self.__getAmountField(self._fields[creditIdx])
+				self._debit = abs(debitField) * -1.0 if debitField else None
+				self._credit = abs(creditField) if creditField else None
+
+			if not self._debit and not self._credit:
+				raise DecoderError('No credit or debit found')
+
+		except DecoderError, exc:
+			self._error = str(exc)
+
+		finally:
+			self._setFormatted(True)
+
+
+	def __getAmountField(self, field):
+		""" Extract and return amount (double). If a simple conversion doesn't
+			succeed, then try and parse the string to remove any currency sign
+			or other junk.
+
+			Returns None if field does not contain valid double.
+		"""
+
+		# Get rid of commas from amount field and try and covert to double
+		field = field.replace(',', '')
+		value, ok = QtCore.QVariant(field).toDouble()
+
+		if not ok:
+			# Probably has currency sign - extract all valid currency characters
+			match = re.search('([\d\-\.]+)', field)
+			if match:
+				value, ok = QtCore.QVariant(match.group(1)).toDouble()
+
+		if ok:
+			return value
+
+		return None
+
+	def __getTransactionDate(self, field, dateField):
+		""" Try and extract a transaction date from the description field.
+			Value format are ddMMMyy hhmm, ddMMMyy and ddMMM. 
+			When the year is not available (or 2 digits) then the value validated date field
+			is used
+		"""
+		timeDate = None
+
+		#Format is "23DEC09 1210"
+		rx = QtCore.QRegExp('(\\d\\d[A-Z]{3}\\d\\d \\d{4})')
+		if rx.indexIn(field) != -1:
+			timeDate = QtCore.QDateTime.fromString (rx.cap(1), "ddMMMyy hhmm").addYears(100)
+
+		if timeDate is None:
+			# Format is "06NOV10"
+			rx = QtCore.QRegExp('(\\d{2}[A-Z]{3}\\d{2})')
+			if rx.indexIn(field) != -1:
+				timeDate = QtCore.QDateTime.fromString (rx.cap(1), "ddMMMyy").addYears(100)
+
+		# Format is " 06NOV" <- note the stupid leading blank space..
+		if timeDate is None:
+			rx = QtCore.QRegExp(' (\\d\\d[A-Z]{3})')
+			if rx.indexIn(field) != -1:
+				# Add the year from date field to the transaction date
+				timeDate = QtCore.QDateTime.fromString (rx.cap(1) + dateField.toString("yyyy"), "ddMMMyyyy")
+
+		if timeDate is not None and timeDate.isValid():
+			return timeDate
+
+	def __getDateField(self, field, dateFormat):
+		""" Extract date field using supplied format 
+		"""
+		date = QtCore.QDate.fromString(field, dateFormat)
+
+		if not date.isValid():
+			raise DecoderError('Invalid date: %r' % field)
+
+		return date
+
+
+class ImportModel(QtCore.QAbstractItemModel):
+
+	def __init__(self, files, parent=None):
 		super(ImportModel, self).__init__(parent=parent)
-		self.__records = []
-		self.__recordsRollback = None
-		self.dataSaved = False
+		self._headers = []
+		self._root = TreeItem()
+		self._checksums = []
+		self._checksumsSaved = None
 		self.__currentTimestamp = None
+
+		# Import all record checksums
+		query = QtSql.QSqlQuery('SELECT checksum from records where userid=%d' % db.userId)
+		if query.lastError().isValid():
+			raise Exception(query.lastError().text())
+
+		while query.next():
+			self._checksums.append(query.value(0).toString())
+
+		self._checksumsSaved = self._checksums[:]
+
+		for item in self.readFiles(files):
+			self._root.appendChild(item)
+
+		self._root.setRecordsImported(self._checksums)
+
+		self._numColumns = self._root.maxColumns()
+		self._headers = range(self._numColumns)
+
+	def reset(self):
+		self._checksums = self._checksumsSaved[:]
+		self.beginResetModel()
+		self._root.setRecordsImported(self._checksums)
+		self.endResetModel()
+		self.__currentTimestamp = None
+
+	def numRecordsToImport(self):
+		return self._root.numRecordsToImport()
+
+	def numBadRecords(self):
+		return self._root.numBadRecords()
+
+	def numRecordsImported(self):
+		return self._root.numRecordsImported()
+
+	def accountChanged(self, accountData):
+		""" Account selection has changed
+
+			Get settings for the account and create new model to decode the data
+		"""
+		self.beginResetModel()
+
+		with utils.showWaitCursor():
+			if accountData is None:
+				self._root.reset()
+				self._headers = range(self._root.maxColumns())
+			else:
+				dateField, descriptionField, creditField, debitField, currencySign, dateFormat = accountData
+				self._root.formatItem(dateField, descriptionField, creditField, debitField, currencySign, dateFormat)
+				self._headers = ['Status', 'Date', 'Tx Date', 'Credit', 'Debit', 'Description']
+
+		self._numColumns = self._root.maxColumns()
+
+		self.endResetModel()
 
 	def saveRecord(self, accountId, index):
 		""" Saves the import record to the database
 			Raises ImportException on error
 		"""
-		rec = self.__records[index.row()]
+		item = self.getNodeItem(index)
+		rec = item.dataDict()
 
 		# Ensure we record the same timestamp for this import
 		self.__currentTimestamp = self.__currentTimestamp or QtCore.QDateTime.currentDateTime()
@@ -67,183 +471,113 @@ class ImportModel(QtCore.QAbstractTableModel):
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 			""")
 
-		query.addBindValue(rec.date)
+		query.addBindValue(rec['date'])
 		query.addBindValue(db.userId)
 		query.addBindValue(accountId)
-		query.addBindValue(rec.desc)
-		query.addBindValue(rec.txdate)
-		query.addBindValue(rec.credit or rec.debit)
+		query.addBindValue(rec['desc'])
+		query.addBindValue(rec['txdate'])
+		query.addBindValue(rec['credit'] or rec['debit'])
 		query.addBindValue(self.__currentTimestamp)
-		query.addBindValue(QtCore.QString.fromUtf8(rec.data))
-		query.addBindValue(rec.checksum)
+		query.addBindValue(rec['raw'])
+		query.addBindValue(rec['checksum'])
 
 		query.exec_()
 
 		if query.lastError().isValid():
 			raise ImportException(query.lastError().text())
 
-		rec.imported = True
-		self.dataSaved = True
+		self._checksums.append(rec['checksum'])
+		item.setImported(True)
+		self.dataChanged.emit(index, index)
 
-		# Tell the view our data has changed
-		self.dataChanged.emit(self.createIndex(index.row(), 0), self.createIndex(index.row(), self.columnCount() - 1))
+	def getNodeItem(self, index):
+		if index.isValid():
+			return index.internalPointer()
 
-	def reset(self):
-		""" Slot to cancel all changes and revert to original records
-		"""
-		self.__records = deepcopy(self.__recordsRollback)
-		self.dataSaved = False
-		self.dataChanged.emit(self.createIndex(0, 0), self.createIndex(self.rowCount() -1, self.columnCount() - 1))
-		self.__currentTimestamp = None
+		return self._root
 
-	def save(self):
-		""" Slot to persist changes to records
-		"""
-		self.__recordsRollback = deepcopy(self.__records)
-		self.__currentTimestamp = None
+	def checksum(self, data):
+		return QtCore.QString(QtCore.QCryptographicHash.hash(data, QtCore.QCryptographicHash.Md5).toHex())
+
+	def readFiles(self, files):
+		for filename in files:
+			item = CsvFileItem(filename)
+			csvfile = QtCore.QFile(filename)
+
+			if not csvfile.open(QtCore.QIODevice.ReadOnly | QtCore.QIODevice.Text):
+				raise Exception('Cannot open file %r' % filename)
+
+			while not csvfile.atEnd():
+				rawData = csvfile.readLine().trimmed()
+				recItem = CsvRecordItem(rawData)
+				item.appendChild(recItem)
+
+			yield item
+
+	def columnCount(self, parent=QtCore.QModelIndex()):
+		return self._numColumns
+
+	def data(self, index, role=QtCore.Qt.DisplayRole):
+		if not index.isValid():
+			return QtCore.QVariant()
+
+		item = self.getNodeItem(index)
+		return item.data(index.column(), role)
 
 	def flags(self, index):
 		""" Only allow selection on records that can be imported
 		"""
-		flags = super(ImportModel, self).flags(index)
+		if not index.isValid():
+			return 0
 
-		if not self.__canImport(index):
-			return flags ^ QtCore.Qt.ItemIsSelectable
-		return flags
+		if self.getNodeItem(index).isSelectable():
+			return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
 
+		return QtCore.Qt.ItemIsEnabled
 
-	def loadRecords(self, records):
-		""" Import the records into our model
-			An input record is a tuple containing
-			(rawData, date, description, txDate, debit, credit, error,)
+	def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
+		if role == QtCore.Qt.DisplayRole and orientation == QtCore.Qt.Horizontal:
+			try:
+				return self._headers[section]
+			except IndexError:
+				pass
 
-			The record is checked to see if it's already been imported into the database.
-			For this we use the md5 checksum on the rawData field
-		"""
-		existingRecords = []
-		query = QtSql.QSqlQuery('SELECT checksum from records where userid=%d' % db.userId)
+		return QtCore.QVariant()
 
-		if query.lastError().isValid():
-			raise ImportException(query.lastError().text())
+	def index(self, row, column, parent=QtCore.QModelIndex()):
 
-		while query.next():
-			existingRecords.append(query.value(0).toString())
+		if not self.hasIndex(row, column, parent):
+			return QtCore.QModelIndex()
 
-		recordsLoaded = set()
+		parentItem = self.getNodeItem(parent)
+		childItem = parentItem.child(row)
 
-		for record in set(records):
-			rec = ImportRecord(*record)
+		if childItem:
+			return self.createIndex( row, column, childItem)
 
-			# Flag record as already imported
-			if rec.valid and rec.checksum in existingRecords:
-				rec.imported = True
+		return QtCore.QModelIndex()
 
-			# Only import unique records or invalid ones (so we can see the error)
-			if not rec.valid or rec.checksum not in recordsLoaded:
-				recordsLoaded.add(rec.checksum)
-				self.__records.append(rec)
+	def parent(self, index):
 
-		# Take a copy of the records in case we want to rollback
-		self.save()
+		if not index.isValid():
+			return QtCore.QModelIndex()
 
-	def __canImport(self, index):
-		""" Returns True if the record at index can be imported,
-			ie no error and hasn't been imported yet
-		"""
-		rec = self.__records[index.row()]
-		return not rec.imported and rec.valid
+		childItem = self.getNodeItem(index)
+		parentItem = childItem.parent()
+
+		if parentItem == self._root:
+			return QtCore.QModelIndex()
+
+		return self.createIndex(parentItem.row(), 0, parentItem)
 
 	def rowCount(self, parent=QtCore.QModelIndex()):
-		return len(self.__records)
 
-	def numBadRecords(self):
-		""" Returns the number of records with csv import errors
-		"""
-		return len([rec for rec in self.__records if not rec.valid])
+		if parent.column() > 0:
+			return 0
 
-	def numRecordsImported(self):
-		""" Returns the number of records that have already been imported
-		"""
-		return len([rec for rec in self.__records if rec.imported])
+		item = self.getNodeItem(parent)
+		return item.childCount()
 
-	def numRecordsToImport(self):
-		""" Returns the number of records left that can be imported
-		"""
-		return len([rec for rec in self.__records if rec.valid and not rec.imported])
-
-	def data(self, item, role=QtCore.Qt.DisplayRole):
-
-		if not item.isValid():
-			return QtCore.QVariant()
-
-		if role == QtCore.Qt.ForegroundRole:
-			if item.column() == 0:
-				if not self.__records[item.row()].valid:
-					return QtCore.QVariant(QtGui.QColor(255, 0, 0))
-				elif self.__records[item.row()].imported:
-					return QtCore.QVariant(QtGui.QColor(255, 165, 0))
-				return QtCore.QVariant(QtGui.QColor(0, 255, 0))
-
-		if role == QtCore.Qt.ToolTipRole:
-			return QtCore.QVariant(QtCore.QString.fromUtf8(self.__records[item.row()].data))
-
-		if role == QtCore.Qt.DisplayRole:
-			if item.column() == enum.kImportColumn_Status:
-				return QtCore.QVariant(self.__recordStatusToText(item))
-
-			elif item.column() == enum.kImportColumn_Date:
-				return QtCore.QVariant(self.__records[item.row()].date)
-
-			elif item.column() == enum.kImportColumn_TxDate:
-				return QtCore.QVariant(self.__records[item.row()].txdate)
-
-			elif item.column() == enum.kImportColumn_Credit:
-				amount =  self.__records[item.row()].credit
-				return QtCore.QVariant('%.02f' % amount if amount else None)
-
-			elif item.column() == enum.kImportColumn_Debit:
-				amount =  self.__records[item.row()].debit
-				return QtCore.QVariant('%.02f' % abs(amount) if amount else None)
-
-			elif item.column() == enum.kImportColumn_Description:
-				return QtCore.QVariant(self.__records[item.row()].desc)
-
-		return QtCore.QVariant()
-
-	def columnCount(self, index=QtCore.QModelIndex()):
-		""" Needs to match headerData
-		"""
-		return 6
-
-	def headerData (self, section, orientation, role):
-		if role == QtCore.Qt.DisplayRole:
-			if section == enum.kImportColumn_Status:
-				return "Status"
-			elif section == enum.kImportColumn_Date:
-				return "Date"
-			elif section == enum.kImportColumn_TxDate:
-				return "TxDate"
-			elif section == enum.kImportColumn_Credit:
-				return "Credit"
-			elif section == enum.kImportColumn_Debit:
-				return "Debit"
-			elif section == enum.kImportColumn_Description:
-				return "Description"
-		return QtCore.QVariant()
-
-	def __recordStatusToText(self, index):
-		""" Returns the record status:
-			"imported" if imported, or the error text or None
-		"""
-		rec = self.__records[index.row()]
-
-		if not rec.valid:
-			return rec.error
-
-		if rec.imported:
-			return "Imported"
-
-		return 'ready'
 
 class RecordModel(QtSql.QSqlTableModel):
 	def __init__(self, parent=None):

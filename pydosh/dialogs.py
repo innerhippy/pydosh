@@ -1,5 +1,5 @@
-import re
 from PyQt4 import QtCore, QtGui, QtSql
+
 from ui_settings import Ui_Settings
 from ui_login import Ui_Login
 from ui_import import Ui_Import
@@ -9,238 +9,70 @@ from database import db, DatabaseNotInitialisedException, ConnectionException
 from delegates import AccountDelegate
 from models import AccountEditModel, ImportModel
 
-import csv
-
-def unicode_csv_reader(unicode_csv_data, dialect=csv.excel, **kwargs):
-	# csv.py doesn't do Unicode; encode temporarily as UTF-8:
-	csv_reader = csv.reader(utf_8_encoder(unicode_csv_data),
-						dialect=dialect, **kwargs)
-	for row in csv_reader:
-		# decode UTF-8 back to Unicode, cell by cell:
-		yield [unicode(cell, 'utf-8') for cell in row]
-
-def utf_8_encoder(unicode_csv_data):
-	for line in unicode_csv_data:
-		yield line.encode('utf-8')
-
 class UserCancelledException(Exception):
 	""" Exception to indicate user has cancelled the current operation
 	"""
 
-class DecoderError(Exception):
-	""" General Decoder exceptions
-	"""
 
 class ImportDialog(Ui_Import, QtGui.QDialog):
 	def __init__(self, files, parent=None):
 		super(ImportDialog, self).__init__(parent=parent)
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 		self.setupUi(self)
-		self.__rawData = {}
+		self.__dataSaved = False
 		self.__importInProgress = False
 		self.__cancelImport = False
-		self.__accountsModel = None
+		self.__accountIdMap = {}
 
 		self.progressBar.setVisible(False)
 
-		accountModel = QtSql.QSqlTableModel(self)
-		accountModel.setTable('accounttypes')
-		accountModel.select()
+		model = QtSql.QSqlTableModel()
+		model.setTable('accounttypes')
+		model.select()
 
-		self.accountTypeComboBox.setModel(accountModel)
-		self.accountTypeComboBox.setModelColumn(enum.kAccountTypeColumn_AccountName)
+		self.accountTypeComboBox.addItem('Raw')
+
+		for row in xrange(model.rowCount()):
+			name = model.index(row, enum.kAccountTypeColumn_AccountName).data().toString()
+			dateIdx = model.index(row, enum.kAccountTypeColumn_DateField).data().toPyObject()
+			descIdx = model.index(row, enum.kAccountTypeColumn_DescriptionField).data().toPyObject()
+			creditIdx = model.index(row, enum.kAccountTypeColumn_CreditField).data().toPyObject()
+			debitIdx = model.index(row, enum.kAccountTypeColumn_DebitField).data().toPyObject()
+			currencySign = model.index(row, enum.kAccountTypeColumn_CurrencySign).data().toPyObject()
+			dateFormat = model.index(row, enum.kAccountTypeColumn_DateFormat).data().toString()
+			self.accountTypeComboBox.addItem(name, 
+				QtCore.QVariant((dateIdx, descIdx, creditIdx, debitIdx, currencySign, dateFormat,))
+			)
+			self.__accountIdMap[row +1] = model.index(row, enum.kAccountTypeColumn_AccountTypeId).data().toPyObject()
+
 		self.accountTypeComboBox.setCurrentIndex(-1)
 
-		self.__accountsModel = accountModel
-
-		model = QtGui.QStandardItemModel()
-
-		for filename in files:
-			csvfile = QtCore.QFile(filename)
-
-			if not csvfile.open(QtCore.QIODevice.ReadOnly | QtCore.QIODevice.Text):
-				raise Exception('Cannot open file %r' % filename)
-
-			while not csvfile.atEnd():
-				rawdata = csvfile.readLine().trimmed()
-				dataDict = self.__rawData.setdefault(filename, [])
-				dataDict.append(rawdata)
-
-				row =  unicode_csv_reader([rawdata.data().decode('utf8')]).next()
-				items = [QtGui.QStandardItem(item) for item in row]
-				model.appendRow(items)
+		model = ImportModel(files)
 
 		self.importCancelButton.setEnabled(False)
 		self.selectAllButton.setEnabled(False)
-
 		self.view.setModel(model)
-		self.view.resizeColumnsToContents()
+		model.modelReset.connect(self.view.expandAll)
+		self.view.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+		self.view.expandAll()
 
-		self.accountTypeComboBox.currentIndexChanged.connect(self.setAccountType)
+		self.view.selectionModel().selectionChanged.connect(self._recordsSelected)
+		self.accountTypeComboBox.currentIndexChanged.connect(self._accountChanged)
+
 		self.importCancelButton.clicked.connect(self.__importCancelPressed)
 		self.selectAllButton.clicked.connect(self.view.selectAll)
 		self.closeButton.clicked.connect(self.__close)
 
-	def setAccountType(self, index):
-		""" Account selection has changed
+		self.accountTypeComboBox.setCurrentIndex(0)
 
-			Get settings for the account and create new model to decode the data
-		"""
-		dateField = self.__accountsModel.index(index, enum.kAccountTypeColumn_DateField).data().toPyObject()
-		descriptionField = self.__accountsModel.index(index, enum.kAccountTypeColumn_DescriptionField).data().toPyObject()
-		creditField = self.__accountsModel.index(index, enum.kAccountTypeColumn_CreditField).data().toPyObject()
-		debitField = self.__accountsModel.index(index, enum.kAccountTypeColumn_DebitField).data().toPyObject()
-		currencySign = self.__accountsModel.index(index, enum.kAccountTypeColumn_CurrencySign).data().toPyObject()
-		dateFormat = self.__accountsModel.index(index, enum.kAccountTypeColumn_DateFormat).data().toString()
+	def _accountChanged(self, index):
+		model = self.view.model()
+		model.accountChanged(self.accountTypeComboBox.itemData(index).toPyObject())
+		self.selectAllButton.setEnabled(bool(model.numRecordsToImport()))
+		self.__setCounters()
 
-		model = ImportModel(self)
-		db.commit.connect(model.save)
-		db.rollback.connect(model.reset)
-
-		with utils.showWaitCursor():
-			records = self.__processRecords(dateField, descriptionField, creditField, debitField, currencySign, dateFormat)
-			model.loadRecords(records)
-
-			proxy = QtGui.QSortFilterProxyModel(model)
-			proxy.setSourceModel(model)
-			proxy.setFilterKeyColumn(0)
-
-			self.view.setModel(proxy)
-			self.view.verticalHeader().hide()
-			self.view.setSortingEnabled(True)
-			self.view.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
-			self.view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
-			self.view.horizontalHeader().setStretchLastSection(True)
-			self.view.sortByColumn(0, QtCore.Qt.AscendingOrder)
-			self.view.resizeColumnsToContents()
-			self.view.selectionModel().selectionChanged.connect(self.__recordsSelected)
-			self.importCancelButton.setEnabled(False)
-			self.selectAllButton.setEnabled(bool(model.numRecordsToImport()))
-			self.__setCounters()
-
-		# Hide txDate colum if we don't need it
-		for row in xrange(model.rowCount()):
-			if model.index(row, enum.kImportColumn_TxDate).data().isValid():
-				self.view.setColumnHidden(enum.kImportColumn_TxDate, False)
-				break
-		else:
-			self.view.setColumnHidden(enum.kImportColumn_TxDate, True)
-
-	def __processRecords(self, dateIdx, descriptionIdx, creditIdx, debitIdx, currencySign, dateFormat):
-		""" Generator to decode the raw csv data according to the account configuration.
-			Yields record containing verified data ready to be saved to database
-		"""
-
-		for filename, rawRecords in self.__rawData.iteritems():
-			for lineno, rawdata in enumerate(rawRecords):
-
-				if not rawdata:
-					continue
-
-				dateField = descField = txDate = debitField = creditField = None
-				row = unicode_csv_reader([rawdata.data().decode('utf8')]).next()
-
-				try:
-					if max(dateIdx, descriptionIdx, creditIdx, debitIdx) > len(row) -1:
-						raise DecoderError('Bad record')
-
-					dateField  = self.__getDateField(row[dateIdx], dateFormat)
-					descField  = row[descriptionIdx]
-					txDate     = self.__getTransactionDate(row[descriptionIdx], dateField)
-
-					if debitIdx == creditIdx:
-						amount = self.__getAmountField(row[debitIdx])
-						if amount is not None:
-							# Use currency multiplier to ensure that credit is +ve (money in),
-							# debit -ve (money out)
-							amount *= currencySign
-
-							if amount > 0.0:
-								creditField = amount
-							else:
-								debitField = amount
-					else:
-						debitField = self.__getAmountField(row[debitIdx])
-						creditField = self.__getAmountField(row[creditIdx])
-						debitField = abs(debitField) * -1.0 if debitField else None
-						creditField = abs(creditField) if creditField else None
-
-					if not debitField and not creditField:
-						raise DecoderError('No credit or debit found')
-
-				except DecoderError, exc:
-					error = '%s[%d]: %r' % (QtCore.QFileInfo(filename).fileName(), lineno, str(exc))
-					yield (rawdata, dateField, descField, txDate, debitField, creditField, error,)
-
-				except Exception, exc:
-					QtGui.QMessageBox.critical(
-						self, 'Import Error', str(exc),
-						QtGui.QMessageBox.Ok)
-
-				else:
-					yield (rawdata, dateField, descField, txDate, debitField, creditField, None,)
-
-	def __getDateField(self, field, dateFormat):
-		""" Extract date field using supplied format 
-		"""
-		date = QtCore.QDate.fromString(field, dateFormat)
-
-		if not date.isValid():
-			raise DecoderError('Invalid date: %r' % field)
-
-		return date
-
-	def __getTransactionDate(self, field, dateField):
-		""" Try and extract a transaction date from the description field.
-			Value format are ddMMMyy hhmm, ddMMMyy and ddMMM. 
-			When the year is not available (or 2 digits) then the value validated date field
-			is used
-		"""
-		timeDate = None
-
-		#Format is "23DEC09 1210"
-		rx = QtCore.QRegExp('(\\d\\d[A-Z]{3}\\d\\d \\d{4})')
-		if rx.indexIn(field) != -1:
-			timeDate = QtCore.QDateTime.fromString (rx.cap(1), "ddMMMyy hhmm").addYears(100)
-
-		if timeDate is None:
-			# Format is "06NOV10"
-			rx = QtCore.QRegExp('(\\d{2}[A-Z]{3}\\d{2})')
-			if rx.indexIn(field) != -1:
-				timeDate = QtCore.QDateTime.fromString (rx.cap(1), "ddMMMyy").addYears(100)
-
-		# Format is " 06NOV" <- note the stupid leading blank space..
-		if timeDate is None:
-			rx = QtCore.QRegExp(' (\\d\\d[A-Z]{3})')
-			if rx.indexIn(field) != -1:
-				# Add the year from date field to the transaction date
-				timeDate = QtCore.QDateTime.fromString (rx.cap(1) + dateField.toString("yyyy"), "ddMMMyyyy")
-
-		if timeDate is not None and timeDate.isValid():
-			return timeDate
-
-	def __getAmountField(self, field):
-		""" Extract and return amount (double). If a simple conversion doesn't
-			succeed, then try and parse the string to remove any currency sign
-			or other junk.
-
-			Returns None if field does not contain valid double.
-		"""
-
-		# Get rid of commas from amount field and try and covert to double
-		field = field.replace(',', '')
-		value, ok = QtCore.QVariant(field).toDouble()
-
-		if not ok:
-			# Probably has currency sign - extract all valid currency characters
-			match = re.search('([\d\-\.]+)', field)
-			if match:
-				value, ok = QtCore.QVariant(match.group(1)).toDouble()
-
-		if ok:
-			return value
-
-		return None
+		for column in xrange(model.columnCount()):
+			self.view.resizeColumnToContents(column)
 
 	def __importCancelPressed(self):
 		if self.__importInProgress:
@@ -249,12 +81,12 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			self.__importRecords()
 
 	def __setCounters(self):
-		model = self.view.model().sourceModel()
+		model = self.view.model()
 		self.errorsCounter.setNum(model.numBadRecords())
 		self.importedCounter.setNum(model.numRecordsImported())
 		self.toImportCounter.setNum(model.numRecordsToImport())
 
-	def __recordsSelected(self):
+	def _recordsSelected(self):
 		""" Enable button cancel when we have selection
 		"""
 		numSelected = len(self.view.selectionModel().selectedRows())
@@ -265,18 +97,14 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		""" Exit with bool value to indicate if data was saved,
 			but not if it's our initial model
 		"""
-		model = self.view.model()
-
-		if isinstance(model, QtGui.QStandardItemModel):
-			self.done(0)
-		else:
-			self.done(self.view.model().sourceModel().dataSaved)
+		self.done(self.__dataSaved)
 
 	def __importRecords(self):
 		""" Import selected rows to database
 		"""
-		index = self.accountTypeComboBox.currentIndex()
-		accountId = self.__accountsModel.index(index, enum.kAccountTypeColumn_AccountTypeId).data().toPyObject()
+		accountId = self.__accountIdMap[self.accountTypeComboBox.currentIndex()]
+
+		model = self.view.model()
 		selectionModel = self.view.selectionModel()
 		indexes = selectionModel.selectedRows()
 
@@ -286,8 +114,6 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		try:
 			self.progressBar.setVisible(True)
 
-			proxyModel = self.view.model()
-			dataModel = proxyModel.sourceModel()
 			self.progressBar.setValue(0)
 			self.progressBar.setMaximum(len(indexes))
 			self.view.clearSelection()
@@ -301,9 +127,8 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			# Wrap the import in a transaction
 			with db.transaction():
 				for num, index in enumerate(indexes, 1):
-					dataModel.saveRecord(accountId, proxyModel.mapToSource(index))
+					model.saveRecord(accountId, index)
 					self.view.scrollTo(index, QtGui.QAbstractItemView.EnsureVisible)
-					self.view.resizeColumnsToContents()
 					self.__setCounters()
 					QtCore.QCoreApplication.processEvents()
 					self.progressBar.setValue(self.progressBar.value() +1)
@@ -312,6 +137,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 						raise UserCancelledException
 
 				if num:
+					self.__dataSaved = True
 					if QtGui.QMessageBox.question(
 						self, 'Import', 'Imported %d records successfully' % num,
 						QtGui.QMessageBox.Save|QtGui.QMessageBox.Cancel) != QtGui.QMessageBox.Save:
@@ -319,7 +145,8 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 						raise UserCancelledException
 
 		except UserCancelledException:
-			dataModel.reset()
+			self.__dataSaved = False
+			model.reset()
 
 		except Exception, exc:
 			QtGui.QMessageBox.critical(self, 'Import Error', str(exc), QtGui.QMessageBox.Ok)
@@ -330,8 +157,9 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			self.closeButton.setEnabled(True)
 			self.importCancelButton.setText('Import')
 			self.progressBar.setVisible(False)
+			self.__setCounters()
 
-			canImport = bool(dataModel.numRecordsToImport())
+			canImport = bool(model.numRecordsToImport())
 			self.importCancelButton.setEnabled(canImport)
 			self.selectAllButton.setEnabled(canImport)
 
