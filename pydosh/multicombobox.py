@@ -1,11 +1,41 @@
+"""
+	This widget is a Python port of QxtCheckComboBox from http://dev.libqxt.org/libqxt/src
+	(published under public license, but not specifically GPL)
+"""
 from PyQt4 import QtCore, QtGui
-import utils
 import pydosh_rc
+import utils
+
+class MultiComboBoxModel(QtGui.QStandardItemModel):
+
+	checkStateChanged = QtCore.pyqtSignal()
+
+	def __init__(self, parent=None):
+		super(MultiComboBoxModel, self).__init__(0, 1, parent)
+
+	def flags(self, index):
+		return super(MultiComboBoxModel, self).flags(index) | QtCore.Qt.ItemIsUserCheckable
+
+	def data(self, index, role):
+		value = super(MultiComboBoxModel, self).data(index, role)
+
+		if index.isValid() and role == QtCore.Qt.CheckStateRole and not value.isValid():
+			value = QtCore.Qt.Unchecked
+
+		return value
+
+	def setData(self, index, value, role):
+		result = super(MultiComboBoxModel, self).setData(index, value, role)
+
+		if result and role == QtCore.Qt.CheckStateRole:
+			self.dataChanged.emit(index, index)
+			self.checkStateChanged.emit()
+		return result
 
 class MultiComboBox(QtGui.QComboBox):
 	""" Extension of QComboBox widget that allows for multiple selection
 	"""
-	# Signal containing list of selected indexes
+	# Signal containing list of selected items
 	selectionChanged = QtCore.pyqtSignal('PyQt_PyObject')
 
 	def __init__(self, parent=None):
@@ -17,6 +47,12 @@ class MultiComboBox(QtGui.QComboBox):
 		self.setLineEdit(QtGui.QLineEdit())
 		self.setInsertPolicy(QtGui.QComboBox.NoInsert)
 		self.lineEdit().blockSignals(True)
+		self.lineEdit().setReadOnly(True)
+
+		self.setModel(MultiComboBoxModel(self))
+		self.model().checkStateChanged.connect(self.__updateCheckedItems)
+		self.model().rowsInserted.connect(self.__updateCheckedItems)
+		self.model().rowsRemoved.connect(self.__updateCheckedItems)
 
 		self.view().installEventFilter(self)
 		self.view().window().installEventFilter(self)
@@ -24,55 +60,6 @@ class MultiComboBox(QtGui.QComboBox):
 		self.installEventFilter(self)
 
 		self.activated[int].connect(self.__toggleCheckState)
-
-	def reset(self):
-		""" Reset the model and clear selection if necessary
-		"""
-		itemsBefore = [index.data().toString() for index in self.__checkedItems()]
-
-		self.model().select()
-
-		itemsAfter = [index.data().toString() for index in self.__checkedItems()]
-
-		if itemsBefore != itemsAfter:
-			self.clearAll()
-
-	def setModel(self, model):
-		super(MultiComboBox, self).setModel(model)
-		# This is a bit odd, but seem to need it
-		self.setModelColumn(self.modelColumn())
-		model.rowsInserted.connect(self.__updateCheckedItems)
-		model.rowsRemoved.connect(self.__updateCheckedItems)
-		model.dataChanged.connect(self.__updateCheckedItems)
-		self.__updateCheckedItems()
-
-	def dataChanged(self):
-		""" Indicates if the underlying data has been updated. 
-		"""
-		self.model().select()
-
-	def __checkAll(self, check=False):
-		""" Function to set all the items as checked or unchecked based on the argument.
-
-			Args:
-				check(bool): check state
-		"""
-		searchState = QtCore.Qt.Unchecked if check else QtCore.Qt.Checked
-		assignState = QtCore.Qt.Checked if check else QtCore.Qt.Unchecked
-
-		modelIndex = self.model().index(0, self.modelColumn(), self.rootModelIndex())
-		modelIndexList = self.model().match(modelIndex, QtCore.Qt.CheckStateRole, searchState, -1, QtCore.Qt.MatchExactly)
-
-		with utils.signalsBlocked(self.model()):
-			for index in modelIndexList:
-				self.setItemData(index.row(), assignState, QtCore.Qt.CheckStateRole)
-
-		self.__updateCheckedItems()
-
-	def setLineEdit(self, edit):
-		edit.setReadOnly(True)
-		edit.installEventFilter(self)
-		super(MultiComboBox, self).setLineEdit(edit)
 
 	def defaultText(self):
 		""" Function to get the default text of ComboBox.
@@ -101,6 +88,24 @@ class MultiComboBox(QtGui.QComboBox):
 		"""
 		self.__checkAll(True)
 
+	def __checkAll(self, check=False):
+		""" Function to set all the items as checked or unchecked based on the argument.
+
+			Args:
+				check(bool): check state
+		"""
+		searchState = QtCore.Qt.Unchecked if check else QtCore.Qt.Checked
+		assignState = QtCore.Qt.Checked if check else QtCore.Qt.Unchecked
+
+		modelIndex = self.model().index(0, self.modelColumn(), self.rootModelIndex())
+		modelIndexList = self.model().match(modelIndex, QtCore.Qt.CheckStateRole, searchState, -1, QtCore.Qt.MatchExactly)
+
+		with utils.signalsBlocked(self.model()):
+			for index in modelIndexList:
+				self.setItemData(index.row(), assignState, QtCore.Qt.CheckStateRole)
+
+		self.__updateCheckedItems()
+
 	def eventFilter(self, receiver, event):
 		if event.type() in (QtCore.QEvent.KeyPress, QtCore.QEvent.KeyRelease):
 			if receiver == self and event.key() in (QtCore.Qt.Key_Up, QtCore.Qt.Key_Down):
@@ -119,6 +124,8 @@ class MultiComboBox(QtGui.QComboBox):
 		return False
 
 	def __toggleCheckState(self, index):
+		""" Toggles the check state for the supplied item index
+		"""
 		value = self.itemData(index, QtCore.Qt.CheckStateRole)
 
 		if value.isValid():
@@ -128,23 +135,21 @@ class MultiComboBox(QtGui.QComboBox):
 				state = QtCore.Qt.Unchecked
 			self.setItemData(index, state, QtCore.Qt.CheckStateRole)
 
-	def __checkedItems(self):
-		indexes = []
+	def checkedItems(self):
+		""" Returns a list of checked item indexes
+		"""
 		if self.model():
 			currentIndex = self.model().index(0, self.modelColumn(), self.rootModelIndex())
 			indexes = self.model().match(currentIndex, QtCore.Qt.CheckStateRole, QtCore.Qt.Checked, -1, QtCore.Qt.MatchExactly)
-		return indexes
+			return [str(index.data().toString()) for index in indexes]
+		return []
 
 	def contextMenuEvent(self, event):
 		""" Event for create context menu.
+
 			Args:
 				event (QEvent): mouse right click event.
 		"""
-		quitAction = QtGui.QAction('&Quit', self)
-		quitAction.setShortcut('Alt+q')
-		quitAction.setStatusTip('Exit the program')
-		quitAction.setIcon(QtGui.QIcon(':/icons/exit.png'))
-
 		signalMap = {}
 		contextMenu = QtGui.QMenu()
 
@@ -160,9 +165,12 @@ class MultiComboBox(QtGui.QComboBox):
 			signalMap[contextMenuAction]()
 
 	def __updateCheckedItems(self):
-		items = self.__checkedItems()
+		""" Re-draw the dropdown to reflect check state for all items
+			If no items are checked then the default text is shown in the QLineEdit
+		"""
+		items = self.checkedItems()
 		if items:
-			self.setEditText(QtCore.QStringList([index.data().toString() for index in items]).join(', '))
+			self.setEditText(', '.join(items))
 		else:
 			self.setEditText(self._defaultText)
 
@@ -177,59 +185,29 @@ class MultiComboBox(QtGui.QComboBox):
 			super(MultiComboBox, self).hidePopup()
 
 
-class MyCombo(QtGui.QComboBox):
-	def __init__(self, parent=None):
-		super(MyCombo, self).__init__(parent=parent)
-
-	def paintEvent(self, event):
-		painter = QtGui.QStylePainter(self)
-		opt = QtGui.QStyleOptionComboBox()
-		self.initStyleOption(opt)
-		#painter.drawComplexControl(QtGui.QStyle.CC_ComboBox, opt)
-		#painter.drawControl(QtGui.QStyle.CE_ComboBoxLabel, opt)
-#		super(MyCombo, self).paintEvent(event)
-
-
-
 def main():
-	from searchlineedit import SearchLineEdit
 #	from  signaltracer import SignalTracer
 #	tracer = SignalTracer()
 	app = QtGui.QApplication(sys.argv)
-	#app.setStyle(QtGui.QStyleFactory.create("Plastique"))
-	#pdb.set_trace()
-	#lineEdit = SearchLineEdit()
-	combo = MyCombo()
-	combo.setFrame(False)
-#	combo.setStyleSheet ("QComboBox::drop-down {border-width: 0px;} QComboBox::down-arrow {image: url(noimg); border-width: 0px;}")
-	#tracer.monitor(lineEdit, widget, lineEdit.clearButton)
-
-	#widget.setLineEdit(lineEdit)
-	#lineEdit.clearButtonPressed.connect(widget.clearAll)
-	label = QtGui.QLabel('releaseTime')
-	combo.addItem(QtGui.QIcon('in.png'), '')
-	combo.addItem(QtGui.QIcon('ca.png'), '')
-	combo.addItem(QtGui.QIcon('gb.png'), '')
-	combo.addItem(QtGui.QIcon('us.png'), '')
-	#widget.addItems(['item %d' %i for i in xrange(2)])
-#	widget.setDefaultText('all')
-
-	dialog = QtGui.QDialog()
+	app.setStyle(QtGui.QStyleFactory.create("Plastique"))
+	widget = QtGui.QWidget()
 	layout = QtGui.QVBoxLayout()
-	hLayout = QtGui.QHBoxLayout()
-	hLayout.addWidget(label)
-	hLayout.addWidget(combo)
-	layout.addLayout(hLayout)
+	combo = MultiComboBox()
+	layout.addWidget(combo)
+	widget.setLayout(layout)
 
-	dialog.setLayout(layout)
-	dialog.show()
+	#tracer.monitor(lineEdit, widget, lineEdit.clearButton)
+	combo.addItems(['item %d' %i for i in xrange(5)])
+	combo.setDefaultText('all')
 
-	app.exec_()	
-	return 0
+	combo.setItemData(2, QtCore.Qt.Checked, QtCore.Qt.CheckStateRole)
+	combo.setItemData(4, QtCore.Qt.Checked, QtCore.Qt.CheckStateRole)
 
+	widget.show()
+
+	return app.exec_()	
 
 
 if __name__ == '__main__':
 	import sys
 	sys.exit(main())
-

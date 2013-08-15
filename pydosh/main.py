@@ -40,8 +40,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.deleteButton.setEnabled(False)
 		self.removeTagButton.setEnabled(False)
 
-		self.accountCombo.setDefaultText('all')
-
 		self.connectionStatusText.setText('connected to %s@%s' % (db.database, db.hostname))
 
 		amountValidator = QtGui.QRegExpValidator(QtCore.QRegExp("[<>=0-9.]*"), self)
@@ -110,17 +108,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.tagView.setShowGrid(False)
 
 		# Set up account model
-		accountModel = models.AccountsModel(self)
-		accountModel.setTable('accounttypes')
-		accountModel.setFilter("""
-			accounttypeid IN (
-				SELECT distinct accounttypeid
-				FROM records
-				WHERE userid=%d)
-			""" % db.userId)
-		accountModel.select()
-		self.accountCombo.setModelColumn(enum.kAccountTypeColumn_AccountName)
-		self.accountCombo.setModel(accountModel)
+		self.accountCombo.setDefaultText('all')
+		self.populateAccounts()
 
 		# Set delays on searchlinededit widgets
 		self.descEdit.setDelay(400)
@@ -157,14 +146,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.reset()
 
-	def accountSelectionChanged(self, indexes):
+	def accountSelectionChanged(self, items):
 		""" Tell the proxy filter to filter on selected account ids
 		"""
-		model = self.accountCombo.model()
-		accountIds = []
-		for index in indexes:
-			accountIds.append(model.index(index.row(), enum.kAccountTypeColumn_AccountTypeId).data().toPyObject())
-
+		accountIds = [self.accountCombo.itemData(self.accountCombo.findText(item)).toPyObject() for item in items]
 		self.tableView.model().setAccountFilter(accountIds)
 
 	def tagSelectionChanged(self, index):
@@ -332,7 +317,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		if dialog.exec_():
 			self.tableView.model().sourceModel().select()
-			self.accountCombo.reset()
+			self.populateAccounts()
 			self.populateDates()
 			self.setDateRange()
 
@@ -394,7 +379,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 					proxyModel.sourceModel().lastError().text(), QtGui.QMessageBox.Ok)
 			
 			# Finally, re-populate accounts and date range in case this has changed
-			self.accountCombo.reset()
+			self.populateAccounts()
 			self.populateDates()
 			self.setDateRange()
 
@@ -430,6 +415,23 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			# Scroll to first selected row
 			if selected:
 				self.tableView.scrollTo(selected[0], QtGui.QAbstractItemView.EnsureVisible)
+
+	def populateAccounts(self):
+		""" Populate account data for the current user
+		"""
+		self.accountCombo.clear()
+		query = QtSql.QSqlQuery("""
+		    SELECT accounttypeid, accountname 
+		      FROM accounttypes
+		     WHERE accounttypeid IN (
+		           SELECT DISTINCT accounttypeid 
+		                      FROM records
+		                     WHERE userid=%s)
+		  ORDER BY accountname
+		""" % db.userId)
+
+		while query.next():
+			self.accountCombo.addItem(query.value(1).toString(), query.value(0).toPyObject())
 
 	def populateDates(self):
 		""" Set date fields to min and max values
