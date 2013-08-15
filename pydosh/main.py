@@ -50,11 +50,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.addActions()
 
-		styleSheet = 'QLabel {font: bold;}'
-		self.inTotalLabel.setStyleSheet(styleSheet)
-		self.outTotalLabel.setStyleSheet(styleSheet)
-		self.recordCountLabel.setStyleSheet(styleSheet)
-
 		# Date ranges
 		self.maxInsertDate = None
 		self.populateDates()
@@ -104,7 +99,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.tagView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
 		self.tagView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 		self.tagView.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-		self.tagView.setStyleSheet('QTableView {background-color: transparent;}')
 		self.tagView.setShowGrid(False)
 
 		# Set up account model
@@ -599,6 +593,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		# Assign selected records with the new tag
 		tagId = proxyModel.sourceModel().addTag(tagName)
 		proxyModel.sourceModel().addRecordTags(tagId, self.selectedRecordIds())
+		self.tagView.resizeColumnsToContents()
 
 	def removeTag(self):
 		""" Delete a tag - ask for confirmation if tag is currently assigned to records
@@ -615,6 +610,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			with utils.showWaitCursor():
 				tagId = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kTagsColumn_TagId).data().toPyObject()
 				proxyModel.sourceModel().removeTag(tagId)
+
+		self.tagView.resizeColumnsToContents()
 
 	def tagEditPopup(self, pos):
 		self.tableView.viewport().mapToGlobal(pos)
@@ -645,16 +642,16 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			else:
 				item.setCheckState(QtCore.Qt.Unchecked)
 				tooltip = 'no selected records have tag %r' % str(tagName)
-			
+
 			item.setData(QtCore.Qt.ToolTipRole, tooltip)
 			tagList.addItem(item)
 
-		action = QtGui.QWidgetAction(self)
-		action.setDefaultWidget(tagList)
-
-		menu = QtGui.QMenu(self)
-		menu.addAction(action)
-		menu.exec_(self.tableView.viewport().mapToGlobal(pos))
+		if tagList.count():
+			action = QtGui.QWidgetAction(self)
+			action.setDefaultWidget(tagList)
+			menu = QtGui.QMenu(self)
+			menu.addAction(action)
+			menu.exec_(self.tableView.viewport().mapToGlobal(pos))
 
 	@utils.showWaitCursorDecorator
 	def saveTagChanges(self, item):

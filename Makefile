@@ -4,7 +4,7 @@ VERSION=$(shell python -c 'from pydosh import version; print version.__VERSION__
 
 all: $(ALL_TARGETS)
 
-pydosh/pydosh_rc.py: ui/pydosh.qrc ui/*.qss
+pydosh/pydosh_rc.py: ui/pydosh.qrc ui/*.qss sql/*.sql
 	pyrcc4 $< -o $@
 
 clean:

@@ -823,3 +823,12 @@ QToolButton:hover
 	background-color: #3A3939;
 }
 
+QTableView#tagView
+{
+	background-color: transparent;
+}
+
+QLabel#inTotalLabel, QLabel#outTotalLabel, QLabel#recordCountLabel
+{
+	font: bold;
+}

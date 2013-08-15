@@ -100,8 +100,8 @@ class _Database(QtCore.QObject):
 			raise ConnectionException('Database is already initialised')
 
 		with self.transaction():
-			self.__runCommandsFromFile(":/schema/schema.sql")
-			self.__runCommandsFromFile(":/schema/accounttypes_data.sql")
+			self.__runCommandsFromFile(":/sql/schema.sql")
+			self.__runCommandsFromFile(":/sql/accounttypes_data.sql")
 
 	@contextmanager
 	def transaction(self):
