@@ -240,7 +240,7 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 		if not self.model.submitAll() and self.model.lastError().isValid():
 			# If we've cleared the record from validateNewAccount() then the database error
 			# will be empty. No need to issue a second error message
-			if self.m_model.lastError().databaseText():
+			if self.	model.lastError().databaseText():
 				QtGui.QMessageBox.critical(self, 'Error saving data', self.model.lastError().text(), QtGui.QMessageBox.Ok)
 			self.model.revertAll()
 
@@ -268,6 +268,19 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 
 	def deleteAccount(self):
 		for index in self.view.selectionModel().selectedRows():
+
+			accountTypeId = self.model.index(index.row(), enum.kAccountTypeColumn_AccountTypeId).data().toPyObject()
+
+			query = QtSql.QSqlQuery('SELECT COUNT(*) FROM records WHERE accounttypeid=%s' % accountTypeId)
+			query.next()
+
+			recordCount = query.value(0).toPyObject()
+
+			if recordCount:
+				QtGui.QMessageBox.critical(self, 'Account Delete ', 
+					'Cannot delete account, %d records exist for this account' % recordCount)
+				return
+
 			if index.isValid():
 				self.model.removeRows(index.row(), 1, QtCore.QModelIndex())
 
