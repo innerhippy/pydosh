@@ -165,9 +165,8 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 
 
 class SettingsDialog(Ui_Settings, QtGui.QDialog):
-	def __init__(self, userId, parent=None):
+	def __init__(self, parent=None):
 		super(SettingsDialog, self).__init__(parent=parent)
-
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 		self.setupUi(self)
 
@@ -220,7 +219,8 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 			if not ok or value < 0:
 				raise Exception('Debit field must be set (index of debit field)')
 
-			if record.value(enum.kAccountTypeColumn_DescriptionField).toString().isEmpty():
+			value, ok = record.value(enum.kAccountTypeColumn_DescriptionField).toInt()
+			if not ok or value < 0:
 				raise Exception('Description field must be set (index of description field)')
 
 			value, ok = record.value(enum.kAccountTypeColumn_CurrencySign).toInt()

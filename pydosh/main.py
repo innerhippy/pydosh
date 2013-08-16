@@ -1,6 +1,6 @@
+from PyQt4 import QtGui, QtCore, QtSql
 from contextlib  import contextmanager
 import operator
-from PyQt4 import QtGui, QtCore, QtSql
 
 from version import __VERSION__
 from database import db
