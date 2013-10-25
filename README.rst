@@ -1,8 +1,7 @@
 pydosh
 ------
 
-A simple tool to view your bank statements, store them in a database and to check 
-records/records against your receipts.
+A tool to view and check your bank statements.
 
 
 About

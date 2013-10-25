@@ -699,7 +699,7 @@ class RecordModel(QtSql.QSqlTableModel):
 				# Raw data - signed amount
 				return super(RecordModel, self).data(item, QtCore.Qt.DisplayRole)
 
-		elif role == QtCore.Qt.ForegroundRole:	
+		elif role == QtCore.Qt.ForegroundRole:
 			if item.column() == enum.kRecordColumn_Amount:
 				# Indicate credit/debit with colour
 				if item.data(QtCore.Qt.UserRole).toPyObject() > 0.0:
@@ -1178,7 +1178,7 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 				# Use operator to perform match
 				if not self._amountOperator(float(amount), float(self._amountFilter)):
 					return False
-				
+
 		if self._tagFilter:
 			tags = self.sourceModel().index(sourceRow, enum.kRecordColumn_Tags).data(QtCore.Qt.UserRole).toString()
 			if not set(self._tagFilter).intersection(set(tags.split(','))):

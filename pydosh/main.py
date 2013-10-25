@@ -652,6 +652,13 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			menu = QtGui.QMenu(self)
 			menu.addAction(action)
 			menu.exec_(self.tableView.viewport().mapToGlobal(pos))
+			if not self.selectedRecordIds():
+				if not self.amountEdit.text() and self.descEdit.text():
+					self.descEdit.clear()
+					self.descEdit.setFocus(QtCore.Qt.OtherFocusReason)
+				elif not self.descEdit.text() and self.amountEdit.text():
+					self.amountEdit.clear()
+					self.amountEdit.setFocus(QtCore.Qt.OtherFocusReason)
 
 	@utils.showWaitCursorDecorator
 	def saveTagChanges(self, item):
