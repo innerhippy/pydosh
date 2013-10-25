@@ -9,7 +9,7 @@ def setStylesheet(name=None):
 	settings = QtCore.QSettings()
 
 	if name is None:
-		name = settings.value("options/stylesheet", 'Default').toString()
+		name = settings.value("options/stylesheet", 'Default')
 
 	styleSheetFile = QtCore.QFile(':/style/%s' % name)
 	styleSheetFile.open(QtCore.QIODevice.ReadOnly)

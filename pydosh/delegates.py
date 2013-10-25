@@ -1,4 +1,4 @@
-from PyQt4 import QtGui, QtCore
+from PySide import QtGui, QtCore
 import enum
 
 class AccountDelegate(QtGui.QItemDelegate):

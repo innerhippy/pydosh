@@ -1,4 +1,4 @@
-from PyQt4 import QtCore, QtSql
+from PySide import QtCore, QtSql
 from contextlib  import contextmanager
 import pydosh_rc
 
@@ -11,8 +11,8 @@ class DatabaseNotInitialisedException(Exception):
 	"""
 
 class _Database(QtCore.QObject):
-	commit = QtCore.pyqtSignal()
-	rollback = QtCore.pyqtSignal()
+	commit = QtCore.Signal()
+	rollback = QtCore.Signal()
 
 	def __init__(self):
 		super(_Database, self).__init__()
@@ -21,7 +21,7 @@ class _Database(QtCore.QObject):
 	@property
 	def driver(self):
 		settings = QtCore.QSettings()
-		return settings.value('options/driver', 'QPSQL').toString()
+		return settings.value('options/driver', 'QPSQL')
 
 	@driver.setter
 	def driver(self, driver):
@@ -32,7 +32,7 @@ class _Database(QtCore.QObject):
 	@property
 	def hostname(self):
 		settings = QtCore.QSettings()
-		return settings.value('options/hostname', 'localhost').toString()
+		return settings.value('options/hostname', 'localhost')
 
 	@hostname.setter
 	def hostname(self, hostname):
@@ -43,7 +43,7 @@ class _Database(QtCore.QObject):
 	@property
 	def database(self):
 		settings = QtCore.QSettings()
-		return settings.value('options/database', 'pydosh').toString()
+		return settings.value('options/database', 'pydosh')
 
 	@database.setter
 	def database(self, database):
@@ -54,7 +54,7 @@ class _Database(QtCore.QObject):
 	@property
 	def username(self):
 		settings = QtCore.QSettings()
-		return settings.value('options/username').toString()
+		return settings.value('options/username')
 
 	@username.setter
 	def username(self, username):
@@ -65,7 +65,7 @@ class _Database(QtCore.QObject):
 	@property
 	def password(self):
 		settings = QtCore.QSettings()
-		return settings.value('options/password').toString()
+		return settings.value('options/password')
 
 	@password.setter
 	def password(self, password):
@@ -76,9 +76,7 @@ class _Database(QtCore.QObject):
 	@property
 	def port(self):
 		settings = QtCore.QSettings()
-		port, ok = settings.value('options/port', 5432).toInt()
-		if ok:
-			return port
+		return int(settings.value('options/port', 5432))
 
 	@port.setter
 	def port(self, port):
@@ -152,10 +150,10 @@ class _Database(QtCore.QObject):
 			# no user exists - create entry for current user
 			return self.__addCurrentUser()
 
-		userId, ok = query.value(0).toInt()
+		userId = query.value(0)
 
-		if not ok:
-			raise ConnectionException('Cannot get userid for %s' % self.username)
+#		if not ok:
+#			raise ConnectionException('Cannot get userid for %s' % self.username)
 
 		return userId
 
@@ -172,10 +170,10 @@ class _Database(QtCore.QObject):
 			raise ConnectionException(query.lastError().text())
 
 		query.next()
-		userId, ok = query.value(0).toInt()
+		userId = query.value(0)
 
-		if not ok:
-			raise ConnectionException('Cannot add new user %s' % self.username)
+#		if not ok:
+#			raise ConnectionException('Cannot add new user %s' % self.username)
 
 		return userId
 
@@ -195,7 +193,7 @@ class _Database(QtCore.QObject):
 		while not stream.atEnd():
 			line = stream.readLine()
 
-			if len(line) == 0 or line.startsWith('--'):
+			if len(line) == 0 or line.startswith('--'):
 				continue
 
 			buff.append(str(line))
@@ -227,12 +225,7 @@ class _Database(QtCore.QObject):
 			raise ConnectionException(query.lastError().text())
 
 		query.next()
-		count, ok = query.value(0).toInt()
-
-		if not ok:
-			raise ConnectionException('Failed to run command %s' % query.lastQuery())
-
-		return count > 0
+		return query.value(0) > 0
 
 db = _Database()
 

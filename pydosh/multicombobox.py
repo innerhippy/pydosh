@@ -2,13 +2,13 @@
 	This widget is a Python port of QxtCheckComboBox from http://dev.libqxt.org/libqxt/src
 	(published under public license, but not specifically GPL)
 """
-from PyQt4 import QtCore, QtGui
+from PySide import QtCore, QtGui
 import pydosh_rc
 import utils
 
 class MultiComboBoxModel(QtGui.QStandardItemModel):
 
-	checkStateChanged = QtCore.pyqtSignal()
+	checkStateChanged = QtCore.Signal()
 
 	def __init__(self, parent=None):
 		super(MultiComboBoxModel, self).__init__(0, 1, parent)
@@ -19,7 +19,7 @@ class MultiComboBoxModel(QtGui.QStandardItemModel):
 	def data(self, index, role):
 		value = super(MultiComboBoxModel, self).data(index, role)
 
-		if index.isValid() and role == QtCore.Qt.CheckStateRole and not value.isValid():
+		if index.isValid() and role == QtCore.Qt.CheckStateRole and value is None:
 			value = QtCore.Qt.Unchecked
 
 		return value
@@ -36,7 +36,7 @@ class MultiComboBox(QtGui.QComboBox):
 	""" Extension of QComboBox widget that allows for multiple selection
 	"""
 	# Signal containing list of selected items
-	selectionChanged = QtCore.pyqtSignal('PyQt_PyObject')
+	selectionChanged = QtCore.Signal(list)
 
 	def __init__(self, parent=None):
 		super(MultiComboBox, self).__init__(parent=parent)
@@ -129,7 +129,7 @@ class MultiComboBox(QtGui.QComboBox):
 		value = self.itemData(index, QtCore.Qt.CheckStateRole)
 
 		if value.isValid():
-			if value.toPyObject() == QtCore.Qt.Unchecked:
+			if value == QtCore.Qt.Unchecked:
 				state = QtCore.Qt.Checked
 			else:
 				state = QtCore.Qt.Unchecked
@@ -141,7 +141,7 @@ class MultiComboBox(QtGui.QComboBox):
 		if self.model():
 			currentIndex = self.model().index(0, self.modelColumn(), self.rootModelIndex())
 			indexes = self.model().match(currentIndex, QtCore.Qt.CheckStateRole, QtCore.Qt.Checked, -1, QtCore.Qt.MatchExactly)
-			return [str(index.data().toString()) for index in indexes]
+			return [str(index.data()) for index in indexes]
 		return []
 
 	def contextMenuEvent(self, event):

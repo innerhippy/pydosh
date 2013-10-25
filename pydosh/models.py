@@ -1,13 +1,16 @@
 import re
-from PyQt4 import QtCore, QtGui, QtSql
+import os
+from PySide import QtCore, QtGui, QtSql
 import enum
 import csv
+import hashlib
 from database import db
 import utils
 import pydosh_rc
+import pdb
 
 class DecoderError(Exception):
-	""" General Decoder exceptions
+	""" General Decoder exceptions	
 	"""
 
 class ImportException(Exception):
@@ -34,6 +37,7 @@ class ImportRecord(object):
 
 	@property
 	def checksum(self):
+		raise Exception('fix me')
 		return QtCore.QString(QtCore.QCryptographicHash.hash(self.data, QtCore.QCryptographicHash.Md5).toHex())
 
 	def __eq__(self, other):
@@ -166,8 +170,8 @@ class CsvFileItem(TreeItem):
 
 	def data(self, column, role):
 		if role == QtCore.Qt.DisplayRole and column == 0:
-			return QtCore.QVariant(QtCore.QFileInfo(self._filename).fileName())
-		return QtCore.QVariant()
+			return os.path.basename(self._filename)
+#			return QtCore.QFileInfo(self._filename).fileName()
 
 class CsvRecordItem(TreeItem):
 	def __init__(self, rawData):
@@ -191,7 +195,7 @@ class CsvRecordItem(TreeItem):
 		self.data = self._dataFuncProcessed if formatted else self._dataFuncRaw
 
 	def checksum(self):
-		return QtCore.QString(QtCore.QCryptographicHash.hash(self._rawData, QtCore.QCryptographicHash.Md5).toHex())
+		return hashlib.md5(self._rawData).hexdigest()
 
 	def dataDict(self):
 		return {
@@ -246,39 +250,36 @@ class CsvRecordItem(TreeItem):
 	def _dataFuncRaw(self, column, role):
 		if role == QtCore.Qt.DisplayRole:
 			try:
-				return QtCore.QVariant(self._fields[column])
+				return self._fields[column]
 			except IndexError:
 				pass
-		return QtCore.QVariant()
 
 	def _dataFuncProcessed(self, column, role):
 
 		if role == QtCore.Qt.ForegroundRole:
 			if column == enum.kImportColumn_Status:
 				if not self.isValid():
-					return QtCore.QVariant(QtGui.QColor(255, 0, 0))
+					return QtGui.QColor(255, 0, 0)
 				elif self._imported:
-					return QtCore.QVariant(QtGui.QColor(255, 165, 0))
-				return QtCore.QVariant(QtGui.QColor(0, 255, 0))
+					return QtGui.QColor(255, 165, 0)
+				return QtGui.QColor(0, 255, 0)
 
 		elif role == QtCore.Qt.DisplayRole:
 			if column == enum.kImportColumn_Status:
-				return QtCore.QVariant(self._status)
+				return self._status
 			elif column == enum.kImportColumn_Date:
-				return QtCore.QVariant(self._date)
+				return self._date
 			elif column == enum.kImportColumn_TxDate:
-				return QtCore.QVariant(self._txDate)
+				return self._txDate
 			elif column == enum.kImportColumn_Credit:
-				return QtCore.QVariant('%.02f' % self._credit if self._credit else None)
+				return '%.02f' % self._credit if self._credit else None
 			elif column == enum.kImportColumn_Debit:
-				return QtCore.QVariant('%.02f' % abs(self._debit) if self._debit else None)
+				return '%.02f' % abs(self._debit) if self._debit else None
 			elif column == enum.kImportColumn_Description:
-				return QtCore.QVariant(self._desc)
+				return self._desc
 
 		elif role == QtCore.Qt.ToolTipRole:
-			return QtCore.QVariant(QtCore.QString.fromUtf8(self._rawData))
-
-		return QtCore.QVariant()
+			return QtCore.QString.fromUtf8(self._rawData)
 
 	def formatItem(self, dateIdx, descriptionIdx, creditIdx, debitIdx, currencySign, dateFormat):
 
@@ -334,21 +335,20 @@ class CsvRecordItem(TreeItem):
 
 			Returns None if field does not contain valid double.
 		"""
-
+		value = None
 		# Get rid of commas from amount field and try and covert to double
-		field = field.replace(',', '')
-		value, ok = QtCore.QVariant(field).toDouble()
-
-		if not ok:
+		try:
+			value = float(field.replace(',', ''))
+		except ValueError:
 			# Probably has currency sign - extract all valid currency characters
 			match = re.search('([\d\-\.]+)', field)
 			if match:
-				value, ok = QtCore.QVariant(match.group(1)).toDouble()
+				try:
+					value = float(match.group(1))
+				except ValueError:
+					pass
 
-		if ok:
-			return value
-
-		return None
+		return value
 
 	def __getTransactionDate(self, field, dateField):
 		""" Try and extract a transaction date from the description field.
@@ -374,6 +374,7 @@ class CsvRecordItem(TreeItem):
 			rx = QtCore.QRegExp(' (\\d\\d[A-Z]{3})')
 			if rx.indexIn(field) != -1:
 				# Add the year from date field to the transaction date
+				raise Exception('Fix me')
 				timeDate = QtCore.QDateTime.fromString (rx.cap(1) + dateField.toString("yyyy"), "ddMMMyyyy")
 
 		if timeDate is not None and timeDate.isValid():
@@ -406,7 +407,7 @@ class ImportModel(QtCore.QAbstractItemModel):
 			raise Exception(query.lastError().text())
 
 		while query.next():
-			self._checksums.append(query.value(0).toString())
+			self._checksums.append(query.value(0))
 
 		self._checksumsSaved = self._checksums[:]
 
@@ -508,6 +509,7 @@ class ImportModel(QtCore.QAbstractItemModel):
 				raise Exception('Cannot open file %r' % filename)
 
 			while not csvfile.atEnd():
+				pdb.set_trace()
 				rawData = csvfile.readLine().trimmed()
 				recItem = CsvRecordItem(rawData)
 				item.appendChild(recItem)
@@ -519,7 +521,7 @@ class ImportModel(QtCore.QAbstractItemModel):
 
 	def data(self, index, role=QtCore.Qt.DisplayRole):
 		if not index.isValid():
-			return QtCore.QVariant()
+			return None
 
 		item = self.getNodeItem(index)
 		return item.data(index.column(), role)
@@ -542,7 +544,7 @@ class ImportModel(QtCore.QAbstractItemModel):
 			except IndexError:
 				pass
 
-		return QtCore.QVariant()
+		return None
 
 	def index(self, row, column, parent=QtCore.QModelIndex()):
 
@@ -598,8 +600,8 @@ class RecordModel(QtSql.QSqlTableModel):
 		return flags
 
 	def selectStatement(self):
-		if self.tableName().isEmpty():
-			return QtCore.QString()
+		if not self.tableName():
+			return None
 
 		queryFilter = self.filter()
 		queryFilter = 'WHERE ' + queryFilter if queryFilter else ''
@@ -630,7 +632,7 @@ class RecordModel(QtSql.QSqlTableModel):
 		return query
 
 	def deleteRecords(self, indexes):
-		recordIds = [self.index(index.row(), enum.kRecordColumn_RecordId).data().toPyObject() for index in indexes]
+		recordIds = [self.index(index.row(), enum.kRecordColumn_RecordId).data() for index in indexes]
 		query = QtSql.QSqlQuery("""
             DELETE FROM records
                   WHERE recordid in (%s)
@@ -652,21 +654,21 @@ class RecordModel(QtSql.QSqlTableModel):
 		""" Return data from the model, formatted for viewing
 		"""
 		if not item.isValid():
-			return QtCore.QVariant()
+			return None
 
 		if role == QtCore.Qt.CheckStateRole:
 			if item.column() == enum.kRecordColumn_Checked:
-				if super(RecordModel, self).data(item).toBool():
-					return QtCore.QVariant(QtCore.Qt.Checked)
+				if super(RecordModel, self).data(item):
+					return QtCore.Qt.Checked
 				else:
-					return QtCore.QVariant(QtCore.Qt.Unchecked)
+					return QtCore.Qt.Unchecked
 
 		elif role == QtCore.Qt.FontRole:
 			if item.column() == enum.kRecordColumn_Description:
-				if self._highlightText and item.data(QtCore.Qt.DisplayRole).toString().contains(self._highlightText, QtCore.Qt.CaseInsensitive):
+				if self._highlightText and self._highlightText.lower() in item.data(QtCore.Qt.DisplayRole).lower():
 					font = QtGui.QFont()
 					font.setBold(True)
-					return QtCore.QVariant(font)
+					return font
 
 		elif role == QtCore.Qt.ToolTipRole:
 			if item.column() == enum.kRecordColumn_Tags:
@@ -674,16 +676,18 @@ class RecordModel(QtSql.QSqlTableModel):
 				return item.data(QtCore.Qt.UserRole)
 
 			elif item.column() == enum.kRecordColumn_Checked:
-				if item.data(QtCore.Qt.CheckStateRole).toPyObject() == QtCore.Qt.Checked:
+				if item.data(QtCore.Qt.CheckStateRole) == QtCore.Qt.Checked:
+					raise Exception('Fix me')
 					text = "Checked: " + super(RecordModel, self).data(
 						self.index(item.row(), enum.kRecordColumn_CheckDate)).toDateTime().toString("dd/MM/yy hh:mm")
-					return QtCore.QVariant(text)
+					return text
 
 			elif item.column() == enum.kRecordColumn_Date:
 				# Show when the record was imported
+				raise Exception('Fix me')
 				text = "Imported: " + super(RecordModel, self).data(
 					self.index(item.row(), enum.kRecordColumn_InsertDate)).toDateTime().toString("dd/MM/yy hh:mm")
-				return QtCore.QVariant(text)
+				return text
 
 			elif item.column() == enum.kRecordColumn_Description:
 				# Full, raw text
@@ -693,7 +697,7 @@ class RecordModel(QtSql.QSqlTableModel):
 			if item.column() == enum.kRecordColumn_Tags:
 				# Tags as comma separated string (from database)
 				tags = super(RecordModel, self).data(item, QtCore.Qt.DisplayRole)
-				return tags if tags.toString() else QtCore.QVariant()
+				return tags or None
 
 			elif item.column() == enum.kRecordColumn_Amount:
 				# Raw data - signed amount
@@ -702,35 +706,38 @@ class RecordModel(QtSql.QSqlTableModel):
 		elif role == QtCore.Qt.ForegroundRole:
 			if item.column() == enum.kRecordColumn_Amount:
 				# Indicate credit/debit with colour
-				if item.data(QtCore.Qt.UserRole).toPyObject() > 0.0:
-					return QtCore.QVariant(QtGui.QColor(0, 255, 0))
+				if item.data(QtCore.Qt.UserRole) > 0.0:
+					return QtGui.QColor(0, 255, 0)
 				else:
-					return QtCore.QVariant(QtGui.QColor(255, 0, 0))
+					return QtGui.QColor(255, 0, 0)
 
 		elif role == QtCore.Qt.DecorationRole:
 			if item.column() == enum.kRecordColumn_Tags:
 				# Show tag icon if we have any
-				if item.data(QtCore.Qt.UserRole).toString():
-					return QtCore.QVariant(QtGui.QIcon(':/icons/tag_yellow.png'))
+				if item.data(QtCore.Qt.UserRole):
+					return QtGui.QIcon(':/icons/tag_yellow.png')
 
 		elif role == QtCore.Qt.DisplayRole:
 			if item.column() in (enum.kRecordColumn_Checked, enum.kRecordColumn_Tags):
 				# Don't display anything for these fields
-				return QtCore.QVariant()
+				return None
 
 			elif item.column() == enum.kRecordColumn_Amount:
 				# Display absolute currency values. credit/debit is indicated by background colour
-				return QtCore.QVariant('%.02f' % abs(super(RecordModel, self).data(item).toPyObject()))
+				return '%.02f' % abs(super(RecordModel, self).data(item))
 
 			elif item.column() == enum.kRecordColumn_Description:
 				# Replace multiple spaces with single
-				val = super(RecordModel, self).data(item).toString().replace(QtCore.QRegExp('[ ]+'), ' ')
-				return QtCore.QVariant(val)
-
-			elif item.column() == enum.kRecordColumn_Txdate:
-				# Reformat date to only display time if available
-				if super(RecordModel, self).data(item).toDateTime().time().toString() == "00:00:00":
-					return QtCore.QVariant(super(RecordModel, self).data(item).toDate())
+				return re.sub('[ ]+', ' ', super(RecordModel, self).data(item))
+				#val = super(RecordModel, self).data(item).toString().replace(QtCore.QRegExp('[ ]+'), ' ')
+				#return val
+#
+#			elif item.column() == enum.kRecordColumn_Txdate:
+#				# Reformat date to only display time if available
+#				import pdb
+#				pdb.set_trace()
+#				if super(RecordModel, self).data(item).toDateTime().time().toString() == "00:00:00":
+#					return super(RecordModel, self).data(item)
 
 		return super(RecordModel, self).data(item, role)
 
@@ -739,7 +746,7 @@ class RecordModel(QtSql.QSqlTableModel):
 		unCheckedRecords = []
 
 		for index in indexes:
-			recordId = self.index(index.row(), enum.kRecordColumn_RecordId).data().toPyObject()
+			recordId = self.index(index.row(), enum.kRecordColumn_RecordId).data()
 			if self.index(index.row(), enum.kRecordColumn_Checked).data(QtCore.Qt.CheckStateRole) == QtCore.Qt.Checked:
 				checkedRecords.append(recordId)
 			else:
@@ -803,11 +810,10 @@ class RecordModel(QtSql.QSqlTableModel):
 			elif section == enum.kRecordColumn_Amount:
 				return "Amount"
 
-		return QtCore.QVariant()
 
 class TagModel(QtSql.QSqlTableModel):
-	tagsChanged = QtCore.pyqtSignal()
-	selectionChanged = QtCore.pyqtSignal('PyQt_PyObject')
+	tagsChanged = QtCore.Signal()
+	selectionChanged = QtCore.Signal('PyQt_PyObject')
 
 	def __init__(self, parent=None):
 		super(TagModel, self).__init__(parent=parent)
@@ -827,16 +833,16 @@ class TagModel(QtSql.QSqlTableModel):
 	def clearSelection(self):
 		for row in xrange(self.rowCount()):
 			index = self.index(row, enum.kTagsColumn_TagName)
-			self.setData(index, QtCore.QVariant(QtCore.Qt.Unchecked), QtCore.Qt.CheckStateRole)
+			self.setData(index, QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
 
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
 		""" Handle checkstate role changes
 		"""
 		if index.column() == enum.kTagsColumn_TagName:
 			if role == QtCore.Qt.CheckStateRole:
-				tagName = index.data().toPyObject()
+				tagName = index.data()
 	
-				if value.toPyObject() == QtCore.Qt.Checked:
+				if value == QtCore.Qt.Checked:
 					if tagName in self.__selectedTagNames:
 						# Do nothing if tag has not changed
 						return False
@@ -862,21 +868,21 @@ class TagModel(QtSql.QSqlTableModel):
 		if role == QtCore.Qt.DisplayRole:
 
 			if item.column() == enum.kTagsColumn_RecordIds:
-				tags = set([int(i) for i in super(TagModel, self).data(item).toString().split(',') if i])
-				return QtCore.QVariant(tags)
+				tags = set([int(i) for i in super(TagModel, self).data(item).split(',') if i])
+				return tags
 
 			elif item.column() in (enum.kTagsColumn_Amount_in, enum.kTagsColumn_Amount_out):
-				amount = '%.2f' % super(TagModel, self).data(item).toPyObject()
+				amount = '%.2f' % super(TagModel, self).data(item)
 				if amount == '0.00':
-					return QtCore.QVariant()
+					return None
 				else:
-					return QtCore.QVariant(amount)
+					return amount
 
 		if  role == QtCore.Qt.CheckStateRole and item.column() == enum.kTagsColumn_TagName:
-			if item.data().toPyObject() in self.__selectedTagNames:
-				return QtCore.QVariant(QtCore.Qt.Checked)
+			if item.data() in self.__selectedTagNames:
+				return QtCore.Qt.Checked
 			else:
-				return QtCore.QVariant(QtCore.Qt.Unchecked)
+				return QtCore.Qt.Unchecked
 
 		return super(TagModel, self).data(item, role)
 
@@ -893,8 +899,8 @@ class TagModel(QtSql.QSqlTableModel):
 		return flags
 
 	def selectStatement(self):
-		if self.tableName().isEmpty():
-			return QtCore.QString()
+		if not self.tableName():
+			return None
 
 		queryFilter = self.filter()
 		queryFilter = 'AND r.recordid IN (%s)' %  queryFilter if queryFilter else ''
@@ -922,7 +928,7 @@ class TagModel(QtSql.QSqlTableModel):
 				return "in"
 			elif section == enum.kTagsColumn_Amount_out:
 				return "out"
-		return QtCore.QVariant()
+		return None
 
 	def addTag(self, tagName):
 		query = QtSql.QSqlQuery()
@@ -938,7 +944,7 @@ class TagModel(QtSql.QSqlTableModel):
 			raise Exception(query.lastError().text())
 		
 		query.next()
-		insertId = query.value(0).toPyObject() 
+		insertId = query.value(0)
 		self.select()
 		self.tagsChanged.emit()
 		return insertId
@@ -950,7 +956,7 @@ class TagModel(QtSql.QSqlTableModel):
 		match = match[0]
 
 		# Ensure this tag is unchecked
-		self.setData(self.index(match.row(), enum.kTagsColumn_TagName), QtCore.QVariant(QtCore.Qt.Unchecked), QtCore.Qt.CheckStateRole)
+		self.setData(self.index(match.row(), enum.kTagsColumn_TagName), QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
 
 		# Now delete it
 		self.removeRows(match.row(), 1, QtCore.QModelIndex())
@@ -966,7 +972,7 @@ class TagModel(QtSql.QSqlTableModel):
 		currentIndex = self.index(0, enum.kTagsColumn_TagId)
 		match = self.match(currentIndex, QtCore.Qt.DisplayRole, tagId, 1, QtCore.Qt.MatchExactly)
 		if match:
-			existingRecordsForTag = self.index(match[0].row(), enum.kTagsColumn_RecordIds).data().toPyObject()
+			existingRecordsForTag = self.index(match[0].row(), enum.kTagsColumn_RecordIds).data()
 			recordIds = set(recordIds) - existingRecordsForTag
 
 		query = QtSql.QSqlQuery()
@@ -1004,7 +1010,7 @@ class TagModel(QtSql.QSqlTableModel):
 
 class TagProxyModel(QtGui.QSortFilterProxyModel):
 	# Signal emitted whenever there is a change to the filter
-	filterChanged = QtCore.pyqtSignal()
+	filterChanged = QtCore.Signal()
 
 	def __init__(self, parent=None):
 		super(TagProxyModel, self).__init__(parent=parent)
@@ -1013,14 +1019,14 @@ class TagProxyModel(QtGui.QSortFilterProxyModel):
 		""" Define the comparison to ensure column data is sorted correctly
 		"""
 		if left.column() in (enum.kTagsColumn_Amount_in, enum.kTagsColumn_Amount_out):
-			return left.data().toDouble()[0] > right.data().toDouble()[0]
+			return left.data() > right.data()
 
 		return super(TagProxyModel, self).lessThan(left, right)
 
 class RecordProxyModel(QtGui.QSortFilterProxyModel):
 
 	# Signal emitted whenever there is a change to the filter
-	filterChanged = QtCore.pyqtSignal()
+	filterChanged = QtCore.Signal()
 
 	def __init__(self, parent=None):
 		super(RecordProxyModel, self).__init__(parent=parent)
@@ -1133,11 +1139,11 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 
 	def filterAcceptsRow(self, sourceRow, parent):
 		if self._startDate:
-			if self.sourceModel().index(sourceRow, enum.kRecordColumn_Date, parent).data().toDate() < self._startDate:
+			if self.sourceModel().index(sourceRow, enum.kRecordColumn_Date, parent).data() < self._startDate:
 				return False
 
 		if self._endDate:
-			if self.sourceModel().index(sourceRow, enum.kRecordColumn_Date, parent).data().toDate() > self._endDate:
+			if self.sourceModel().index(sourceRow, enum.kRecordColumn_Date, parent).data() > self._endDate:
 				return False
 
 		if self._insertDate:
@@ -1145,31 +1151,31 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 				return False
 
 		if self._accountids:
-			if self.sourceModel().index(sourceRow, enum.kRecordColumn_AccountTypeId).data().toPyObject() not in self._accountids:
+			if self.sourceModel().index(sourceRow, enum.kRecordColumn_AccountTypeId).data() not in self._accountids:
 				return False
 
 		if self._hasTags is not None:
-			hasTags = self.sourceModel().index(sourceRow, enum.kRecordColumn_Tags).data(QtCore.Qt.UserRole).toBool()
+			hasTags = bool(self.sourceModel().index(sourceRow, enum.kRecordColumn_Tags).data(QtCore.Qt.UserRole))
 			if self._hasTags != hasTags:
 				return False
 
 		if self._checked is not None:
-			isChecked = self.sourceModel().index(sourceRow, enum.kRecordColumn_Checked).data(QtCore.Qt.CheckStateRole).toPyObject() == QtCore.Qt.Checked
+			isChecked = self.sourceModel().index(sourceRow, enum.kRecordColumn_Checked).data(QtCore.Qt.CheckStateRole) == QtCore.Qt.Checked
 			if self._checked != isChecked:
 				return False
 
 		if self._creditFilter is not None:
-			amount = self.sourceModel().index(sourceRow, enum.kRecordColumn_Amount).data(QtCore.Qt.UserRole).toPyObject()
+			amount = self.sourceModel().index(sourceRow, enum.kRecordColumn_Amount).data(QtCore.Qt.UserRole)
 			if self._creditFilter != (amount >= 0.0):
 				return False
 
 		if self._description:
-			description = self.sourceModel().index(sourceRow, enum.kRecordColumn_Description).data().toString()
+			description = self.sourceModel().index(sourceRow, enum.kRecordColumn_Description).data()
 			if not description.contains(self._description, QtCore.Qt.CaseInsensitive):
 				return False
 
 		if self._amountFilter:
-			amount = self.sourceModel().index(sourceRow, enum.kRecordColumn_Amount).data().toString()
+			amount = self.sourceModel().index(sourceRow, enum.kRecordColumn_Amount).data()
 			if self._amountOperator is None:
 				# Filter as string matching start
 				if not amount.startsWith(self._amountFilter):
@@ -1180,7 +1186,7 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 					return False
 
 		if self._tagFilter:
-			tags = self.sourceModel().index(sourceRow, enum.kRecordColumn_Tags).data(QtCore.Qt.UserRole).toString()
+			tags = self.sourceModel().index(sourceRow, enum.kRecordColumn_Tags).data(QtCore.Qt.UserRole)
 			if not set(self._tagFilter).intersection(set(tags.split(','))):
 				return False
 
@@ -1193,25 +1199,25 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 		rightVal = None
 
 		if left.column() == enum.kRecordColumn_Tags:
-			leftVal = len(left.data(QtCore.Qt.UserRole).toString().split(',', QtCore.QString.SkipEmptyParts))
-			rightVal = len(right.data(QtCore.Qt.UserRole).toString().split(',', QtCore.QString.SkipEmptyParts))
+			leftVal = len(left.data(QtCore.Qt.UserRole).split(',', QtCore.QString.SkipEmptyParts))
+			rightVal = len(right.data(QtCore.Qt.UserRole).split(',', QtCore.QString.SkipEmptyParts))
 
 		elif left.column() == enum.kRecordColumn_Checked:
-			leftVal = left.data(QtCore.Qt.CheckStateRole).toPyObject()
-			rightVal = right.data(QtCore.Qt.CheckStateRole).toPyObject()
+			leftVal = left.data(QtCore.Qt.CheckStateRole)
+			rightVal = right.data(QtCore.Qt.CheckStateRole)
 
 		elif left.column() == enum.kRecordColumn_Amount:
-			leftVal,_ = left.data(QtCore.Qt.UserRole).toDouble()
-			rightVal,_ = right.data(QtCore.Qt.UserRole).toDouble()
+			leftVal = left.data(QtCore.Qt.UserRole)
+			rightVal = right.data(QtCore.Qt.UserRole)
 
 		elif left.column() == enum.kRecordColumn_Date:
-			leftVal =  left.data().toDate()
-			rightVal = right.data().toDate()
+			leftVal =  left.data()
+			rightVal = right.data()
 
 			if leftVal == rightVal:
 				# Dates are the same - sort by recordId just to ensure the results are consistent
-				leftVal = self.sourceModel().index(left.row(), enum.kRecordColumn_RecordId).data().toPyObject()
-				rightVal = self.sourceModel().index(right.row(), enum.kRecordColumn_RecordId).data().toPyObject()
+				leftVal = self.sourceModel().index(left.row(), enum.kRecordColumn_RecordId).data()
+				rightVal = self.sourceModel().index(right.row(), enum.kRecordColumn_RecordId).data()
 
 		if leftVal or rightVal:
 			return leftVal > rightVal
@@ -1224,10 +1230,10 @@ class AccountEditModel(QtSql.QSqlTableModel):
 
 	def data(self, item, role=QtCore.Qt.DisplayRole):
 		if not item.isValid():
-			return QtCore.QVariant()
+			return None
 
 		if role == QtCore.Qt.ForegroundRole and self.isDirty(item):
-			return QtCore.QVariant(QtGui.QColor(255, 165, 0))
+			return QtGui.QColor(255, 165, 0)
 
 		return super(AccountEditModel, self).data(item, role)
 
@@ -1256,7 +1262,7 @@ class AccountEditModel(QtSql.QSqlTableModel):
 			elif section == enum.kAccountTypeColumn_DateFormat:
 				return 'Date formats'
 
-		return QtCore.QVariant()
+		return None
 
 class AccountsModel(QtSql.QSqlTableModel):
 	""" Model for accounts which stores selection.
@@ -1278,15 +1284,15 @@ class AccountsModel(QtSql.QSqlTableModel):
 
 	def data(self, index, role):
 		if not index.isValid():
-			return QtCore.QVariant()
+			return None
 
 		if role == QtCore.Qt.CheckStateRole:
 			if index.column() == enum.kAccountTypeColumn_AccountName:
-				accountName = self.index(index.row(), enum.kAccountTypeColumn_AccountName).data().toString()
+				accountName = self.index(index.row(), enum.kAccountTypeColumn_AccountName).data()
 				if accountName in self._checkedItems:
-					return QtCore.QVariant(QtCore.Qt.Checked)
+					return QtCore.Qt.Checked
 				else:
-					return QtCore.QVariant(QtCore.Qt.Unchecked)
+					return QtCore.Qt.Unchecked
 
 		return super(AccountsModel, self).data(index, role)
 
@@ -1295,8 +1301,8 @@ class AccountsModel(QtSql.QSqlTableModel):
 		"""
 		if role == QtCore.Qt.CheckStateRole:
 			if index.column() == enum.kAccountTypeColumn_AccountName:
-				accountName = self.index(index.row(), enum.kAccountTypeColumn_AccountName).data().toString()
-				if value.toPyObject() == QtCore.Qt.Checked:
+				accountName = self.index(index.row(), enum.kAccountTypeColumn_AccountName).data()
+				if value == QtCore.Qt.Checked:
 					self._checkedItems.add(accountName)
 				else:
 					self._checkedItems.remove(accountName)

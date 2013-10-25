@@ -1,6 +1,6 @@
 import collections
 from contextlib  import contextmanager
-from PyQt4 import QtGui, QtCore
+from PySide import QtGui, QtCore
 
 def flattenArgs(items):
 	""" Generator to expand a sequence of items recursively.

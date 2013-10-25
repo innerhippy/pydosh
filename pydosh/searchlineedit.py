@@ -1,10 +1,10 @@
-from PyQt4 import QtGui, QtCore
+from PySide import QtGui, QtCore
 import pydosh_rc
 
 class SearchLineEdit(QtGui.QLineEdit):
-	controlKeyPressed = QtCore.pyqtSignal(int)
-	clearButtonPressed = QtCore.pyqtSignal()
-	editingFinshed = QtCore.pyqtSignal('QString')
+	controlKeyPressed = QtCore.Signal(int)
+	clearButtonPressed = QtCore.Signal()
+	editingFinshed = QtCore.Signal(str)
 
 	def __init__(self, parent=None):
 		super(SearchLineEdit, self).__init__(parent=parent)
@@ -22,7 +22,7 @@ class SearchLineEdit(QtGui.QLineEdit):
 		self.textChanged.connect(self.updateCloseButton)
 
 		frameWidth = self.style().pixelMetric(QtGui.QStyle.PM_DefaultFrameWidth)
-		self.setStyleSheet(QtCore.QString("QLineEdit { padding-right: %1px; } ").arg(clearButton.sizeHint().width() + frameWidth + 1))
+		self.setStyleSheet("QLineEdit { padding-right: %dpx; } " % (clearButton.sizeHint().width() + frameWidth + 1))
 
 		self.clearButton = clearButton
 
@@ -64,7 +64,7 @@ class SearchLineEdit(QtGui.QLineEdit):
 			(self.rect().bottom() + 1 - sz.height())/2)
 
 	def updateCloseButton(self, text):
-		self.clearButton.setVisible(not text.isEmpty())
+		self.clearButton.setVisible(bool(text))
 
 	def paintEvent(self, event):
 		super(SearchLineEdit, self).paintEvent(event)

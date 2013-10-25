@@ -1,4 +1,4 @@
-from PyQt4 import QtCore, QtGui, QtSql
+from PySide import QtCore, QtGui, QtSql
 
 from ui_settings import Ui_Settings
 from ui_login import Ui_Login
@@ -33,17 +33,17 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.accountTypeComboBox.addItem('Raw')
 
 		for row in xrange(model.rowCount()):
-			name = model.index(row, enum.kAccountTypeColumn_AccountName).data().toString()
-			dateIdx = model.index(row, enum.kAccountTypeColumn_DateField).data().toPyObject()
-			descIdx = model.index(row, enum.kAccountTypeColumn_DescriptionField).data().toPyObject()
-			creditIdx = model.index(row, enum.kAccountTypeColumn_CreditField).data().toPyObject()
-			debitIdx = model.index(row, enum.kAccountTypeColumn_DebitField).data().toPyObject()
-			currencySign = model.index(row, enum.kAccountTypeColumn_CurrencySign).data().toPyObject()
-			dateFormat = model.index(row, enum.kAccountTypeColumn_DateFormat).data().toString()
+			name = model.index(row, enum.kAccountTypeColumn_AccountName).data()
+			dateIdx = model.index(row, enum.kAccountTypeColumn_DateField).data()
+			descIdx = model.index(row, enum.kAccountTypeColumn_DescriptionField).data()
+			creditIdx = model.index(row, enum.kAccountTypeColumn_CreditField).data()
+			debitIdx = model.index(row, enum.kAccountTypeColumn_DebitField).data()
+			currencySign = model.index(row, enum.kAccountTypeColumn_CurrencySign).data()
+			dateFormat = model.index(row, enum.kAccountTypeColumn_DateFormat).data()
 			self.accountTypeComboBox.addItem(name, 
-				QtCore.QVariant((dateIdx, descIdx, creditIdx, debitIdx, currencySign, dateFormat,))
+				(dateIdx, descIdx, creditIdx, debitIdx, currencySign, dateFormat,)
 			)
-			self.__accountIdMap[row +1] = model.index(row, enum.kAccountTypeColumn_AccountTypeId).data().toPyObject()
+			self.__accountIdMap[row +1] = model.index(row, enum.kAccountTypeColumn_AccountTypeId).data()
 
 		self.accountTypeComboBox.setCurrentIndex(-1)
 
@@ -67,7 +67,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 
 	def _accountChanged(self, index):
 		model = self.view.model()
-		model.accountChanged(self.accountTypeComboBox.itemData(index).toPyObject())
+		model.accountChanged(self.accountTypeComboBox.itemData(index))
 		self.selectAllButton.setEnabled(bool(model.numRecordsToImport()))
 		self.__setCounters()
 
@@ -204,30 +204,30 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 
 	def validateNewAccount(self, record):
 		try:
-			if record.value(enum.kAccountTypeColumn_AccountName).toString().isEmpty():
+			if not record.value(enum.kAccountTypeColumn_AccountName):
 				raise Exception('Account name cannot be empty')
 
-			value, ok = record.value(enum.kAccountTypeColumn_DateField).toInt()
-			if not ok or value < 0:
+			value = record.value(enum.kAccountTypeColumn_DateField)
+			if value < 0:
 				raise Exception('Date field must be set (index of date field)')
 
-			value, ok = record.value(enum.kAccountTypeColumn_CreditField).toInt()
-			if not ok or value < 0:
+			value = record.value(enum.kAccountTypeColumn_CreditField)
+			if value < 0:
 				raise Exception('Credit field must be set (index of credit field)')
 
-			value, ok = record.value(enum.kAccountTypeColumn_DebitField).toInt()
-			if not ok or value < 0:
+			value  = record.value(enum.kAccountTypeColumn_DebitField)
+			if value < 0:
 				raise Exception('Debit field must be set (index of debit field)')
 
-			value, ok = record.value(enum.kAccountTypeColumn_DescriptionField).toInt()
-			if not ok or value < 0:
+			value = record.value(enum.kAccountTypeColumn_DescriptionField)
+			if value < 0:
 				raise Exception('Description field must be set (index of description field)')
 
-			value, ok = record.value(enum.kAccountTypeColumn_CurrencySign).toInt()
-			if not ok or value not in (1, -1):
+			value = record.value(enum.kAccountTypeColumn_CurrencySign)
+			if value not in (1, -1):
 				raise Exception('Currency sign value must be 1 or -1')
 
-			if record.value(enum.kAccountTypeColumn_DateFormat).toString().isEmpty():
+			if not record.value(enum.kAccountTypeColumn_DateFormat):
 				raise Exception('"Date format cannot be empty (eg "dd/MM/yyyy")')
 
 		except Exception, err:
@@ -260,7 +260,7 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 
 		for column in xrange(1, self.model.columnCount()):
 			index = self.model.index(rowCount, column)
-			self.model.setData(index, QtCore.QVariant(), QtCore.Qt.EditRole)
+			self.model.setData(index, None, QtCore.Qt.EditRole)
 
 		index = self.model.index(rowCount, enum.kAccountTypeColumn_AccountName)
 		self.view.setCurrentIndex(index)
@@ -269,12 +269,12 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 	def deleteAccount(self):
 		for index in self.view.selectionModel().selectedRows():
 
-			accountTypeId = self.model.index(index.row(), enum.kAccountTypeColumn_AccountTypeId).data().toPyObject()
+			accountTypeId = self.model.index(index.row(), enum.kAccountTypeColumn_AccountTypeId).data()
 
 			query = QtSql.QSqlQuery('SELECT COUNT(*) FROM records WHERE accounttypeid=%s' % accountTypeId)
 			query.next()
 
-			recordCount = query.value(0).toPyObject()
+			recordCount = query.value(0)
 
 			if recordCount:
 				QtGui.QMessageBox.critical(self, 'Account Delete ', 
