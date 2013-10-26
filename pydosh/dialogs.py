@@ -9,6 +9,8 @@ from database import db, DatabaseNotInitialisedException, ConnectionException
 from delegates import AccountDelegate
 from models import AccountEditModel, ImportModel
 
+import pdb
+
 class UserCancelledException(Exception):
 	""" Exception to indicate user has cancelled the current operation
 	"""
@@ -56,7 +58,8 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.view.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 		self.view.expandAll()
 
-		self.view.selectionModel().selectionChanged.connect(self._recordsSelected)
+		selectionModel = self.view.selectionModel()
+		selectionModel.selectionChanged.connect(self._recordsSelected)
 		self.accountTypeComboBox.currentIndexChanged.connect(self._accountChanged)
 
 		self.importCancelButton.clicked.connect(self.__importCancelPressed)
@@ -86,6 +89,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.importedCounter.setNum(model.numRecordsImported())
 		self.toImportCounter.setNum(model.numRecordsToImport())
 
+	#@QtCore.Slot(QtGui.QItemSelection, QtGui.QItemSelection)
 	def _recordsSelected(self):
 		""" Enable button cancel when we have selection
 		"""

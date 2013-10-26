@@ -123,12 +123,13 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		recordModel.dataChanged.connect(self.updateTagFilter)
 		recordProxyModel.filterChanged.connect(self.updateTagFilter)
 		recordProxyModel.modelReset.connect(self.updateTagFilter)
-		#self.tableView.selectionModel().selectionChanged.connect(self.recordSelectionChanged)
-		#pdb.set_trace()
+		selectionModel = self.tableView.selectionModel()
+		selectionModel.selectionChanged.connect(self.recordSelectionChanged)
 		self.tableView.customContextMenuRequested.connect(self.tagEditPopup)
 		tagModel.tagsChanged.connect(self.tagModelChanged)
 		tagModel.selectionChanged.connect(recordProxyModel.setTagFilter)
-		#self.tagView.selectionModel().selectionChanged.connect(self.enableRemoveTagButton)
+		selectionModel = self.tagView.selectionModel()
+		selectionModel.selectionChanged.connect(self.enableRemoveTagButton)
 		self.startDateEdit.dateChanged.connect(recordProxyModel.setStartDate)
 		self.endDateEdit.dateChanged.connect(self.endDateChanged)
 		self.endDateEdit.dateChanged.connect(recordProxyModel.setEndDate)
@@ -270,7 +271,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 			# Find the min/max dates for the last import from the proxy model 
 			for row in xrange(proxyModel.rowCount()):
-				dateForRow = proxyModel.index(row, enum.kRecordColumn_Date).data().toDate()
+				dateForRow = proxyModel.index(row, enum.kRecordColumn_Date).data()
 				if not endDate.isValid() or dateForRow > endDate:
 					endDate = dateForRow
 				if not startDate.isValid() or dateForRow < startDate:
@@ -309,7 +310,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		settings.setValue('options/importdirectory', dialog.directory().absolutePath())
 
 		dialog = dialogs.ImportDialog(dialog.selectedFiles(), self)
-		dialog.setWindowTitle(fileNames.join(', '))
+		dialog.setWindowTitle(', '.join(fileNames))
 
 		if dialog.exec_():
 			self.tableView.model().sourceModel().select()

@@ -4,6 +4,7 @@ from PySide import QtCore, QtGui, QtSql
 import enum
 import csv
 import hashlib
+import codecs
 from database import db
 import utils
 import pydosh_rc
@@ -67,12 +68,16 @@ class TreeItem(object):
 		self._parent = None
 		self._error = None
 		self._imported = False
+		self._duplicate = False
 		self._children = []
 
 	def isValid(self):
 		return True
 
 	def setImported(self, imported):
+		pass
+
+	def setDuplicate(self, duplicate):
 		pass
 
 	def checksum(self):
@@ -94,6 +99,19 @@ class TreeItem(object):
 
 		for child in self._children:
 			child.setRecordsImported(checksums)
+
+	def setDuplicateRecords(self, checksums=None):
+		checksum = self.checksum()
+
+		if checksums is None:
+			checksums = set()
+
+		if checksum is not None:
+			self.setDuplicate(checksum in checksums)
+			checksums.add(checksum)
+
+		for child in self._children:
+			child.setDuplicateRecords(checksums)
 
 	def numRecordsImported(self):
 		num = int(self._imported)
@@ -184,7 +202,7 @@ class CsvRecordItem(TreeItem):
 		self._error = None
 		self._formatted = False
 		self._rawData = rawData
-		self._fields = self._csvReader([rawData.data().decode('utf8')]).next()
+		self._fields = self._csvReader([rawData]).next()
 		self.reset()
 
 	def reset(self):
@@ -195,7 +213,7 @@ class CsvRecordItem(TreeItem):
 		self.data = self._dataFuncProcessed if formatted else self._dataFuncRaw
 
 	def checksum(self):
-		return hashlib.md5(self._rawData).hexdigest()
+		return hashlib.md5(self._rawData.encode('utf-8')).hexdigest()
 
 	def dataDict(self):
 		return {
@@ -204,18 +222,21 @@ class CsvRecordItem(TreeItem):
 			'credit': 	self._credit,
 			'debit': 	self._debit,
 			'txdate': 	self._txDate,
-			'raw': 		QtCore.QString.fromUtf8(self._rawData),
+			'raw': 		self._rawData,
 			'checksum': self.checksum(),
 		}
 
 	def setImported(self, imported):
 		self._imported = imported
 
+	def setDuplicate(self, duplicate):
+		self._duplicate = duplicate
+
 	def isSelectable(self):
 		return self._formatted and self.canImport()
 
 	def canImport(self):
-		return self.isValid() and not self._imported
+		return self.isValid() and not self._imported and not self._duplicate
 
 	def _csvReader(self, data):
 		# csv.py doesn't do Unicode; encode temporarily as UTF-8:
@@ -235,9 +256,13 @@ class CsvRecordItem(TreeItem):
 			return self._error
 		elif self._imported:
 			return 'Imported'
+		elif self._duplicate:
+			return 'Duplicate'
+
 		return 'Ready'
 
 	def isValid(self):
+		#return all(self._rawData.split(',')) and not self._error
 		return self._rawData and not self._error
 
 	def columnCount(self):
@@ -279,7 +304,7 @@ class CsvRecordItem(TreeItem):
 				return self._desc
 
 		elif role == QtCore.Qt.ToolTipRole:
-			return QtCore.QString.fromUtf8(self._rawData)
+			return self._rawData
 
 	def formatItem(self, dateIdx, descriptionIdx, creditIdx, debitIdx, currencySign, dateFormat):
 
@@ -298,8 +323,9 @@ class CsvRecordItem(TreeItem):
 				raise DecoderError('Bad Record')
 
 			self._date = self.__getDateField(self._fields[dateIdx], dateFormat)
-			self._desc = QtCore.QString(self._fields[descriptionIdx])
-			self._txDate = self.__getTransactionDate(self._fields[descriptionIdx], dateIdx)
+			self._desc = self._fields[descriptionIdx]
+			#TODO: get rid of this
+			self._txDate = None #self.__getTransactionDate(self._fields[descriptionIdx], dateIdx)
 
 			if debitIdx == creditIdx:
 				amount = self.__getAmountField(self._fields[debitIdx])
@@ -326,7 +352,6 @@ class CsvRecordItem(TreeItem):
 
 		finally:
 			self._setFormatted(True)
-
 
 	def __getAmountField(self, field):
 		""" Extract and return amount (double). If a simple conversion doesn't
@@ -374,7 +399,9 @@ class CsvRecordItem(TreeItem):
 			rx = QtCore.QRegExp(' (\\d\\d[A-Z]{3})')
 			if rx.indexIn(field) != -1:
 				# Add the year from date field to the transaction date
+				pdb.set_trace()
 				raise Exception('Fix me')
+			
 				timeDate = QtCore.QDateTime.fromString (rx.cap(1) + dateField.toString("yyyy"), "ddMMMyyyy")
 
 		if timeDate is not None and timeDate.isValid():
@@ -415,6 +442,7 @@ class ImportModel(QtCore.QAbstractItemModel):
 			self._root.appendChild(item)
 
 		self._root.setRecordsImported(self._checksums)
+		self._root.setDuplicateRecords()
 
 		self._numColumns = self._root.maxColumns()
 		self._headers = range(self._numColumns)
@@ -441,7 +469,6 @@ class ImportModel(QtCore.QAbstractItemModel):
 			Get settings for the account and create new model to decode the data
 		"""
 		self.beginResetModel()
-
 		with utils.showWaitCursor():
 			if accountData is None:
 				self._root.reset()
@@ -498,23 +525,24 @@ class ImportModel(QtCore.QAbstractItemModel):
 		return self._root
 
 	def checksum(self, data):
-		return QtCore.QString(QtCore.QCryptographicHash.hash(data, QtCore.QCryptographicHash.Md5).toHex())
+		raise Exception("what's this?")
+		return hashlib.md5(data.encode('utf-8')).hexdigest()
 
 	def readFiles(self, files):
 		for filename in files:
 			item = CsvFileItem(filename)
-			csvfile = QtCore.QFile(filename)
-
-			if not csvfile.open(QtCore.QIODevice.ReadOnly | QtCore.QIODevice.Text):
-				raise Exception('Cannot open file %r' % filename)
-
-			while not csvfile.atEnd():
-				pdb.set_trace()
-				rawData = csvfile.readLine().trimmed()
-				recItem = CsvRecordItem(rawData)
-				item.appendChild(recItem)
-
-			yield item
+			with codecs.open(filename, 'rb', 'UTF-8') as f:
+#			csvfile = QtCore.QFile(filename)
+#
+#			if not csvfile.open(QtCore.QIODevice.ReadOnly | QtCore.QIODevice.Text):
+#				raise Exception('Cannot open file %r' % filename)
+				for line in f:
+					recItem = CsvRecordItem(line.strip())
+#			while not csvfile.atEnd():
+#				rawData = csvfile.readLine().trimmed()
+#				recItem = CsvRecordItem(rawData)
+					item.appendChild(recItem)
+				yield item
 
 	def columnCount(self, parent=QtCore.QModelIndex()):
 		return self._numColumns
@@ -1147,7 +1175,7 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 				return False
 
 		if self._insertDate:
-			if self.sourceModel().index(sourceRow, enum.kRecordColumn_InsertDate, parent).data().toDateTime() != self._insertDate:
+			if self.sourceModel().index(sourceRow, enum.kRecordColumn_InsertDate, parent).data() != self._insertDate:
 				return False
 
 		if self._accountids:
@@ -1199,6 +1227,7 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 		rightVal = None
 
 		if left.column() == enum.kRecordColumn_Tags:
+			raise Exception('fix me')
 			leftVal = len(left.data(QtCore.Qt.UserRole).split(',', QtCore.QString.SkipEmptyParts))
 			rightVal = len(right.data(QtCore.Qt.UserRole).split(',', QtCore.QString.SkipEmptyParts))
 
