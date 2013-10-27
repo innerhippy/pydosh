@@ -6,17 +6,15 @@ kRecordColumn_Date = 4
 kRecordColumn_AccountTypeId = 5
 kRecordColumn_AccountTypeName = 6
 kRecordColumn_Description = 7
-kRecordColumn_Txdate = 8
-kRecordColumn_Amount = 9
-kRecordColumn_InsertDate = 10
-kRecordColumn_RawData = 11
+kRecordColumn_Amount = 8
+kRecordColumn_InsertDate = 9
+kRecordColumn_RawData = 10
 
 kImportColumn_Status = 0
 kImportColumn_Date = 1
-kImportColumn_TxDate = 2
-kImportColumn_Credit = 3
-kImportColumn_Debit = 4
-kImportColumn_Description = 5 
+kImportColumn_Credit = 2
+kImportColumn_Debit = 3
+kImportColumn_Description = 4 
 
 kDate_All = 0
 kDate_PreviousYear = 1

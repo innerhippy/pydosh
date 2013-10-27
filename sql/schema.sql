@@ -75,7 +75,6 @@ CREATE TABLE records (
     userid integer NOT NULL,
     accounttypeid integer NOT NULL,
     description text NOT NULL,
-    txdate timestamp without time zone,
     amount numeric(15,2) NOT NULL,
     insertdate timestamp without time zone,
     rawdata text NOT NULL,

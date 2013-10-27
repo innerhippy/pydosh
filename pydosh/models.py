@@ -18,50 +18,6 @@ class ImportException(Exception):
 	""" General exception for record import
 	"""
 
-class ImportRecord(object):
-	def __init__(self, *args):
-		super(ImportRecord, self).__init__()
-		self.data, self.date, self.desc, self.txdate, self.debit, self.credit, self.error = args
-		self.__isImported = False
-
-	@property
-	def valid(self):
-		return self.error is None
-
-	@property
-	def imported(self):
-		return self.__isImported
-
-	@imported.setter
-	def imported(self, value):
-		self.__isImported = value
-
-	@property
-	def checksum(self):
-		raise Exception('fix me')
-		return QtCore.QString(QtCore.QCryptographicHash.hash(self.data, QtCore.QCryptographicHash.Md5).toHex())
-
-	def __eq__(self, other):
-		return self.checksum == other.checksum
-
-	def __str__(self):
-		return 'date=%r txdate=%r debit=%r credit=%r desc=%r' % (self.date, self.txdate, self.credit, self.debit, self.desc)
-
-	def __repr__(self):
-		return '%r' % str(self)
-
-def unicode_csv_reader(unicode_csv_data, dialect=csv.excel, **kwargs):
-	# csv.py doesn't do Unicode; encode temporarily as UTF-8:
-	csv_reader = csv.reader(utf_8_encoder(unicode_csv_data),
-						dialect=dialect, **kwargs)
-	for row in csv_reader:
-		# decode UTF-8 back to Unicode, cell by cell:
-		yield [unicode(cell, 'utf-8') for cell in row]
-
-def utf_8_encoder(unicode_csv_data):
-	for line in unicode_csv_data:
-		yield line.encode('utf-8')
-
 class TreeItem(object):
 	def __init__(self):
 		super(TreeItem, self).__init__()
@@ -196,7 +152,6 @@ class CsvRecordItem(TreeItem):
 		super(CsvRecordItem, self).__init__()
 		self._date = None
 		self._desc = None
-		self._txDate = None
 		self._credit = None
 		self._debit = None
 		self._error = None
@@ -221,7 +176,6 @@ class CsvRecordItem(TreeItem):
 			'desc': 	self._desc,
 			'credit': 	self._credit,
 			'debit': 	self._debit,
-			'txdate': 	self._txDate,
 			'raw': 		self._rawData,
 			'checksum': self.checksum(),
 		}
@@ -294,8 +248,6 @@ class CsvRecordItem(TreeItem):
 				return self._status
 			elif column == enum.kImportColumn_Date:
 				return self._date
-			elif column == enum.kImportColumn_TxDate:
-				return self._txDate
 			elif column == enum.kImportColumn_Credit:
 				return '%.02f' % self._credit if self._credit else None
 			elif column == enum.kImportColumn_Debit:
@@ -310,7 +262,6 @@ class CsvRecordItem(TreeItem):
 
 		self._date = None
 		self._desc = None
-		self._txDate = None
 		self._credit = None
 		self._debit = None
 		self._error = None
@@ -324,8 +275,6 @@ class CsvRecordItem(TreeItem):
 
 			self._date = self.__getDateField(self._fields[dateIdx], dateFormat)
 			self._desc = self._fields[descriptionIdx]
-			#TODO: get rid of this
-			self._txDate = None #self.__getTransactionDate(self._fields[descriptionIdx], dateIdx)
 
 			if debitIdx == creditIdx:
 				amount = self.__getAmountField(self._fields[debitIdx])
@@ -374,38 +323,6 @@ class CsvRecordItem(TreeItem):
 					pass
 
 		return value
-
-	def __getTransactionDate(self, field, dateField):
-		""" Try and extract a transaction date from the description field.
-			Value format are ddMMMyy hhmm, ddMMMyy and ddMMM. 
-			When the year is not available (or 2 digits) then the value validated date field
-			is used
-		"""
-		timeDate = None
-
-		#Format is "23DEC09 1210"
-		rx = QtCore.QRegExp('(\\d\\d[A-Z]{3}\\d\\d \\d{4})')
-		if rx.indexIn(field) != -1:
-			timeDate = QtCore.QDateTime.fromString (rx.cap(1), "ddMMMyy hhmm").addYears(100)
-
-		if timeDate is None:
-			# Format is "06NOV10"
-			rx = QtCore.QRegExp('(\\d{2}[A-Z]{3}\\d{2})')
-			if rx.indexIn(field) != -1:
-				timeDate = QtCore.QDateTime.fromString (rx.cap(1), "ddMMMyy").addYears(100)
-
-		# Format is " 06NOV" <- note the stupid leading blank space..
-		if timeDate is None:
-			rx = QtCore.QRegExp(' (\\d\\d[A-Z]{3})')
-			if rx.indexIn(field) != -1:
-				# Add the year from date field to the transaction date
-				pdb.set_trace()
-				raise Exception('Fix me')
-			
-				timeDate = QtCore.QDateTime.fromString (rx.cap(1) + dateField.toString("yyyy"), "ddMMMyyyy")
-
-		if timeDate is not None and timeDate.isValid():
-			return timeDate
 
 	def __getDateField(self, field, dateFormat):
 		""" Extract date field using supplied format 
@@ -476,7 +393,7 @@ class ImportModel(QtCore.QAbstractItemModel):
 			else:
 				dateField, descriptionField, creditField, debitField, currencySign, dateFormat = accountData
 				self._root.formatItem(dateField, descriptionField, creditField, debitField, currencySign, dateFormat)
-				self._headers = ['Status', 'Date', 'Tx Date', 'Credit', 'Debit', 'Description']
+				self._headers = ['Status', 'Date', 'Credit', 'Debit', 'Description']
 
 		self._numColumns = self._root.maxColumns()
 
@@ -494,16 +411,16 @@ class ImportModel(QtCore.QAbstractItemModel):
 
 		query = QtSql.QSqlQuery()
 		query.prepare("""
-				INSERT INTO records
-				(date, userid, accounttypeid, description, txdate, amount, insertdate, rawdata, checksum)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-			""")
+			INSERT INTO records (date, userid, accounttypeid, 
+								 description, amount, insertdate, 
+								 rawdata, checksum)
+						 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		""")
 
 		query.addBindValue(rec['date'])
 		query.addBindValue(db.userId)
 		query.addBindValue(accountId)
 		query.addBindValue(rec['desc'])
-		query.addBindValue(rec['txdate'])
 		query.addBindValue(rec['credit'] or rec['debit'])
 		query.addBindValue(self.__currentTimestamp)
 		query.addBindValue(rec['raw'])
@@ -643,7 +560,6 @@ class RecordModel(QtSql.QSqlTableModel):
                        r.accounttypeid,
                        at.accountname,
                        r.description,
-                       r.txdate,
                        r.amount,
                        r.insertdate,
                        r.rawdata
@@ -757,15 +673,6 @@ class RecordModel(QtSql.QSqlTableModel):
 			elif item.column() == enum.kRecordColumn_Description:
 				# Replace multiple spaces with single
 				return re.sub('[ ]+', ' ', super(RecordModel, self).data(item))
-				#val = super(RecordModel, self).data(item).toString().replace(QtCore.QRegExp('[ ]+'), ' ')
-				#return val
-#
-#			elif item.column() == enum.kRecordColumn_Txdate:
-#				# Reformat date to only display time if available
-#				import pdb
-#				pdb.set_trace()
-#				if super(RecordModel, self).data(item).toDateTime().time().toString() == "00:00:00":
-#					return super(RecordModel, self).data(item)
 
 		return super(RecordModel, self).data(item, role)
 
@@ -833,8 +740,6 @@ class RecordModel(QtSql.QSqlTableModel):
 				return "Account"
 			elif section == enum.kRecordColumn_Description:
 				return "Description"
-			elif section == enum.kRecordColumn_Txdate:
-				return "TX date"
 			elif section == enum.kRecordColumn_Amount:
 				return "Amount"
 
