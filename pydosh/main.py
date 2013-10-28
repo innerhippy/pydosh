@@ -17,7 +17,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def __init__(self, parent=None):
 		super(PydoshWindow, self).__init__(parent=parent)
 		self.setupUi(self)
-		
+
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
 		self.checkedCombo.addItem('all', enum.kCheckedStatus_All)
@@ -110,9 +110,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.descEdit.setDelay(400)
 		self.amountEdit.setDelay(400)
 
-		#
 		# Set up connections
-		#
 		self.scrolltoEdit.textChanged.connect(self.scrollTo)
 		self.toggleCheckButton.clicked.connect(self.toggleSelected)
 		self.deleteButton.clicked.connect(self.deleteRecords)
@@ -220,7 +218,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			"<p>Copywrite (c) 2013.</p>"
 			"<p>Written using PyQt %s</p>"
 			"<p><a href=\"http://www.innerhippy.com\">www.innerhippy.com</a></p>"
-			"enjoy!</html>" % (__VERSION__, QtCore.QT_VERSION_STR)
+			"enjoy!</html>" % (__VERSION__, QtCore.__version__)
 			)
 
 	def endDateChanged(self, date):

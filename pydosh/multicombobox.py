@@ -59,6 +59,9 @@ class MultiComboBox(QtGui.QComboBox):
 		self.view().viewport().installEventFilter(self)
 		self.installEventFilter(self)
 
+		self.clearMenu = QtGui.QMenu(self)
+		self.clearMenu.addAction(QtGui.QIcon(':/icons/cross.png'), 'Clear All')
+
 		self.activated[int].connect(self.__toggleCheckState)
 
 	def defaultText(self):
@@ -79,30 +82,12 @@ class MultiComboBox(QtGui.QComboBox):
 		self.__updateCheckedItems()
 
 	def clearAll(self):
-		""" Event for clear all check from the list view. 
+		""" Set all the items as unchecked
 		"""
-		self.__checkAll(False)
-
-	def checkAll(self):
-		""" Event for check all from the list view.
-		"""
-		self.__checkAll(True)
-
-	def __checkAll(self, check=False):
-		""" Function to set all the items as checked or unchecked based on the argument.
-
-			Args:
-				check(bool): check state
-		"""
-		searchState = QtCore.Qt.Unchecked if check else QtCore.Qt.Checked
-		assignState = QtCore.Qt.Checked if check else QtCore.Qt.Unchecked
-
-		modelIndex = self.model().index(0, self.modelColumn(), self.rootModelIndex())
-		modelIndexList = self.model().match(modelIndex, QtCore.Qt.CheckStateRole, searchState, -1, QtCore.Qt.MatchExactly)
 
 		with utils.signalsBlocked(self.model()):
-			for index in modelIndexList:
-				self.setItemData(index.row(), assignState, QtCore.Qt.CheckStateRole)
+			for row in xrange(self.model().rowCount()):
+				self.setItemData(row, QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
 
 		self.__updateCheckedItems()
 
@@ -126,14 +111,9 @@ class MultiComboBox(QtGui.QComboBox):
 	def __toggleCheckState(self, index):
 		""" Toggles the check state for the supplied item index
 		"""
-		value = self.itemData(index, QtCore.Qt.CheckStateRole)
-
-		if value.isValid():
-			if value == QtCore.Qt.Unchecked:
-				state = QtCore.Qt.Checked
-			else:
-				state = QtCore.Qt.Unchecked
-			self.setItemData(index, state, QtCore.Qt.CheckStateRole)
+		oldValue = self.itemData(index, QtCore.Qt.CheckStateRole)
+		newValue = QtCore.Qt.Checked if (oldValue == QtCore.Qt.Unchecked) else QtCore.Qt.Unchecked
+		self.setItemData(index, newValue, QtCore.Qt.CheckStateRole)
 
 	def checkedItems(self):
 		""" Returns a list of checked item indexes
@@ -150,19 +130,8 @@ class MultiComboBox(QtGui.QComboBox):
 			Args:
 				event (QEvent): mouse right click event.
 		"""
-		signalMap = {}
-		contextMenu = QtGui.QMenu()
-
-		clearAllAction = contextMenu.addAction(QtGui.QIcon(':/icons/cross.png'), 'Clear All')
-		clearAllAction.setIconVisibleInMenu(True)
-		signalMap[clearAllAction] = self.clearAll
-		checkAllAction = contextMenu.addAction(QtGui.QIcon(':/icons/tick.png'), 'Check All')
-		checkAllAction.setIconVisibleInMenu(True)
-		signalMap[checkAllAction] = self.checkAll
-
-		contextMenuAction = contextMenu.exec_(QtGui.QCursor.pos())
-		if contextMenuAction and signalMap.has_key(contextMenuAction):
-			signalMap[contextMenuAction]()
+		if self.clearMenu.exec_(QtGui.QCursor.pos()):
+			self.clearAll()
 
 	def __updateCheckedItems(self):
 		""" Re-draw the dropdown to reflect check state for all items

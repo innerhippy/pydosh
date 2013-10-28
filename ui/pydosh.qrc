@@ -13,7 +13,6 @@
 		<file>../icons/delete.png</file>
 		<file>../icons/pydosh.png</file>
 		<file>../icons/help.png</file>
-		<file>../icons/tick.png</file>
 		<file>../icons/brush.png</file>
 		<file>../sql/accounttypes_data.sql</file>
 		<file>../sql/schema.sql</file>
