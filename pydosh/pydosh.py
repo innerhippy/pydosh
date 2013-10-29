@@ -3,10 +3,10 @@ from PySide import QtGui, QtCore
 from dialogs import LoginDialog
 from main import PydoshWindow
 import stylesheet
-#QtCore.pyqtRemoveInputHook()
-from PyQt4.QtCore import pyqtRemoveInputHook
-pyqtRemoveInputHook()
 import pydosh_rc
+
+# from PyQt4.QtCore import pyqtRemoveInputHook
+# pyqtRemoveInputHook()
 
 def main():
 
