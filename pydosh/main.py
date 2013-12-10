@@ -1,6 +1,7 @@
 from PySide import QtGui, QtCore, QtSql
 from contextlib  import contextmanager
 import operator
+import re
 
 from version import __VERSION__
 from database import db
@@ -14,6 +15,14 @@ import pydosh_rc
 import pdb
 
 class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
+	__operatorMap = {
+		'=':  operator.eq,
+		'>':  operator.gt,
+		'<':  operator.lt,
+		'>=': operator.ge,
+		'<=': operator.le
+	}
+
 	def __init__(self, parent=None):
 		super(PydoshWindow, self).__init__(parent=parent)
 		self.setupUi(self)
@@ -185,27 +194,16 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	def amountFilterChanged(self, text):
 		if text:
-			if text.contains(QtCore.QRegExp('[<>=]+')):
+			if re.match('[<>=]', text):
 				# looks like we have operators, test validity and amount
-				operatorMap = {
-					'=':  operator.eq,
-					'>':  operator.gt,
-					'<':  operator.lt,
-					'>=': operator.ge,
-					'<=': operator.le
-				}
-				rx = QtCore.QRegExp('^(=|>|<|>=|<=)([\\.\\d+]+)')
-				if rx.indexIn(text) != -1 and str(rx.cap(1)) in operatorMap:
-					self.tableView.model().setAmountFilter(rx.cap(2), operatorMap[str(rx.cap(1))])
-				else:
-					# Input not complete yet.
-					return
-			else:
-				# No operator supplied - treat amount as a string
-				self.tableView.model().setAmountFilter(text)
-		else:
-			# No filter
-			self.tableView.model().setAmountFilter(None)
+				match = re.match('^(=|>|<|>=|<=)([\d\.]+)', text)
+				if match:
+					opStr, amount = match.groups()
+					if opStr in self.__operatorMap:
+						self.tableView.model().setAmountFilter(amount, self.__operatorMap[opStr])
+				return
+
+		self.tableView.model().setAmountFilter(text)
 
 	def showAbout(self):
 		""" Show 'about' info
@@ -464,7 +462,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def reset(self, *args):
 		""" Reset all filters and combo boxes to a default state
 		"""
-		#pdb.set_trace()
 		signalsToBlock = (
 				self.accountCombo,
 				self.checkedCombo,

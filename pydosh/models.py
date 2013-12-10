@@ -1052,7 +1052,7 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 		""" Filter by description (case insensitive)
 		"""
 		if text != self._description:
-			self._description = text
+			self._description = text.lower()
 			self.invalidateFilter()
 
 	def setAmountFilter(self, text, op=None):
@@ -1105,14 +1105,14 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 
 		if self._description:
 			description = self.sourceModel().index(sourceRow, enum.kRecordColumn_Description).data()
-			if not description.contains(self._description, QtCore.Qt.CaseInsensitive):
+			if self._description not in description.lower():
 				return False
 
 		if self._amountFilter:
 			amount = self.sourceModel().index(sourceRow, enum.kRecordColumn_Amount).data()
 			if self._amountOperator is None:
 				# Filter as string matching start
-				if not amount.startsWith(self._amountFilter):
+				if not amount.startswith(self._amountFilter):
 					return False
 			else:
 				# Use operator to perform match

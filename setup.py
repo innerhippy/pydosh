@@ -13,12 +13,12 @@ if sys.platform == 'darwin':
 		data_files=['pydosh'],
 		options = dict(
 			py2app = dict(
-				argv_emulation=True, 
-#				includes=['sip', 'PySide.QtCore'], # These are imported automatically
+				argv_emulation=True,
+#				includes=['PySide.QtCore'], # These are imported automatically
 				excludes=[
-					'PySide.QtDesigner', 
-					'PySide.QtDeclarative', 
-					'PySide.QtHelp', 
+					'PySide.QtDesigner',
+					'PySide.QtDeclarative',
+					'PySide.QtHelp',
 					'PySide.QtMultimedia',
 					'PySide.QtSvg',
 					'PySide.QtXml',
