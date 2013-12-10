@@ -1121,7 +1121,7 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 
 		if self._tagFilter:
 			tags = self.sourceModel().index(sourceRow, enum.kRecordColumn_Tags).data(QtCore.Qt.UserRole)
-			if not set(self._tagFilter).intersection(set(tags.split(','))):
+			if not set(self._tagFilter).intersection(set(tags)):
 				return False
 
 		return True

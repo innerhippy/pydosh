@@ -48,7 +48,7 @@ else: # Unix
 
 setup(name='pydosh',
 	version=version.__VERSION__,
-	description='Bank statement transaction manager, written in PyQt',
+	description='Bank statement transaction manager, written in PySide',
 	long_description=readme(),
 	url='http://github.com/innerhippy/pydosh',
 	author='Will Hall',
