@@ -145,7 +145,6 @@ class CsvFileItem(TreeItem):
 	def data(self, column, role):
 		if role == QtCore.Qt.DisplayRole and column == 0:
 			return os.path.basename(self._filename)
-#			return QtCore.QFileInfo(self._filename).fileName()
 
 class CsvRecordItem(TreeItem):
 	def __init__(self, rawData):
@@ -197,7 +196,7 @@ class CsvRecordItem(TreeItem):
 		for row in csv.reader(self._encoder(data), dialect=csv.excel):
 			# decode UTF-8 back to Unicode, cell by cell:
 			yield [unicode(cell, 'utf-8') for cell in row]
-	
+
 	def _encoder(self, data):
 		for line in data:
 			yield line.encode('utf-8')
@@ -330,7 +329,7 @@ class CsvRecordItem(TreeItem):
 		return value
 
 	def __getDateField(self, field, dateFormat):
-		""" Extract date field using supplied format 
+		""" Extract date field using supplied format
 		"""
 		date = QtCore.QDate.fromString(field, dateFormat)
 
@@ -416,8 +415,8 @@ class ImportModel(QtCore.QAbstractItemModel):
 
 		query = QtSql.QSqlQuery()
 		query.prepare("""
-			INSERT INTO records (date, userid, accounttypeid, 
-								 description, amount, insertdate, 
+			INSERT INTO records (date, userid, accounttypeid,
+								 description, amount, insertdate,
 								 rawdata, checksum)
 						 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		""")
@@ -454,17 +453,10 @@ class ImportModel(QtCore.QAbstractItemModel):
 		for filename in files:
 			item = CsvFileItem(filename)
 			with codecs.open(filename, 'rb', 'UTF-8') as f:
-#			csvfile = QtCore.QFile(filename)
-#
-#			if not csvfile.open(QtCore.QIODevice.ReadOnly | QtCore.QIODevice.Text):
-#				raise Exception('Cannot open file %r' % filename)
 				for line in f:
 					recItem = CsvRecordItem(line.strip())
-#			while not csvfile.atEnd():
-#				rawData = csvfile.readLine().trimmed()
-#				recItem = CsvRecordItem(rawData)
 					item.appendChild(recItem)
-				yield item
+			yield item
 
 	def columnCount(self, parent=QtCore.QModelIndex()):
 		return self._numColumns
@@ -1006,7 +998,7 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 		if accountIds != self._accountids:
 			self._accountids = accountIds
 			self.invalidateFilter()
-			
+
 	def setHasTagsFilter(self, value):
 		""" Set basic tag filter
 
