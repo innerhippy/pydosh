@@ -70,7 +70,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		recordModel.setEditStrategy(QtSql.QSqlTableModel.OnFieldChange)
 		recordProxyModel = models.RecordProxyModel(self)
 
-		# "you should not update the source model through 
+		# "you should not update the source model through
 		#  the proxy model when dynamicSortFilter is true"
 		recordProxyModel.setDynamicSortFilter(False)
 		recordProxyModel.setSourceModel(recordModel)

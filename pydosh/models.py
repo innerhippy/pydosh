@@ -11,7 +11,7 @@ import pydosh_rc
 import pdb
 
 class DecoderError(Exception):
-	""" General Decoder exceptions	
+	""" General Decoder exceptions
 	"""
 
 class ImportException(Exception):
@@ -759,7 +759,7 @@ class TagModel(QtSql.QSqlTableModel):
 
 	def setRecordFilter(self, recordIds):
 		""" List of record ids to limit tag data to display
-			If no record ids are given then we still need to set 
+			If no record ids are given then we still need to set
 			"0" to ensure that no record ids are matched
 		"""
 		self.setFilter(','.join([str(rec) for rec in recordIds or [0]]))
@@ -775,7 +775,7 @@ class TagModel(QtSql.QSqlTableModel):
 		if index.column() == enum.kTagsColumn_TagName:
 			if role == QtCore.Qt.CheckStateRole:
 				tagName = index.data()
-	
+
 				if value == QtCore.Qt.Checked:
 					if tagName in self.__selectedTagNames:
 						# Do nothing if tag has not changed
@@ -786,11 +786,11 @@ class TagModel(QtSql.QSqlTableModel):
 						# Do nothing if tag has not changed
 						return False
 					self.__selectedTagNames.remove(tagName)
-	
+
 				self.dataChanged.emit(index, index)
 				self.selectionChanged.emit(self.__selectedTagNames)
-				return True 
-	
+				return True
+
 			elif role == QtCore.Qt.EditRole:
 				# Save changes to tag name in database
 				return super(TagModel, self).setData(index, value, role)
