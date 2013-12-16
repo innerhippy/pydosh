@@ -120,7 +120,13 @@ class _Database(QtCore.QObject):
 			self.commit.emit()
 
 	def connect(self):
+		""" Connect to the database - remove any existing connections first
+		"""
+		for name in QtSql.QSqlDatabase.connectionNames():
+			QtSql.QSqlDatabase.removeDatabase(name)
+
 		db = QtSql.QSqlDatabase.addDatabase(self.driver)
+
 		db.setDatabaseName(self.database)
 		db.setHostName(self.hostname)
 		db.setUserName(self.username)
