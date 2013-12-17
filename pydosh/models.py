@@ -1150,13 +1150,13 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 			rightVal = right.data(QtCore.Qt.UserRole)
 
 		elif left.column() == enum.kRecordColumn_Date:
-			leftVal =  left.data()
-			rightVal = right.data()
+			leftVal =  left.data(QtCore.Qt.UserRole)
+			rightVal = right.data(QtCore.Qt.UserRole)
 
 			if leftVal == rightVal:
 				# Dates are the same - sort by recordId just to ensure the results are consistent
-				leftVal = self.sourceModel().index(left.row(), enum.kRecordColumn_RecordId).data()
-				rightVal = self.sourceModel().index(right.row(), enum.kRecordColumn_RecordId).data()
+				leftVal = self.sourceModel().index(left.row(), enum.kRecordColumn_RecordId).data(QtCore.Qt.UserRole)
+				rightVal = self.sourceModel().index(right.row(), enum.kRecordColumn_RecordId).data(QtCore.Qt.UserRole)
 
 		if leftVal or rightVal:
 			return leftVal > rightVal
