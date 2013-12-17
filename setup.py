@@ -7,12 +7,12 @@ def readme():
         return f.read()
 
 if sys.platform == 'darwin':
-    extra_options = {
+    extra_options = dict(
         setup_requires=['py2app'],
         app=['pydosh/pydosh.py'],
         data_files=['pydosh'],
-        options = {
-            py2app = {
+        options = dict(
+            py2app = dict(
                 argv_emulation=True,
                 excludes=[
                     'PySide.QtDesigner',
@@ -30,10 +30,10 @@ if sys.platform == 'darwin':
                     'PySide.QtScript',
                 ],
                 iconfile='icons/pydosh.icns',
-                qt_plugins=['sqldrivers'],
-                }
-            }
-        }
+                qt_plugins=['sqldrivers/libqsqlpsql.dylib'],
+                )
+            )
+        )
 elif sys.platform == 'win32':
     raise Exception('Sorry, Windows is not supported. Please upgrade to Unix')
 else: # Unix
