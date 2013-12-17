@@ -643,6 +643,10 @@ class RecordModel(QtSql.QSqlTableModel):
 				# Raw data - signed amount
 				return super(RecordModel, self).data(item, QtCore.Qt.DisplayRole)
 
+			elif item.column() == enum.kRecordColumn_Date:
+				# Raw datetime object
+				return super(RecordModel, self).data(item, QtCore.Qt.DisplayRole)
+
 		elif role == QtCore.Qt.ForegroundRole:
 			if item.column() == enum.kRecordColumn_Amount:
 				# Indicate credit/debit with colour
@@ -669,6 +673,10 @@ class RecordModel(QtSql.QSqlTableModel):
 			elif item.column() == enum.kRecordColumn_Description:
 				# Replace multiple spaces with single
 				return re.sub('[ ]+', ' ', super(RecordModel, self).data(item))
+			elif item.column() == enum.kRecordColumn_Date:
+				# Ensure date display is day/month/year, or I'll get confused.
+				# Use UserRole to return QDate object
+				return super(RecordModel, self).data(item, role).toString('dd/MM/yyyy')
 
 		return super(RecordModel, self).data(item, role)
 
@@ -1067,12 +1075,14 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 		self.filterChanged.emit()
 
 	def filterAcceptsRow(self, sourceRow, parent):
+		""" Filters row to display
+		"""
 		if self._startDate:
-			if self.sourceModel().index(sourceRow, enum.kRecordColumn_Date, parent).data() < self._startDate:
+			if self.sourceModel().index(sourceRow, enum.kRecordColumn_Date, parent).data(QtCore.Qt.UserRole) < self._startDate:
 				return False
 
 		if self._endDate:
-			if self.sourceModel().index(sourceRow, enum.kRecordColumn_Date, parent).data() > self._endDate:
+			if self.sourceModel().index(sourceRow, enum.kRecordColumn_Date, parent).data(QtCore.Qt.UserRole) > self._endDate:
 				return False
 
 		if self._insertDate:

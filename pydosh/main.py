@@ -7,7 +7,7 @@ from version import __VERSION__
 from database import db
 from ui_pydosh import Ui_pydosh
 import utils
-import models 
+import models
 import dialogs
 import stylesheet
 import enum
@@ -220,7 +220,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			)
 
 	def endDateChanged(self, date):
-		""" End date has changed - if date mode is "previous" month, 
+		""" End date has changed - if date mode is "previous" month,
 			the update start date accordingly
 		"""
 		if self.dateCombo.currentIndex() == enum.kDate_PreviousMonth:
@@ -265,7 +265,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			startDate = QtCore.QDate()
 			endDate = QtCore.QDate()
 
-			# Find the min/max dates for the last import from the proxy model 
+			# Find the min/max dates for the last import from the proxy model
 			for row in xrange(proxyModel.rowCount()):
 				dateForRow = proxyModel.index(row, enum.kRecordColumn_Date).data()
 				if not endDate.isValid() or dateForRow > endDate:
@@ -320,7 +320,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 	def recordSelectionChanged(self):
 		""" Only enable buttons if a selection has been made
-		""" 
+		"""
 		enable = len(self.tableView.selectionModel().selectedRows()) > 0
 		self.toggleCheckButton.setEnabled(enable)
 		self.deleteButton.setEnabled(enable)
@@ -374,7 +374,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			if not proxyModel.sourceModel().deleteRecords(indexes):
 				QtGui.QMessageBox.critical(self, 'Database Error',
 					proxyModel.sourceModel().lastError().text(), QtGui.QMessageBox.Ok)
-			
+
 			# Finally, re-populate accounts and date range in case this has changed
 			self.populateAccounts()
 			self.populateDates()
@@ -406,7 +406,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 					self.tableView.selectRow(proxyModel.mapFromSource(match[0]).row())
 
 			self.tableView.setSelectionMode(selectionMode)
-			
+
 			selected = self.tableView.selectionModel().selectedRows()
 
 			# Scroll to first selected row
@@ -418,10 +418,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		"""
 		self.accountCombo.clear()
 		query = QtSql.QSqlQuery("""
-		    SELECT accounttypeid, accountname 
+		    SELECT accounttypeid, accountname
 		      FROM accounttypes
 		     WHERE accounttypeid IN (
-		           SELECT DISTINCT accounttypeid 
+		           SELECT DISTINCT accounttypeid
 		                      FROM records
 		                     WHERE userid=%s)
 		  ORDER BY accountname
@@ -434,8 +434,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		""" Set date fields to min and max values
 		"""
 		query = QtSql.QSqlQuery("""
-			SELECT MIN(date), 
-				   MAX(date),  
+			SELECT MIN(date),
+				   MAX(date),
 				   MAX(insertdate)
 			  FROM records
 			 WHERE userid=%d
@@ -444,7 +444,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		if query.next():
 			startDate = query.value(0)
 			endDate = query.value(1)
-			maxInsertDateTime = query.value(2)	
+			maxInsertDateTime = query.value(2)
 
 			self.startDateEdit.setDateRange(startDate, endDate)
 			self.endDateEdit.setDateRange(startDate, endDate)
@@ -483,7 +483,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		with utils.signalsBlocked(signalsToBlock):
 			self.tagView.model().sourceModel().clearSelection()
 			self.tableView.model().clearFilters()
-			
+
 			self.dateCombo.setCurrentIndex(enum.kDate_PreviousMonth)
 
 			# Signals blocked so need to reset filter manually
@@ -625,6 +625,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		selectedRecordIds = set(self.selectedRecordIds())
 		model = self.tagView.model()
+
 		for row in xrange(model.rowCount()):
 			tagId = model.index(row, enum.kTagsColumn_TagId).data()
 			tagName = model.index(row, enum.kTagsColumn_TagName).data()
@@ -655,6 +656,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			menu = QtGui.QMenu(self)
 			menu.addAction(action)
 			menu.exec_(self.tableView.viewport().mapToGlobal(pos))
+
 			if not self.selectedRecordIds():
 				if not self.amountEdit.text() and self.descEdit.text():
 					self.descEdit.clear()
@@ -679,6 +681,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			# If there's no selection available then close the tag menu
 			item.listWidget().parent().close()
 
+		self.displayRecordCount()
+
 	def scrollTo(self, text):
 		# Tell the model to highlight or un-highlight matching rows
 		self.tableView.model().sourceModel().highlightText(text)
@@ -692,7 +696,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 class TagListWidget(QtGui.QListWidget):
 	""" Simple extension to QListWidget to allow persistence of editor
 		when used in QMenu popup
-	""" 
+	"""
 	def __init__(self, parent=None):
 		super(TagListWidget, self).__init__(parent=parent)
 		self.__persistEditor = False
