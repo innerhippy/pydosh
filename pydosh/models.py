@@ -307,16 +307,18 @@ class CsvRecordItem(TreeItem):
 			self._setFormatted(True)
 
 	def __getAmountField(self, field):
-		""" Extract and return amount (double). If a simple conversion doesn't
-			succeed, then try and parse the string to remove any currency sign
-			or other junk.
+		""" Extract and return amount from str type to double. 
+			If a simple conversion doesn't succeed, then try and parse 
+			the string to remove any currency sign or other junk.
 
 			Returns None if field does not contain valid double.
 		"""
 		value = None
+		field = field.replace(',', '')
+
 		# Get rid of commas from amount field and try and covert to double
 		try:
-			value = float(field.replace(',', ''))
+			value = float(field)
 		except ValueError:
 			# Probably has currency sign - extract all valid currency characters
 			match = re.search('([\d\-\.]+)', field)
@@ -634,7 +636,8 @@ class RecordModel(QtSql.QSqlTableModel):
 		elif role == QtCore.Qt.UserRole:
 			if item.column() == enum.kRecordColumn_Tags:
 				# Tags as comma separated string (from database)
-				return super(RecordModel, self).data(item, QtCore.Qt.DisplayRole).split(',')
+				tags = super(RecordModel, self).data(item, QtCore.Qt.DisplayRole)
+				return tags.split(',') if tags else []
 
 			elif item.column() == enum.kRecordColumn_Amount:
 				# Raw data - signed amount

@@ -307,12 +307,16 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		dialog = dialogs.ImportDialog(dialog.selectedFiles(), self)
 		dialog.setWindowTitle(', '.join(fileNames))
+		dialog.accepted.connect(self.importClosed)
+		dialog.show()
 
-		if dialog.exec_():
-			self.tableView.model().sourceModel().select()
-			self.populateAccounts()
-			self.populateDates()
-			self.setDateRange()
+	def importClosed(self):
+		""" Statements have been imported successfully - refresh models
+		"""
+		self.tableView.model().sourceModel().select()
+		self.populateAccounts()
+		self.populateDates()
+		self.setDateRange()
 
 	def recordSelectionChanged(self):
 		""" Only enable buttons if a selection has been made
