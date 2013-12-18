@@ -156,12 +156,7 @@ class _Database(QtCore.QObject):
 			# no user exists - create entry for current user
 			return self.__addCurrentUser()
 
-		userId = query.value(0)
-
-#		if not ok:
-#			raise ConnectionException('Cannot get userid for %s' % self.username)
-
-		return userId
+		return query.value(0)
 
 	def __addCurrentUser(self):
 		""" Add the current user to the users table.
@@ -176,12 +171,7 @@ class _Database(QtCore.QObject):
 			raise ConnectionException(query.lastError().text())
 
 		query.next()
-		userId = query.value(0)
-
-#		if not ok:
-#			raise ConnectionException('Cannot add new user %s' % self.username)
-
-		return userId
+		return query.value(0)
 
 	def __runCommandsFromFile(self, filename):
 
