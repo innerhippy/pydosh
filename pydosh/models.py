@@ -640,11 +640,11 @@ class RecordModel(QtSql.QSqlTableModel):
 				return tags.split(',') if tags else []
 
 			elif item.column() == enum.kRecordColumn_Amount:
-				# Raw data - signed amount
+				# signed float
 				return super(RecordModel, self).data(item, QtCore.Qt.DisplayRole)
 
 			elif item.column() == enum.kRecordColumn_Date:
-				# Raw datetime object
+				# QDate object
 				return super(RecordModel, self).data(item, QtCore.Qt.DisplayRole)
 
 		elif role == QtCore.Qt.ForegroundRole:
@@ -673,6 +673,7 @@ class RecordModel(QtSql.QSqlTableModel):
 			elif item.column() == enum.kRecordColumn_Description:
 				# Replace multiple spaces with single
 				return re.sub('[ ]+', ' ', super(RecordModel, self).data(item))
+
 			elif item.column() == enum.kRecordColumn_Date:
 				# Ensure date display is day/month/year, or I'll get confused.
 				# Use UserRole to return QDate object

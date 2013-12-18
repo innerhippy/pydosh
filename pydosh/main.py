@@ -267,7 +267,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 			# Find the min/max dates for the last import from the proxy model
 			for row in xrange(proxyModel.rowCount()):
-				dateForRow = proxyModel.index(row, enum.kRecordColumn_Date).data()
+				dateForRow = proxyModel.index(row, enum.kRecordColumn_Date).data(QtCore.Qt.UserRole)
 				if not endDate.isValid() or dateForRow > endDate:
 					endDate = dateForRow
 				if not startDate.isValid() or dateForRow < startDate:
