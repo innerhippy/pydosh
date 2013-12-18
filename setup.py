@@ -30,7 +30,7 @@ if sys.platform == 'darwin':
                     'PySide.QtScript',
                 ],
                 iconfile='icons/pydosh.icns',
-                qt_plugins=['sqldrivers/libqsqlpsql.dylib'],
+                qt_plugins=['sqldrivers/*'],
                 )
             )
         )

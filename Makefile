@@ -25,6 +25,6 @@ deb: clean all
 	python setup.py --command-packages=stdeb.command sdist_dsc bdist_deb
 
 dmg: clean all
-	python setup.py -v py2app
+	python setup.py py2app
 	hdiutil create -srcfolder dist/pydosh.app pydosh-$(VERSION).dmg
 
