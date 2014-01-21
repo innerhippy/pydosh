@@ -9,6 +9,7 @@ kRecordColumn_Description = 7
 kRecordColumn_Amount = 8
 kRecordColumn_InsertDate = 9
 kRecordColumn_RawData = 10
+kRecordColumn_Currency = 11
 
 kImportColumn_Status = 0
 kImportColumn_Date = 1

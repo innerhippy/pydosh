@@ -5,6 +5,7 @@ import enum
 import csv
 import hashlib
 import codecs
+import currency
 from database import db
 import utils
 import pydosh_rc
@@ -561,7 +562,8 @@ class RecordModel(QtSql.QSqlTableModel):
                        r.description,
                        r.amount,
                        r.insertdate,
-                       r.rawdata
+                       r.rawdata,
+                       r.currency
                   FROM records r
             INNER JOIN accounttypes at ON at.accounttypeid=r.accounttypeid
                    AND r.userid=%(userid)s
@@ -668,6 +670,10 @@ class RecordModel(QtSql.QSqlTableModel):
 
 			elif item.column() == enum.kRecordColumn_Amount:
 				# Display absolute currency values. credit/debit is indicated by background colour
+				import pdb
+				#pdb.set_trace()
+				code = self.index(item.row(), enum.kRecordColumn_Currency).data()
+				return currency.toCurrencyStr(abs(super(RecordModel, self).data(item)), code)
 				return '%.02f' % abs(super(RecordModel, self).data(item))
 
 			elif item.column() == enum.kRecordColumn_Description:

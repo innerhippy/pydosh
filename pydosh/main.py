@@ -85,6 +85,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.tableView.setColumnHidden(enum.kRecordColumn_CheckDate, True)
 		self.tableView.setColumnHidden(enum.kRecordColumn_RawData, True)
 		self.tableView.setColumnHidden(enum.kRecordColumn_InsertDate, True)
+		self.tableView.setColumnHidden(enum.kRecordColumn_Currency, True)
 		self.tableView.setSortingEnabled(True)
 		self.tableView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 		self.tableView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
