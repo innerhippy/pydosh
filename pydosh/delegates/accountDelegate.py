@@ -1,5 +1,5 @@
 from PySide import QtGui, QtCore
-import enum
+import pydosh.enum as enum
 
 class AccountDelegate(QtGui.QItemDelegate):
 	def __init__(self, parent=None):

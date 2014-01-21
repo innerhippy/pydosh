@@ -1,3 +1,4 @@
+# clean
 from PySide import QtCore, QtSql
 from contextlib  import contextmanager
 import pydosh_rc
