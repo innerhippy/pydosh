@@ -404,7 +404,7 @@ class ImportModel(QtCore.QAbstractItemModel):
 
 		self.endResetModel()
 
-	def saveRecord(self, accountId, index):
+	def saveRecord(self, accountId, currencyCode, index):
 		""" Saves the import record to the database
 			Raises ImportException on error
 		"""
@@ -418,8 +418,8 @@ class ImportModel(QtCore.QAbstractItemModel):
 		query.prepare("""
 			INSERT INTO records (date, userid, accounttypeid,
 								 description, amount, insertdate,
-								 rawdata, checksum)
-						 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+								 rawdata, checksum, currency)
+						 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		""")
 
 		query.addBindValue(rec['date'])
@@ -430,6 +430,7 @@ class ImportModel(QtCore.QAbstractItemModel):
 		query.addBindValue(self.__currentTimestamp)
 		query.addBindValue(rec['raw'])
 		query.addBindValue(rec['checksum'])
+		query.addBindValue(currencyCode)
 
 		query.exec_()
 
@@ -445,10 +446,6 @@ class ImportModel(QtCore.QAbstractItemModel):
 			return index.internalPointer()
 
 		return self._root
-
-	def checksum(self, data):
-		raise Exception("what's this?")
-		return hashlib.md5(data.encode('utf-8')).hexdigest()
 
 	def readFiles(self, files):
 		for filename in files:

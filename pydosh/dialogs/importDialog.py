@@ -1,9 +1,14 @@
 from PySide import QtCore, QtGui, QtSql
 
 from pydosh.ui_import import Ui_Import
+from pydosh.database import db
 import pydosh.enum as enum
-import pydosh.utils as utils
 from pydosh.models import ImportModel
+import pydosh.currency as currency
+
+class UserCancelledException(Exception):
+	"""Exception to indicate user has cancelled the current operation
+	"""
 
 
 class ImportDialog(Ui_Import, QtGui.QDialog):
@@ -17,6 +22,11 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.__accountIdMap = {}
 
 		self.progressBar.setVisible(False)
+
+		self.currencyComboBox.addItems(currency.currencyCodes())
+		self.currencyComboBox.setCurrentIndex(
+			self.currencyComboBox.findText(currency.defaultCurrencyCode())
+		)
 
 		model = QtSql.QSqlTableModel()
 		model.setTable('accounttypes')
@@ -32,7 +42,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			debitIdx = model.index(row, enum.kAccountTypeColumn_DebitField).data()
 			currencySign = model.index(row, enum.kAccountTypeColumn_CurrencySign).data()
 			dateFormat = model.index(row, enum.kAccountTypeColumn_DateFormat).data()
-			self.accountTypeComboBox.addItem(name, 
+			self.accountTypeComboBox.addItem(name,
 				(dateIdx, descIdx, creditIdx, debitIdx, currencySign, dateFormat,)
 			)
 			self.__accountIdMap[row +1] = model.index(row, enum.kAccountTypeColumn_AccountTypeId).data()
@@ -79,7 +89,6 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.importedCounter.setNum(model.numRecordsImported())
 		self.toImportCounter.setNum(model.numRecordsToImport())
 
-	#@QtCore.Slot(QtGui.QItemSelection, QtGui.QItemSelection)
 	def _recordsSelected(self):
 		""" Enable button cancel when we have selection
 		"""
@@ -101,6 +110,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		model = self.view.model()
 		selectionModel = self.view.selectionModel()
 		indexes = selectionModel.selectedRows()
+		currencyCode = self.currencyComboBox.currentText()
 
 		if len(indexes) == 0:
 			return
@@ -121,7 +131,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			# Wrap the import in a transaction
 			with db.transaction():
 				for num, index in enumerate(indexes, 1):
-					model.saveRecord(accountId, index)
+					model.saveRecord(accountId, currencyCode, index)
 					self.view.scrollTo(index, QtGui.QAbstractItemView.EnsureVisible)
 					self.__setCounters()
 					QtCore.QCoreApplication.processEvents()

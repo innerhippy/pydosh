@@ -78,7 +78,8 @@ CREATE TABLE records (
     amount numeric(15,2) NOT NULL,
     insertdate timestamp without time zone,
     rawdata text NOT NULL,
-    checksum text NOT NULL
+    checksum text NOT NULL,
+    currency character(3) NOT NULL
 );
 
 

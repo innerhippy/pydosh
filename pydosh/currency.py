@@ -19,6 +19,21 @@ class _Locales(object):
 			except locale.Error:
 				pass
 
+def currencyCodes():
+	""" Returns a list of known all currency codes
+	"""
+	return _locales.currencyMap.keys()
+
+def defaultCurrencyCode():
+	""" Returns the local currency code (3 chars)
+		eg:
+			$LANG=en_GB.utf8 -> 'GBP'
+			$LANG=en_US.utf8 -> 'USD'
+	"""
+
+	locale.setlocale(locale.LC_ALL, '')
+	conv=locale.localeconv()
+	return conv['int_curr_symbol'].strip()
 
 def toCurrencyStr(value, currencyCode):
 	try:
