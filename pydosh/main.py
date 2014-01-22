@@ -6,6 +6,7 @@ import re
 from version import __VERSION__
 from database import db
 from ui_pydosh import Ui_pydosh
+import currency
 import utils
 import models
 import dialogs
@@ -556,8 +557,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			else:
 				outTotal += abs(amount)
 
-		self.inTotalLabel.setText('%.2f' % inTotal)
-		self.outTotalLabel.setText('%.2f' % outTotal)
+		self.inTotalLabel.setText(currency.toCurrencyStr(inTotal))
+		self.outTotalLabel.setText(currency.toCurrencyStr(outTotal))
 		self.recordCountLabel.setText('%d / %d' % (model.rowCount(), self.tableView.model().sourceModel().rowCount()))
 
 	def tagModelChanged(self):

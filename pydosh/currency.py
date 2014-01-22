@@ -35,9 +35,9 @@ def defaultCurrencyCode():
 	conv=locale.localeconv()
 	return conv['int_curr_symbol'].strip()
 
-def toCurrencyStr(value, currencyCode):
+def toCurrencyStr(value, currencyCode=None):
 	try:
-		locale.setlocale(locale.LC_ALL, _locales.currencyMap[currencyCode])
+		locale.setlocale(locale.LC_ALL, _locales.currencyMap[currencyCode or defaultCurrencyCode()])
 		symbol = True
 	except (locale.Error, KeyError):
 		locale.setlocale(locale.LC_ALL, '')
