@@ -1,9 +1,8 @@
 import re
 from PySide import QtCore, QtGui, QtSql
-import pydosh.enum as enum
-from pydosh import currency
+
+from pydosh import enum, currency, utils
 from pydosh.database import db
-import pydosh.utils as utils
 import pydosh.pydosh_rc
 
 class RecordModel(QtSql.QSqlTableModel):

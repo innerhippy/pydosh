@@ -1,13 +1,13 @@
 import re
 import os
-from PySide import QtCore, QtGui, QtSql
-import pydosh.enum as enum
 import csv
 import hashlib
 import codecs
-from pydosh import currency
+from PySide import QtCore, QtGui, QtSql
+
+from pydosh import enum
+from pydosh import currency, utils
 from pydosh.database import db
-import pydosh.utils as utils
 import pydosh.pydosh_rc
 
 

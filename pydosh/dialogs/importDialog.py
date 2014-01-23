@@ -1,10 +1,9 @@
 from PySide import QtCore, QtGui, QtSql
 
+from pydosh import enum, currency
 from pydosh.ui_import import Ui_Import
 from pydosh.database import db
-import pydosh.enum as enum
 from pydosh.models import ImportModel
-import pydosh.currency as currency
 
 class UserCancelledException(Exception):
 	"""Exception to indicate user has cancelled the current operation

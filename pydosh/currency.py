@@ -19,6 +19,10 @@ class _Locales(object):
 			except locale.Error:
 				pass
 
+def formatCurrency(value):
+	locale.setlocale(locale.LC_ALL, '')
+	return locale.currency(value, symbol=False, grouping=True)
+
 def currencyCodes():
 	""" Returns a list of known all currency codes
 	"""

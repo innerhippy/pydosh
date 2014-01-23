@@ -1,7 +1,7 @@
 from PySide import QtCore, QtGui
 
 from pydosh.ui_login import Ui_Login
-import pydosh.utils as utils
+from pydosh import utils
 from pydosh.database import db, DatabaseNotInitialisedException, ConnectionException
 
 class LoginDialog(Ui_Login, QtGui.QDialog):
@@ -34,8 +34,8 @@ class LoginDialog(Ui_Login, QtGui.QDialog):
 				db.connect()
 		except DatabaseNotInitialisedException:
 			if QtGui.QMessageBox.question(
-					self, 'Database', 
-					'Database %s is empty, do you want to initialise it?' % db.database, 
+					self, 'Database',
+					'Database %s is empty, do you want to initialise it?' % db.database,
 					QtGui.QMessageBox.Yes|QtGui.QMessageBox.No) == QtGui.QMessageBox.Yes:
 				try:
 					db.initialise()

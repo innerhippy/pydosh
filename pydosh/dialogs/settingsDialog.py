@@ -1,7 +1,7 @@
 from PySide import QtCore, QtGui, QtSql
 
 from pydosh.ui_settings import Ui_Settings
-import pydosh.enum as enum
+from pydosh import enum
 
 from pydosh.delegates import AccountDelegate
 from pydosh.models import AccountEditModel

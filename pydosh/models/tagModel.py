@@ -1,6 +1,7 @@
 import re
 from PySide import QtCore, QtGui, QtSql
-import pydosh.enum as enum
+
+from pydosh import enum, currency
 from pydosh.database import db
 import pydosh.pydosh_rc
 
@@ -59,17 +60,13 @@ class TagModel(QtSql.QSqlTableModel):
 	def data(self, item, role=QtCore.Qt.DisplayRole):
 
 		if role == QtCore.Qt.DisplayRole:
-
 			if item.column() == enum.kTagsColumn_RecordIds:
 				tags = set([int(i) for i in super(TagModel, self).data(item).split(',') if i])
 				return tags
 
 			elif item.column() in (enum.kTagsColumn_Amount_in, enum.kTagsColumn_Amount_out):
-				amount = '%.2f' % super(TagModel, self).data(item)
-				if amount == '0.00':
-					return None
-				else:
-					return amount
+				amount = super(TagModel, self).data(item)
+				return currency.formatCurrency(amount) if amount else None
 
 		if  role == QtCore.Qt.CheckStateRole and item.column() == enum.kTagsColumn_TagName:
 			if item.data() in self.__selectedTagNames:
@@ -84,7 +81,7 @@ class TagModel(QtSql.QSqlTableModel):
 
 		if index.column() == enum.kTagsColumn_TagName:
 			flags |= QtCore.Qt.ItemIsUserCheckable
-		
+
 		# Only allow tag name to be editable
 		if index.column() != enum.kTagsColumn_TagName:
 			flags ^= QtCore.Qt.ItemIsEditable
