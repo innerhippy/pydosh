@@ -13,7 +13,6 @@ import dialogs
 import stylesheet
 import enum
 import pydosh_rc
-import pdb
 
 class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	__operatorMap = {

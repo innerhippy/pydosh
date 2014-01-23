@@ -8,15 +8,13 @@ pydosh/pydosh_rc.py: ui/pydosh.qrc ui/*.qss sql/*.sql
 	pyside-rcc $< -o $@
 
 clean:
-	rm -rf $(ALL_TARGETS) \
-	pydosh/*.pyc \
-	pydosh/ui_*.py \
-	dist/ \
-	pydosh/*_rc.py \
-	pydosh.egg-info/ \
-	deb_dist/ \
-	build/ \
-	pydosh*.dmg
+	@find pydosh \( -name "*.pyc" -o -name "ui_*.py" -o -name "*_rc.py" \) -delete
+	@rm -rf \
+		dist/ \
+		pydosh.egg-info/ \
+		deb_dist/ \
+		build/ \
+		pydosh*.dmg
 
 $(UI_TARGETS): pydosh/ui_%.py: ui/%.ui
 	pyside-uic $< -o $@
