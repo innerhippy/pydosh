@@ -3,7 +3,7 @@ from contextlib  import contextmanager
 import operator
 import re
 
-from version import __VERSION__
+from . import __VERSION__
 from database import db
 from ui_pydosh import Ui_pydosh
 import currency

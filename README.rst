@@ -80,7 +80,7 @@ You will need a new PostgreSQL database, eg:
 ``sudo -u postgres createuser will``
 
 Tip: If you need password-less access, you will need to change pg_hba.conf and 
-change the interface authentication from ``md5`` to ``trusted``
+change the interface authentication from ``md5`` to ``trust``
 
 ``createdb --host localhost --username bob pydosh``
 

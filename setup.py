@@ -1,6 +1,6 @@
 import sys
 from setuptools import setup
-from pydosh import version
+from pydosh import __VERSION__
 
 def readme():
     with open('README.rst') as f:
@@ -46,13 +46,13 @@ else: # Unix
     )
 
 setup(name='pydosh',
-    version=version.__VERSION__,
+    version=__VERSION__,
     description='Bank statement transaction manager, written in PySide',
     long_description=readme(),
     url='http://github.com/innerhippy/pydosh',
     author='Will Hall',
     author_email='will@innerhippy.com',
     license='GPLv3',
-    packages=['pydosh'],
+    packages=['pydosh', 'pydosh.dialogs', 'pydosh.models', 'pydosh.delegates'],
     zip_safe=False,
     **extra_options)
