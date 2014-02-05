@@ -1,2 +1,2 @@
-#!/bin/sh
-/usr/bin/env python -c 'from pydosh import pydosh; pydosh.main()' "$@"
+#!/bin/bash
+/usr/bin/env python -m pydosh.main "$@"

@@ -1,6 +1,6 @@
 UI_TARGETS=$(patsubst %.ui,pydosh/ui_%.py,$(notdir $(wildcard ui/*.ui)))
 ALL_TARGETS=$(UI_TARGETS) pydosh/pydosh_rc.py
-VERSION=$(shell python -c 'from pydosh import __VERSION__; print __VERSION__')
+VERSION=$(shell python -c 'from pydosh import __version__; print __version__')
 
 all: $(ALL_TARGETS)
 
