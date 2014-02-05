@@ -1,4 +1,4 @@
-from PySide import QtGui, QtCore, QtSql
+from PySide import QtGui, QtCore, QtSql, __version__ as pyside_version
 from contextlib  import contextmanager
 import operator
 import re
@@ -215,9 +215,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			"<p>version %s</p>"
 			"<p>by Will Hall <a href=\"mailto:will@innerhippy.com\">will@innerhippy.com</a></p>"
 			"<p>Copywrite (c) 2013.</p>"
-			"<p>Written using PyQt %s</p>"
+			"<p>Written using Qt %s, PySide %s</p>"
 			"<p><a href=\"http://www.innerhippy.com\">www.innerhippy.com</a></p>"
-			"enjoy!</html>" % (__version__, QtCore.__version__)
+			"enjoy!</html>" % (__version__, QtCore.__version__, pyside_version)
 			)
 
 	def endDateChanged(self, date):

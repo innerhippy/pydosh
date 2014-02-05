@@ -9,7 +9,7 @@ def readme():
 if sys.platform == 'darwin':
     extra_options = dict(
         setup_requires=['py2app'],
-        app=['pydosh/pydosh.py'],
+        app=['pydosh/main.py'],
         data_files=['pydosh'],
         options = dict(
             py2app = dict(
