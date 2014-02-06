@@ -1,17 +1,21 @@
 import locale
+import platform
 
 
 class _Locales(object):
 	_locales=(
-		'en_AU.utf8', 'en_BW.utf8', 'en_CA.utf8', 'en_DK.utf8', 
-		'en_GB.utf8', 'en_HK.utf8', 'en_IE.utf8', 'en_IN', 'en_NG',
-		'en_PH.utf8', 'en_US.utf8', 'en_ZA.utf8', 'en_ZW.utf8', 
-		'ja_JP.utf8')
+		'en_AU', 'en_BW', 'en_CA', 'en_DK', 'en_GB', 'en_HK', 'en_IE', 
+		'en_IN', 'en_NG', 'en_PH', 'en_US', 'en_ZA', 'en_ZW', 'ja_JP')
 
 	def __init__(self):
 		super(_Locales, self).__init__()
 		self.currencyMap = {}
 		for loc in self._locales:
+			if platform.system() == 'Darwin':
+				loc += '.utf-8'
+			else:
+				loc += '.utf8'
+				
 			try:
 				locale.setlocale(locale.LC_ALL, loc)
 				conv=locale.localeconv()
