@@ -55,4 +55,5 @@ setup(name='pydosh',
     license='GPLv3',
     packages=['pydosh', 'pydosh.dialogs', 'pydosh.models', 'pydosh.delegates'],
     zip_safe=False,
+	test_suite='tests',
     **extra_options)

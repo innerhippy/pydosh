@@ -8,7 +8,7 @@ pydosh/pydosh_rc.py: ui/pydosh.qrc ui/*.qss sql/*.sql
 	pyside-rcc $< -o $@
 
 clean:
-	@find pydosh \( -name "*.pyc" -o -name "ui_*.py" -o -name "*_rc.py" \) -delete
+	@find tests pydosh \( -name "*.pyc" -o -name "ui_*.py" -o -name "*_rc.py" \) -delete
 	@rm -rf \
 		dist/ \
 		pydosh.egg-info/ \
