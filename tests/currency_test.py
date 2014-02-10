@@ -11,7 +11,7 @@ class Currency(unittest.TestCase):
 
 	def setUp(self):
 		self.lang = os.environ.get('LANG')
-		os.environ['LANG'] = 'en_GB.utf-8'
+		os.environ['LANG'] = ''
 
 	def tearDown(self):
 		if self.lang:
@@ -23,7 +23,7 @@ class Currency(unittest.TestCase):
 		self.assertEqual(currency.formatCurrency(23000), u'23,000.00')
 		self.assertEqual(currency.formatCurrency(23000.00), u'23,000.00')
 		self.assertEqual(currency.formatCurrency(-23000.00), u'-23,000.00')
-		self.assertRaises(TypeError, currency.formatCurrency, u'23')
+		self.assertRaises(ValueError, currency.formatCurrency, u'23')
 
 	def test_currencyCodes(self):
 		self.assertTrue('GBP' in currency.currencyCodes())
@@ -31,7 +31,7 @@ class Currency(unittest.TestCase):
 		self.assertTrue('EUR' in currency.currencyCodes())
 
 	def test_defaultCurrencyCode(self):
-		self.assertEqual(currency.defaultCurrencyCode(), 'GBP')
+		self.assertEqual(currency.defaultCurrencyCode(), '')
 
 	def test_toCurrencyStr(self):
 		self.assertEqual(currency.toCurrencyStr(23, 'USD'), u'$23.00')
@@ -43,4 +43,12 @@ class Currency(unittest.TestCase):
 		self.assertEqual(currency.toCurrencyStr(23.00, 'GBP'), u'£23.00')
 		self.assertEqual(currency.toCurrencyStr(23000, 'GBP'), u'£23,000.00')
 		self.assertEqual(currency.toCurrencyStr(23000000.00, 'GBP'), u'£23,000,000.00')
+
+class Currency_GB(Currency):
+	def setUp(self):
+		self.lang = os.environ.get('LANG')
+		os.environ['LANG'] = 'en_GB.utf-8'
+
+	def test_defaultCurrencyCode(self):
+		self.assertEqual(currency.defaultCurrencyCode(), 'GBP')
 

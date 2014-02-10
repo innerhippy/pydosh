@@ -33,8 +33,7 @@ def formatCurrency(value):
 		without currency symbol.
 		23000.10 -> 23,000.10
 	"""
-	locale.setlocale(locale.LC_ALL, '')
-	return locale.currency(value, symbol=False, grouping=True)
+	return '{:,.2f}'.format(value)
 
 def currencyCodes():
 	""" Returns a list of known all currency codes
