@@ -1,5 +1,6 @@
 import locale
-
+import warnings
+import os
 
 class _Locales(object):
 	_locales=(
@@ -54,12 +55,10 @@ def defaultCurrencyCode():
 def toCurrencyStr(value, currencyCode=None):
 	try:
 		locale.setlocale(locale.LC_ALL, _locales.currencyMap[currencyCode or defaultCurrencyCode()])
-		symbol = True
+		return locale.currency(value, symbol=True, grouping=True).decode('utf-8')
 	except (locale.Error, KeyError):
-		locale.setlocale(locale.LC_ALL, '')
-		symbol = False
-
-	return locale.currency(value, symbol=symbol, grouping=True).decode('utf-8')
+		warnings.warn('Failed to convert currency: current $LANG=%r' % os.getenv('LANG', ''))
+		return formatCurrency(value)
 
 
 _locales = _Locales()
