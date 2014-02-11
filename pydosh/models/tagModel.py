@@ -68,11 +68,14 @@ class TagModel(QtSql.QSqlTableModel):
 				amount = super(TagModel, self).data(item)
 				return currency.formatCurrency(amount) if amount else None
 
-		if  role == QtCore.Qt.CheckStateRole and item.column() == enum.kTagsColumn_TagName:
+		elif role == QtCore.Qt.CheckStateRole and item.column() == enum.kTagsColumn_TagName:
 			if item.data() in self.__selectedTagNames:
 				return QtCore.Qt.Checked
 			else:
 				return QtCore.Qt.Unchecked
+
+		elif role == QtCore.Qt.UserRole and item.column() in (enum.kTagsColumn_Amount_in, enum.kTagsColumn_Amount_out):
+			return super(TagModel, self).data(item)
 
 		return super(TagModel, self).data(item, role)
 
@@ -132,7 +135,7 @@ class TagModel(QtSql.QSqlTableModel):
 
 		if not query.exec_():
 			raise Exception(query.lastError().text())
-		
+
 		query.next()
 		insertId = query.value(0)
 		self.select()
@@ -152,7 +155,6 @@ class TagModel(QtSql.QSqlTableModel):
 		self.removeRows(match.row(), 1, QtCore.QModelIndex())
 		self.select()
 		self.tagsChanged.emit()
-	
 
 	def addRecordTags(self, tagId, recordIds):
 		if not recordIds:
@@ -168,7 +170,7 @@ class TagModel(QtSql.QSqlTableModel):
 		query = QtSql.QSqlQuery()
 		query.prepare("""
 			INSERT INTO recordtags (recordid, tagid)
-			     VALUES (?, ?) 
+			     VALUES (?, ?)
 		""")
 
 		query.addBindValue(list(recordIds))
@@ -179,7 +181,6 @@ class TagModel(QtSql.QSqlTableModel):
 
 		self.tagsChanged.emit()
 		return self.select()
-	
 
 	def removeRecordTags(self, tagId, recordIds):
 
@@ -199,9 +200,6 @@ class TagModel(QtSql.QSqlTableModel):
 		return self.select()
 
 class TagProxyModel(QtGui.QSortFilterProxyModel):
-	# Signal emitted whenever there is a change to the filter
-	filterChanged = QtCore.Signal()
-
 	def __init__(self, parent=None):
 		super(TagProxyModel, self).__init__(parent=parent)
 
@@ -209,7 +207,7 @@ class TagProxyModel(QtGui.QSortFilterProxyModel):
 		""" Define the comparison to ensure column data is sorted correctly
 		"""
 		if left.column() in (enum.kTagsColumn_Amount_in, enum.kTagsColumn_Amount_out):
-			return left.data() > right.data()
+			return left.data(QtCore.Qt.UserRole) > right.data(QtCore.Qt.UserRole)
 
 		return super(TagProxyModel, self).lessThan(left, right)
 
