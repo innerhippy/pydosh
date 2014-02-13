@@ -436,7 +436,7 @@ QToolBar::separator:horizontal
 
 QToolBar::separator:vertical 
 {
-	image: url(:/qss_icons/rc/Vsepartoolbars.png);
+	image: url(:/qss_icons/rc/Vsepartoolbar.png);
 }
 
 QPushButton

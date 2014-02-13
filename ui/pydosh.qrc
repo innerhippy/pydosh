@@ -26,9 +26,7 @@
 	<qresource prefix="qss_icons">
 		<file>rc/up_arrow_disabled.png</file>
 		<file>rc/Hmovetoolbar.png</file>
-		<file>rc/stylesheet-branch-end.png</file>
 		<file>rc/branch_closed-on.png</file>
-		<file>rc/stylesheet-vline.png</file>
 		<file>rc/branch_closed.png</file>
 		<file>rc/branch_open-on.png</file>
 		<file>rc/transparent.png</file>
@@ -38,7 +36,6 @@
 		<file>rc/down_arrow.png</file>
 		<file>rc/Vmovetoolbar.png</file>
 		<file>rc/left_arrow.png</file>
-		<file>rc/stylesheet-branch-more.png</file>
 		<file>rc/up_arrow.png</file>
 		<file>rc/right_arrow.png</file>
 		<file>rc/left_arrow_disabled.png</file>
