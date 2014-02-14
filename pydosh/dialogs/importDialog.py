@@ -104,12 +104,23 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 	def __importRecords(self):
 		""" Import selected rows to database
 		"""
+
+		if self.currencyComboBox.currentIndex() == -1:
+			QtGui.QMessageBox.critical(
+				self, 
+				'Import Error', 
+				'Please select currency',
+				QtGui.QMessageBox.Ok
+			)
+			return
+
+		currencyCode = self.currencyComboBox.currentText()
+
 		accountId = self.__accountIdMap[self.accountTypeComboBox.currentIndex()]
 
 		model = self.view.model()
 		selectionModel = self.view.selectionModel()
 		indexes = selectionModel.selectedRows()
-		currencyCode = self.currencyComboBox.currentText()
 
 		if len(indexes) == 0:
 			return
