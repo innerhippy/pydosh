@@ -332,7 +332,7 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 	def setAmountFilter(self, text, op=None):
 		""" Set amount filter with optional operator
 			If operator is None then a string comparison is done on amount start
-		""" 
+		"""
 		if text != self._amountFilter or op != self._amountOperator:
 			self._amountFilter = text
 			self._amountOperator = op
@@ -385,10 +385,9 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 				return False
 
 		if self._amountFilter:
-			amount = self.sourceModel().index(sourceRow, enum.kRecordColumn_Amount).data()
+			amount = self.sourceModel().index(sourceRow, enum.kRecordColumn_Amount).data(QtCore.Qt.UserRole)
 			if self._amountOperator is None:
-				# Filter as string matching start
-				if not amount.startswith(self._amountFilter):
+				if self._amountFilter not in '{:.2f}'.format(amount):
 					return False
 			else:
 				# Use operator to perform match
