@@ -36,20 +36,21 @@ class RecordModel(QtSql.QSqlTableModel):
                        array_to_string(array_agg(t.tagname ORDER BY t.tagname), ','),
                        r.checkdate,
                        r.date,
-                       r.accounttypeid,
-                       at.accountname,
+                       r.accountid,
+                       a.name,
                        r.description,
                        r.amount,
                        r.insertdate,
                        r.rawdata,
                        r.currency
                   FROM records r
-            INNER JOIN accounttypes at ON at.accounttypeid=r.accounttypeid
-                   AND r.userid=%(userid)s
+            INNER JOIN accounts a ON a.id=r.accountid
+			INNER JOIN accountshare acs ON acs.accountid=a.id
+                   AND acs.userid=%(userid)s
              LEFT JOIN recordtags rt ON rt.recordid=r.recordid
              LEFT JOIN tags t ON rt.tagid=t.tagid
                        %(filter)s
-              GROUP BY r.recordid, at.accountname
+              GROUP BY r.recordid, a.name
               ORDER BY r.date, r.recordid
 		""" % {'userid': db.userId, 'filter': queryFilter}
 		return query
@@ -361,7 +362,7 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 				return False
 
 		if self._accountids:
-			if self.sourceModel().index(sourceRow, enum.kRecordColumn_AccountTypeId).data() not in self._accountids:
+			if self.sourceModel().index(sourceRow, enum.kRecordColumn_AccountId).data() not in self._accountids:
 				return False
 
 		if self._hasTags is not None:

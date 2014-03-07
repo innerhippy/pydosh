@@ -350,7 +350,14 @@ class ImportModel(QtCore.QAbstractItemModel):
 		self.__currentTimestamp = None
 
 		# Import all record checksums
-		query = QtSql.QSqlQuery('SELECT checksum FROM records WHERE userid=%d' % db.userId)
+		query = QtSql.QSqlQuery("""
+			SELECT checksum	FROM records r
+			          INNER JOIN accountshare acs
+			                  ON acs.accountid=r.accountid
+			                 AND acs.userid=%d
+			               WHERE userid=%d
+			""" % db.userId)
+
 		if query.lastError().isValid():
 			raise Exception(query.lastError().text())
 

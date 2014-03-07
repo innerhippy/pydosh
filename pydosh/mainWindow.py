@@ -81,7 +81,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		# Set up record view
 		self.tableView.verticalHeader().hide()
 		self.tableView.setColumnHidden(enum.kRecordColumn_RecordId, True)
-		self.tableView.setColumnHidden(enum.kRecordColumn_AccountTypeId, True)
+		self.tableView.setColumnHidden(enum.kRecordColumn_AccountId, True)
 		self.tableView.setColumnHidden(enum.kRecordColumn_CheckDate, True)
 		self.tableView.setColumnHidden(enum.kRecordColumn_RawData, True)
 		self.tableView.setColumnHidden(enum.kRecordColumn_InsertDate, True)
@@ -420,14 +420,15 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		"""
 		self.accountCombo.clear()
 		query = QtSql.QSqlQuery("""
-		    SELECT accounttypeid, accountname
-		      FROM accounttypes
-		     WHERE accounttypeid IN (
-		           SELECT DISTINCT accounttypeid
-		                      FROM records
-		                     WHERE userid=%s)
-		  ORDER BY accountname
-		""" % db.userId)
+			SELECT DISTINCT a.id, a.name
+			           FROM accounts a
+			     INNER JOIN records r
+				         ON r.accountid=a.id
+			     INNER JOIN accountshare acs
+				         ON acs.accountid=a.id
+			             AND acs.userid=%s
+				   ORDER BY a.name
+			""" % db.userId)
 
 		while query.next():
 			self.accountCombo.addItem(query.value(1), query.value(0))
@@ -436,11 +437,11 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		""" Set date fields to min and max values
 		"""
 		query = QtSql.QSqlQuery("""
-			SELECT MIN(date),
-				   MAX(date),
-				   MAX(insertdate)
-			  FROM records
-			 WHERE userid=%d
+		    SELECT MIN(r.date), MAX(r.date), MAX(r.insertdate)
+		      FROM records r
+		INNER JOIN accountshare acs
+		        ON acs.accountid=r.accountid
+		       AND acs.userid=%d
 			""" % db.userId)
 
 		if query.next():
