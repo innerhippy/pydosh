@@ -309,6 +309,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		dialog = dialogs.ImportDialog(dialog.selectedFiles(), self)
 		dialog.setWindowTitle(', '.join(fileNames))
 		dialog.accepted.connect(self.importClosed)
+		dialog.setModal(False)
 		dialog.show()
 
 	def importClosed(self):
