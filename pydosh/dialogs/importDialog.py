@@ -1,3 +1,4 @@
+import pdb
 from PySide import QtCore, QtGui, QtSql
 
 from pydosh import enum, currency
@@ -18,7 +19,6 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 		self.__dataSaved = False
 		self.__importInProgress = False
 		self.__cancelImport = False
-		self.__accountIdMap = {}
 
 		self.progressBar.setVisible(False)
 
@@ -27,24 +27,31 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			self.currencyComboBox.findText(currency.defaultCurrencyCode())
 		)
 
-		model = QtSql.QSqlTableModel()
-		model.setTable('accounttypes')
-		model.select()
+		query = QtSql.QSqlQuery("""
+			    SELECT a.id, a.name, at.*
+			      FROM accounts a
+			INNER JOIN accounttypes at
+			        ON at.accounttypeid=a.accounttypeid
+			INNER JOIN accountshare acs
+			        ON acs.accountid=a.id
+			       AND acs.userid=%d
+			""" % db.userId)
 
+		rec = query.record()
 		self.accountTypeComboBox.addItem('Raw')
 
-		for row in xrange(model.rowCount()):
-			name = model.index(row, enum.kAccountTypeColumn_AccountName).data()
-			dateIdx = model.index(row, enum.kAccountTypeColumn_DateField).data()
-			descIdx = model.index(row, enum.kAccountTypeColumn_DescriptionField).data()
-			creditIdx = model.index(row, enum.kAccountTypeColumn_CreditField).data()
-			debitIdx = model.index(row, enum.kAccountTypeColumn_DebitField).data()
-			currencySign = model.index(row, enum.kAccountTypeColumn_CurrencySign).data()
-			dateFormat = model.index(row, enum.kAccountTypeColumn_DateFormat).data()
-			self.accountTypeComboBox.addItem(name,
-				(dateIdx, descIdx, creditIdx, debitIdx, currencySign, dateFormat,)
+		while query.next():
+			accountId =  query.value(rec.indexOf('id'))
+			name = query.value(rec.indexOf('name'))
+			dateIdx = query.value(rec.indexOf('datefield'))
+			descIdx = query.value(rec.indexOf('descriptionfield'))
+			creditIdx = query.value(rec.indexOf('creditfield'))
+			debitIdx = query.value(rec.indexOf('debitfield'))
+			currencySign = query.value(rec.indexOf('currencysign'))
+			dateFormat = query.value(rec.indexOf('dateFormat'))
+			self.accountTypeComboBox.addItem(name, (
+				accountId, (dateIdx, descIdx, creditIdx, debitIdx, currencySign, dateFormat,))
 			)
-			self.__accountIdMap[row +1] = model.index(row, enum.kAccountTypeColumn_AccountTypeId).data()
 
 		self.accountTypeComboBox.setCurrentIndex(-1)
 
@@ -69,7 +76,13 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 
 	def _accountChanged(self, index):
 		model = self.view.model()
-		model.accountChanged(self.accountTypeComboBox.itemData(index))
+		selection = self.accountTypeComboBox.itemData(index, QtCore.Qt.UserRole)
+
+		# If not 'Raw' (ie index 0) then extract the account data
+		if selection is not None:
+			selection = selection[1]
+
+		model.accountChanged(selection)
 		self.selectAllButton.setEnabled(bool(model.numRecordsToImport()))
 		self.__setCounters()
 
@@ -107,16 +120,15 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 
 		if self.currencyComboBox.currentIndex() == -1:
 			QtGui.QMessageBox.critical(
-				self, 
-				'Import Error', 
+				self,
+				'Import Error',
 				'Please select currency',
 				QtGui.QMessageBox.Ok
 			)
 			return
 
 		currencyCode = self.currencyComboBox.currentText()
-
-		accountId = self.__accountIdMap[self.accountTypeComboBox.currentIndex()]
+		accountId, _ = self.accountTypeComboBox.itemData(self.accountTypeComboBox.currentIndex(), QtCore.Qt.UserRole)
 
 		model = self.view.model()
 		selectionModel = self.view.selectionModel()

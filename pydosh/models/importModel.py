@@ -355,7 +355,6 @@ class ImportModel(QtCore.QAbstractItemModel):
 			          INNER JOIN accountshare acs
 			                  ON acs.accountid=r.accountid
 			                 AND acs.userid=%d
-			               WHERE userid=%d
 			""" % db.userId)
 
 		if query.lastError().isValid():
@@ -412,7 +411,7 @@ class ImportModel(QtCore.QAbstractItemModel):
 
 	def saveRecord(self, accountId, currencyCode, index):
 		""" Saves the import record to the database
-			Raises ImportException on error
+			ImportException on error
 		"""
 		item = self.getNodeItem(index)
 		rec = item.dataDict()
@@ -422,14 +421,13 @@ class ImportModel(QtCore.QAbstractItemModel):
 
 		query = QtSql.QSqlQuery()
 		query.prepare("""
-			INSERT INTO records (date, userid, accounttypeid,
+			INSERT INTO records (date, accountid,
 								 description, amount, insertdate,
 								 rawdata, checksum, currency)
-						 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+						 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		""")
 
 		query.addBindValue(rec['date'])
-		query.addBindValue(db.userId)
 		query.addBindValue(accountId)
 		query.addBindValue(rec['desc'])
 		query.addBindValue(rec['credit'] or rec['debit'])
