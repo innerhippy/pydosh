@@ -117,8 +117,6 @@ CREATE TABLE records (
     checked integer DEFAULT 0 NOT NULL,
     checkdate timestamp without time zone,
     date date NOT NULL,
-    userid integer NOT NULL,
-    accounttypeid integer NOT NULL,
     description text NOT NULL,
     txdate timestamp without time zone,
     amount numeric(15,2) NOT NULL,
@@ -329,14 +327,6 @@ ALTER TABLE ONLY records
 
 
 --
--- Name: records_unique_records; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
---
-
-ALTER TABLE ONLY records
-    ADD CONSTRAINT records_unique_records UNIQUE (userid, accounttypeid, checksum);
-
-
---
 -- Name: recordtags_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -385,20 +375,6 @@ ALTER TABLE ONLY users
 
 
 --
--- Name: fki_records_account_fkey; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX fki_records_account_fkey ON records USING btree (accounttypeid);
-
-
---
--- Name: fki_records_user_fkey; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX fki_records_user_fkey ON records USING btree (userid);
-
-
---
 -- Name: fki_recordtags_record_fkey; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -427,6 +403,14 @@ CREATE INDEX records_rawdata_idx ON records USING btree (rawdata);
 
 
 --
+-- Name: accounts_accounttypeid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY accounts
+    ADD CONSTRAINT accounts_accounttypeid_fkey FOREIGN KEY (accounttypeid) REFERENCES accounttypes(accounttypeid) ON DELETE CASCADE;
+
+
+--
 -- Name: accounts_userid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -451,19 +435,11 @@ ALTER TABLE ONLY accountshare
 
 
 --
--- Name: records_accounttype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: records_accounts_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY records
-    ADD CONSTRAINT records_accounttype_fkey FOREIGN KEY (accounttypeid) REFERENCES accounttypes(accounttypeid);
-
-
---
--- Name: records_users_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY records
-    ADD CONSTRAINT records_users_fkey FOREIGN KEY (userid) REFERENCES users(userid) ON DELETE CASCADE;
+    ADD CONSTRAINT records_accounts_fkey FOREIGN KEY (accountid) REFERENCES accounts(id);
 
 
 --

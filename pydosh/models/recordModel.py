@@ -186,7 +186,7 @@ class RecordModel(QtSql.QSqlTableModel):
 				query.addBindValue(unCheckedRecords)
 				if not query.execBatch(QtSql.QSqlQuery.ValuesAsColumns):
 					raise Exception(query.lastError().text())
-	
+
 			if checkedRecords:
 				query = QtSql.QSqlQuery()
 				query.prepare("""

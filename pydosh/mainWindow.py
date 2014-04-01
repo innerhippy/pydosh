@@ -99,9 +99,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		tagProxyModel = models.TagProxyModel(self)
 		tagProxyModel.setSourceModel(tagModel)
 		tagProxyModel.sort(enum.kTagsColumn_Amount_out, QtCore.Qt.AscendingOrder)
-		self.tagView.setModel(tagProxyModel)
 
 		# Set up tag view
+		self.tagView.setModel(tagProxyModel)
 		self.tagView.verticalHeader().hide()
 		self.tagView.setColumnHidden(enum.kTagsColumn_TagId, True)
 		self.tagView.setColumnHidden(enum.kTagsColumn_RecordIds, True)
@@ -430,6 +430,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				   ORDER BY a.name
 			""" % db.userId)
 
+		if query.lastError().isValid():
+			QtGui.QMessageBox.critical(self, 'Database Error', query.lastError().text(), QtGui.QMessageBox.Ok)
+			return
+
 		while query.next():
 			self.accountCombo.addItem(query.value(1), query.value(0))
 
@@ -443,6 +447,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		        ON acs.accountid=r.accountid
 		       AND acs.userid=%d
 			""" % db.userId)
+
+		if query.lastError().isValid():
+			QtGui.QMessageBox.critical(self, 'Database Error', query.lastError().text(), QtGui.QMessageBox.Ok)
+			return
 
 		if query.next():
 			startDate = query.value(0)
