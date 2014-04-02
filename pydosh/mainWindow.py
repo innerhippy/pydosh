@@ -150,6 +150,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.amountEdit.editingFinshed.connect(self.amountFilterChanged)
 
 		self.reset()
+		self.accountsDialog()
 
 	def accountSelectionChanged(self, items):
 		""" Tell the proxy filter to filter on selected account ids
@@ -280,10 +281,19 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 				self.endDateEdit.setDate(endDate)
 
 	def settingsDialog(self):
-		""" Launch the settings dialog widget to configure account information
+		""" Launch the settings dialog widget to configure
+			bank detail information
 		"""
 		dialog = dialogs.SettingsDialog(self)
 		dialog.exec_()
+
+	def accountsDialog(self):
+		""" Launch the accounts dialog widget to configure
+			user account information
+		"""
+		dialog = dialogs.AccountsDialog(self)
+		dialog.exec_()
+
 
 	def importDialog(self):
 		""" Launch the import dialog
@@ -528,10 +538,15 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		action.setStatusTip('Import Bank statements')
 		action.triggered.connect(self.importDialog)
 
-		action = menu.addAction(QtGui.QIcon(':/icons/wrench.png'), '&Accounts')
-		action.setShortcut('Alt+s')
-		action.setStatusTip('Account setup')
+		action = menu.addAction(QtGui.QIcon(':/icons/wrench.png'), '&Banks')
+		action.setShortcut('Alt+b')
+		action.setStatusTip('Bank Account setup')
 		action.triggered.connect(self.settingsDialog)
+
+		action = menu.addAction(QtGui.QIcon(':/icons/wrench.png'), '&Accounts')
+		action.setShortcut('Alt+a')
+		action.setStatusTip('User Account setup')
+		action.triggered.connect(self.accountsDialog)
 
 		styleMenu = menu.addMenu(QtGui.QIcon(':/icons/brush.png'), 'Style')
 		for style in stylesheet.styleSheetNames():

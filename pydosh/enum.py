@@ -10,6 +10,8 @@ kRecordColumn_Amount = 8
 kRecordColumn_InsertDate = 9
 kRecordColumn_RawData = 10
 kRecordColumn_Currency = 11
+# TODO: fix view in main window
+kRecordColumn_AccountId = 12
 
 kImportColumn_Status = 0
 kImportColumn_Date = 1
@@ -52,3 +54,10 @@ kTagsColumn_Amount_out = 4
 kRecordTagsColumn_RecordTagId = 0
 kRecordTagsColumn_RecordId = 1
 kRecordTagsColumn_TagId = 2
+
+kAccounts_Id = 0
+kAccounts_AccountTypeId = 1
+kAccounts_Name = 2
+kAccounts_AccountNo = 3
+kAccounts_SortCode = 4
+kAccounts_UserId = 5
