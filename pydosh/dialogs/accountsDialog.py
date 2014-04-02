@@ -5,7 +5,7 @@ from pydosh import enum
 from pydosh.database import db
 
 #from pydosh.delegates import AccountDelegate
-from pydosh.models import UserAccountModel
+#from pydosh.models import UserAccountModel
 
 import pdb
 
@@ -33,23 +33,32 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 			enum.kAccounts_AccountTypeId,
 			QtSql.QSqlRelation('accounttypes', 'accounttypeid', 'accountname')
 		)
+		model.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
+
 		self.accountCombo.currentIndexChanged.connect(self.accountChanged)
 		self.accountCombo.setModel(model)
 		self.accountCombo.setModelColumn(enum.kAccounts_Name)
 		self.accountCombo.setEditable(True)
+
+		self.sortCode.textChanged.connect(self.sortCodeChanged)
 		model.select()
 
-		#pdb.set_trace()
+	def sortCodeChanged(self, text):
+#		pdb.set_trace()
+		model = self.accountCombo.model()
+		currentIndex = self.accountCombo.currentIndex()
+		index = model.index(currentIndex, enum.kAccounts_SortCode)
+		model.setData(index, text)
+
 
 	def accountChanged(self, index):
+#		pdb.set_trace()
+
 		model = self.accountCombo.model()
-		realAccountName = model.index(index, enum.kAccounts_AccountTypeId).data()
 		self.sortCode.setText(model.index(index, enum.kAccounts_SortCode).data())
 		self.accountNo.setText(model.index(index, enum.kAccounts_AccountNo).data())
-
-		print realAccountName
-		accountIndex = self.accountType.findText(realAccountName)
-		self.accountType.setCurrentIndex(accountIndex)
+		realAccountName = model.index(index, enum.kAccounts_AccountTypeId).data()
+		self.accountType.setCurrentIndex(self.accountType.findText(realAccountName))
 
 	def revertChanges(self):
 		self.accountType.model().reset()
