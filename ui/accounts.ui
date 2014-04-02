@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>347</width>
-    <height>292</height>
+    <height>282</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -60,9 +60,6 @@
         </property>
        </widget>
       </item>
-      <item row="4" column="1">
-       <widget class="QListWidget" name="sharedList"/>
-      </item>
       <item row="0" column="1">
        <widget class="QComboBox" name="accountCombo"/>
       </item>
@@ -72,6 +69,9 @@
          <string>Account</string>
         </property>
        </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QListView" name="accountShareView"/>
       </item>
      </layout>
     </widget>

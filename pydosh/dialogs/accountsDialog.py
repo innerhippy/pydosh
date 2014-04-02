@@ -6,6 +6,7 @@ from pydosh.database import db
 
 #from pydosh.delegates import AccountDelegate
 #from pydosh.models import UserAccountModel
+from pydosh.models import AccountShareModel
 
 import pdb
 
@@ -19,12 +20,31 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		self.revertButton.clicked.connect(self.revertChanges)
 #		self.addAccountButton.clicked.connect(self.addAccount)
 #		self.removeAccountButton.clicked.connect(self.deleteAccount)
+
+		# Account shares, filter is set in switchAccounts
+#		model = QtSql.QSqlRelationalTableModel(self)
+#		model.setTable('accountshare')
+#		model.setRelation(enum.kAccountShare_UserId, QtSql.QSqlRelation('users', 'userid', 'username'))
+#		model.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
+#		model.select()
+#		self.accountShareModel = model
+
+		self.accountShareView.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
+#		model = QtSql.QSqlTableModel(self)
+#		model.setTable('users')
+#		model.setFilter('userid != %s' % db.userId)
+#		model.select()
+		self.accountShareView.setModel(AccountShareModel(self))
+		self.accountShareView.setModelColumn(enum.kUsers_UserName)
+
+		# Account Types dropdown (read-only)
 		model = QtSql.QSqlTableModel(self)
 		model.setTable('accounttypes')
 		self.accountType.setModel(model)
 		self.accountType.setModelColumn(enum.kAccountTypeColumn_AccountName)
 		model.select()
 
+		# Accounts model
 		#self.model = UserAccountModel(self)
 		model = QtSql.QSqlRelationalTableModel(self)
 		model.setTable('accounts')
@@ -35,34 +55,87 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		)
 		model.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
 
-		self.accountCombo.currentIndexChanged.connect(self.accountChanged)
+		self.accountCombo.currentIndexChanged.connect(self.switchAccount)
 		self.accountCombo.setModel(model)
 		self.accountCombo.setModelColumn(enum.kAccounts_Name)
 		self.accountCombo.setEditable(True)
 
+		self.accountCombo.editTextChanged.connect(self.accountNameChanged)
 		self.sortCode.textChanged.connect(self.sortCodeChanged)
+		self.accountNo.textChanged.connect(self.accountNoChanged)
+		self.accountType.activated[int].connect(self.accountTypeChanged)
 		model.select()
 
-	def sortCodeChanged(self, text):
-#		pdb.set_trace()
-		model = self.accountCombo.model()
-		currentIndex = self.accountCombo.currentIndex()
-		index = model.index(currentIndex, enum.kAccounts_SortCode)
-		model.setData(index, text)
-
-
-	def accountChanged(self, index):
-#		pdb.set_trace()
-
+	def switchAccount(self, index):
+		""" Account changed by user, populate all fields
+		"""
 		model = self.accountCombo.model()
 		self.sortCode.setText(model.index(index, enum.kAccounts_SortCode).data())
 		self.accountNo.setText(model.index(index, enum.kAccounts_AccountNo).data())
 		realAccountName = model.index(index, enum.kAccounts_AccountTypeId).data()
 		self.accountType.setCurrentIndex(self.accountType.findText(realAccountName))
 
+	
+		# Set the filter on accountshare table
+#		pdb.set_trace()
+		accountId = model.index(index, enum.kAccounts_Id).data()
+		self.accountShareView.model().accountChanged(accountId)
+		return
+		self.accountShareModel.setFilter('accountshare.accountid=%s AND accountshare.userid != %s' % (accountId, db.userId))
+
+		# Clear selection and re-set
+		self.accountShareView.selectionModel().clearSelection()
+		sharedWith = [
+			self.accountShareModel.index(row, enum.kAccountShare_UserId).data()
+				for row in xrange(self.accountShareModel.rowCount())
+		]
+		print sharedWith
+
+
+		for row in xrange(self.accountShareView.model().rowCount()):
+			index = self.accountShareView.model().index(row, enum.kAccountShare_UserId)
+			print index.data()
+
+
+		#print self.accountShare.model().select()
+		#pdb.set_trace()
+
+	def sortCodeChanged(self, text):
+		""" Set the new sort code
+		"""
+		model = self.accountCombo.model()
+		currentIndex = self.accountCombo.currentIndex()
+		index = model.index(currentIndex, enum.kAccounts_SortCode)
+		model.setData(index, text)
+
+	def accountNoChanged(self, text):
+		""" Set the new account no
+		"""
+		model = self.accountCombo.model()
+		currentIndex = self.accountCombo.currentIndex()
+		index = model.index(currentIndex, enum.kAccounts_AccountNo)
+		model.setData(index, text)
+
+	def accountNameChanged(self, text):
+		""" Set the new account alias name
+		"""
+		model = self.accountCombo.model()
+		currentIndex = self.accountCombo.currentIndex()
+		index = model.index(currentIndex, enum.kAccounts_Name)
+		model.setData(index, text)
+
+	def accountTypeChanged(self, idx):
+		""" Set a new account type on the account
+		"""
+		newAccountTypeId = self.accountType.model().index(idx, enum.kAccountTypeColumn_AccountTypeId).data()
+		model = self.accountCombo.model()
+		currentIndex = self.accountCombo.currentIndex()
+		index = model.index(currentIndex, enum.kAccounts_AccountTypeId)
+		print model.setData(index, newAccountTypeId)
+
 	def revertChanges(self):
-		self.accountType.model().reset()
 		self.accountCombo.model().reset()
+		self.accountCombo.model().select()
 		self.accountCombo.setCurrentIndex(0)
 
 class Noddy:
