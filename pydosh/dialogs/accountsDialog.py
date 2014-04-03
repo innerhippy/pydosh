@@ -45,10 +45,10 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		model.select()
 
 		# Accounts model
-		#self.model = UserAccountModel(self)
 		model = QtSql.QSqlRelationalTableModel(self)
 		model.setTable('accounts')
 		model.setFilter('userid=%s' % db.userId)
+		model.setSort(enum.kAccounts_Name, QtCore.Qt.AscendingOrder)
 		model.setRelation(
 			enum.kAccounts_AccountTypeId,
 			QtSql.QSqlRelation('accounttypes', 'accounttypeid', 'accountname')
@@ -69,6 +69,11 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 	def switchAccount(self, index):
 		""" Account changed by user, populate all fields
 		"""
+		if index == -1:
+			print '-1'
+			return
+		print 'switchAccount', index
+#		pdb.set_trace()
 		model = self.accountCombo.model()
 		self.sortCode.setText(model.index(index, enum.kAccounts_SortCode).data())
 		self.accountNo.setText(model.index(index, enum.kAccounts_AccountNo).data())

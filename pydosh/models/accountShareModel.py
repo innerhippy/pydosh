@@ -32,12 +32,16 @@ class AccountShareModel(QtSql.QSqlTableModel):
 
 	def submitAll(self):
 		status = self.accountShareModel.submitAll()
+#		pdb.set_trace()
 		if not status and self.accountShareModel.lastError().isValid():
 			print self.accountShareModel.query().lastQuery()
 			raise Exception(self.accountShareModel.lastError().text())
+		#print self.accountShareModel.select()
 
 	def accountChanged(self, accountId):
+#		pdb.set_trace()
 		self.accountId = accountId
+		print 'RESET'
 		self.accountShareModel.setFilter(
 			'accountshare.accountid=%s AND accountshare.userid != %s' %
 			(self.accountId, db.userId)
@@ -46,7 +50,7 @@ class AccountShareModel(QtSql.QSqlTableModel):
 #			self.accountShareModel.index(row, enum.kAccountShare_UserId).data()
 #				for row in xrange(self.accountShareModel.rowCount())
 #		]
-		self.reset()
+		self.select()
 
 	def flags(self, index):
 #		flags = super(AccountShareModel, self).flags(index)
@@ -62,8 +66,10 @@ class AccountShareModel(QtSql.QSqlTableModel):
 					for row in xrange(self.accountShareModel.rowCount())
 			]
 			if self.index(item.row(), enum.kUsers_UserName).data() in sharedWith:
+				print 'checked', sharedWith, self.accountShareModel.rowCount()
 				return QtCore.Qt.Checked
 			else:
+				print 'unchecked', sharedWith, self.accountShareModel.rowCount()
 				return QtCore.Qt.Unchecked
 #		if role == QtCore.Qt.ForegroundRole and self.isDirty(item):
 #			return QtGui.QColor(255, 165, 0)
