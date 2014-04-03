@@ -8,6 +8,8 @@ from pydosh.database import db
 #from pydosh.models import UserAccountModel
 from pydosh.models import AccountShareModel
 
+from mpc.pyqtUtils.utils import SignalTracer
+
 import pdb
 
 class AccountsDialog(Ui_Accounts, QtGui.QDialog):
@@ -29,6 +31,7 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 #		model.select()
 #		self.accountShareModel = model
 
+		self.tracer = SignalTracer()
 		self.accountShareView.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
 #		model = QtSql.QSqlTableModel(self)
 #		model.setTable('users')
@@ -38,11 +41,12 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		self.accountShareView.setModelColumn(enum.kUsers_UserName)
 
 		# Account Types dropdown (read-only)
-		model = QtSql.QSqlTableModel(self)
-		model.setTable('accounttypes')
+		model = QtSql.QSqlQueryModel(self)
+		model.setQuery('SELECT accounttypeid, accountname FROM accounttypes')
+		#model.setTable('accounttypes')
 		self.accountType.setModel(model)
 		self.accountType.setModelColumn(enum.kAccountTypeColumn_AccountName)
-		model.select()
+		#model.select()
 
 		# Accounts model
 		model = QtSql.QSqlRelationalTableModel(self)
@@ -54,6 +58,7 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 			QtSql.QSqlRelation('accounttypes', 'accounttypeid', 'accountname')
 		)
 		model.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
+		self.tracer.monitor(self.accountShareView.model(), self.accountShareView, self, model, self.accountCombo)
 
 		self.accountCombo.currentIndexChanged.connect(self.switchAccount)
 		self.accountCombo.setModel(model)
@@ -144,7 +149,7 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		self.accountCombo.setCurrentIndex(0)
 
 	def saveSettings(self):
-		#pdb.set_trace()
+		pdb.set_trace()
 		print 'accountShareView.model', self.accountShareView.model().submitAll()
 		print 'accountCombo', self.accountCombo.model().submitAll()
 

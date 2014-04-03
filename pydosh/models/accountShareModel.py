@@ -13,14 +13,16 @@ import pydosh.pydosh_rc
 import pdb
 
 
-class AccountShareModel(QtSql.QSqlTableModel):
+#class AccountShareModel(QtSql.QSqlTableModel):
+class AccountShareModel(QtSql.QSqlQueryModel):
 	def __init__(self, parent=None):
 		super(AccountShareModel, self).__init__(parent=parent)
 
 
-		self.setTable('users')
-		self.setFilter('userid != %s' % db.userId)
-		self.select()
+		#self.setTable('users')
+		self.setQuery('SELECT userid, username FROM users WHERE userid !=%s' % db.userId)
+#		self.setFilter('userid != %s' % db.userId)
+#		self.select()
 
 		model = QtSql.QSqlRelationalTableModel(self)
 		model.setTable('accountshare')
@@ -50,7 +52,7 @@ class AccountShareModel(QtSql.QSqlTableModel):
 #			self.accountShareModel.index(row, enum.kAccountShare_UserId).data()
 #				for row in xrange(self.accountShareModel.rowCount())
 #		]
-		self.select()
+		#self.select()
 
 	def flags(self, index):
 #		flags = super(AccountShareModel, self).flags(index)
