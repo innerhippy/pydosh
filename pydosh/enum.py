@@ -62,8 +62,9 @@ kAccounts_AccountNo = 3
 kAccounts_SortCode = 4
 kAccounts_UserId = 5
 
-kAccountShare_AccountId = 0
-kAccountShare_UserId = 1
+kAccountShare_Id = 0
+kAccountShare_AccountId = 1
+kAccountShare_UserId = 2
 
 kUsers_UserId = 0
 kUsers_UserName = 1

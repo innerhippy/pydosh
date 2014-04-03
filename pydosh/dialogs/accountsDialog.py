@@ -16,7 +16,7 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 		self.setupUi(self)
 		self.closeButton.clicked.connect(self.close)
-#		self.saveButton.clicked.connect(self.saveSettings)
+		self.saveButton.clicked.connect(self.saveSettings)
 		self.revertButton.clicked.connect(self.revertChanges)
 #		self.addAccountButton.clicked.connect(self.addAccount)
 #		self.removeAccountButton.clicked.connect(self.deleteAccount)
@@ -75,7 +75,7 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		realAccountName = model.index(index, enum.kAccounts_AccountTypeId).data()
 		self.accountType.setCurrentIndex(self.accountType.findText(realAccountName))
 
-	
+
 		# Set the filter on accountshare table
 #		pdb.set_trace()
 		accountId = model.index(index, enum.kAccounts_Id).data()
@@ -138,6 +138,11 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		self.accountCombo.model().select()
 		self.accountCombo.setCurrentIndex(0)
 
+	def saveSettings(self):
+		#pdb.set_trace()
+		print 'accountShareView.model', self.accountShareView.model().submitAll()
+		print 'accountCombo', self.accountCombo.model().submitAll()
+
 class Noddy:
 	def __init__(self, parent=None):
 		self.enableCommit(False)
@@ -199,16 +204,14 @@ class Noddy:
 			# Trash the bad record
 			record.clear()
 
-	def saveSettings(self):
+	#	if not self.model.submitAll() and self.model.lastError().isValid():
+	#		# If we've cleared the record from validateNewAccount() then the database error
+	#		# will be empty. No need to issue a second error message
+	#		if self.	model.lastError().databaseText():
+	#			QtGui.QMessageBox.critical(self, 'Error saving data', self.model.lastError().text(), QtGui.QMessageBox.Ok)
+	#		self.model.revertAll()
 
-		if not self.model.submitAll() and self.model.lastError().isValid():
-			# If we've cleared the record from validateNewAccount() then the database error
-			# will be empty. No need to issue a second error message
-			if self.	model.lastError().databaseText():
-				QtGui.QMessageBox.critical(self, 'Error saving data', self.model.lastError().text(), QtGui.QMessageBox.Ok)
-			self.model.revertAll()
-
-		self.enableCommit(False)
+	#	self.enableCommit(False)
 
 	def cancelSettings(self): 
 		self.model.revertAll()
