@@ -13,49 +13,47 @@ import pydosh.pydosh_rc
 import pdb
 
 
-#class AccountShareModel(QtSql.QSqlTableModel):
-class AccountShareModel(QtSql.QSqlQueryModel):
+class AccountShareModel(QtSql.QSqlTableModel):
 	def __init__(self, parent=None):
 		super(AccountShareModel, self).__init__(parent=parent)
 
 
-		#self.setTable('users')
-		self.setQuery('SELECT userid, username FROM users WHERE userid !=%s' % db.userId)
-#		self.setFilter('userid != %s' % db.userId)
-#		self.select()
+		self.setTable('users')
+		self.setFilter('userid != %s' % db.userId)
+		self.setSort(enum.kUsers_UserName, QtCore.Qt.AscendingOrder)
+		self.select()
 
 		model = QtSql.QSqlRelationalTableModel(self)
 		model.setTable('accountshare')
-		model.setRelation(enum.kAccountShare_UserId, QtSql.QSqlRelation('users', 'userid', 'username'))
+		model.setRelation(
+			enum.kAccountShare_UserId, 
+			QtSql.QSqlRelation('users', 'userid', 'username')
+		)
 		model.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
 		model.select()
-		self.accountShareModel = model
+		self.shareModel = model
 		self.accountId = None
 
 	def submitAll(self):
-		status = self.accountShareModel.submitAll()
-#		pdb.set_trace()
-		if not status and self.accountShareModel.lastError().isValid():
-			print self.accountShareModel.query().lastQuery()
-			raise Exception(self.accountShareModel.lastError().text())
-		#print self.accountShareModel.select()
+		status = self.shareModel.submitAll()
+		if not status and self.shareModel.lastError().isValid():
+			raise Exception(self.shareModel.lastError().text())
+		return status
 
 	def accountChanged(self, accountId):
 #		pdb.set_trace()
 		self.accountId = accountId
-		print 'RESET'
-		self.accountShareModel.setFilter(
+		self.shareModel.setFilter(
 			'accountshare.accountid=%s AND accountshare.userid != %s' %
 			(self.accountId, db.userId)
 		)
 #		self.sharedWith = [
-#			self.accountShareModel.index(row, enum.kAccountShare_UserId).data()
-#				for row in xrange(self.accountShareModel.rowCount())
+#			self.shareModel.index(row, enum.kAccountShare_UserId).data()
+#				for row in xrange(self.shareModel.rowCount())
 #		]
 		#self.select()
 
 	def flags(self, index):
-#		flags = super(AccountShareModel, self).flags(index)
 		return QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled
 
 	def data(self, item, role=QtCore.Qt.DisplayRole):
@@ -63,18 +61,17 @@ class AccountShareModel(QtSql.QSqlQueryModel):
 			return None
 
 		if role == QtCore.Qt.CheckStateRole:
+			print self.shareModel.query().lastQuery()
 			sharedWith = [
-				self.accountShareModel.index(row, enum.kAccountShare_UserId).data()
-					for row in xrange(self.accountShareModel.rowCount())
+				self.shareModel.index(row, enum.kAccountShare_UserId).data()
+					for row in xrange(self.shareModel.rowCount())
 			]
 			if self.index(item.row(), enum.kUsers_UserName).data() in sharedWith:
-				print 'checked', sharedWith, self.accountShareModel.rowCount()
+				print 'checked', sharedWith, self.shareModel.rowCount()
 				return QtCore.Qt.Checked
 			else:
-				print 'unchecked', sharedWith, self.accountShareModel.rowCount()
+				print 'unchecked', sharedWith, self.shareModel.rowCount()
 				return QtCore.Qt.Unchecked
-#		if role == QtCore.Qt.ForegroundRole and self.isDirty(item):
-#			return QtGui.QColor(255, 165, 0)
 
 		return super(AccountShareModel, self).data(item, role)
 
@@ -84,22 +81,22 @@ class AccountShareModel(QtSql.QSqlQueryModel):
 		if role == QtCore.Qt.CheckStateRole:
 			if value == QtCore.Qt.Unchecked:
 				# Share has been de-selected.
-				match = self.accountShareModel.match(
-					self.accountShareModel.index(0, enum.kAccountShare_UserId),
+				match = self.shareModel.match(
+					self.shareModel.index(0, enum.kAccountShare_UserId),
 					QtCore.Qt.DisplayRole,
 					index.data(QtCore.Qt.DisplayRole)
 				)
 				assert len(match) == 1, 'Expecting to find match in account shares'
-				status = self.accountShareModel.removeRow(match[0].row())
+				status = self.shareModel.removeRow(match[0].row())
 			else:
-				rowCount = self.accountShareModel.rowCount()
+				rowCount = self.shareModel.rowCount()
 				userId = self.index(index.row(), enum.kUsers_UserId).data()
-				self.accountShareModel.insertRow(rowCount)
+				self.shareModel.insertRow(rowCount)
 				status = (
-					self.accountShareModel.setData(
-						self.accountShareModel.index(rowCount, 1),self.accountId) and
-					self.accountShareModel.setData(
-						self.accountShareModel.index(rowCount, 2), userId)
+					self.shareModel.setData(
+						self.shareModel.index(rowCount, 1),self.accountId) and
+					self.shareModel.setData(
+						self.shareModel.index(rowCount, 2), userId)
 				)
 
 			self.dataChanged.emit(index, index)

@@ -8,7 +8,7 @@ from pydosh.database import db
 #from pydosh.models import UserAccountModel
 from pydosh.models import AccountShareModel
 
-from mpc.pyqtUtils.utils import SignalTracer
+from signaltracer import SignalTracer
 
 import pdb
 
@@ -41,12 +41,12 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		self.accountShareView.setModelColumn(enum.kUsers_UserName)
 
 		# Account Types dropdown (read-only)
-		model = QtSql.QSqlQueryModel(self)
-		model.setQuery('SELECT accounttypeid, accountname FROM accounttypes')
-		#model.setTable('accounttypes')
+		model = QtSql.QSqlTableModel(self)
+#		model.setQuery('SELECT accounttypeid, accountname FROM accounttypes')
+		model.setTable('accounttypes')
 		self.accountType.setModel(model)
 		self.accountType.setModelColumn(enum.kAccountTypeColumn_AccountName)
-		#model.select()
+		model.select()
 
 		# Accounts model
 		model = QtSql.QSqlRelationalTableModel(self)
@@ -58,7 +58,7 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 			QtSql.QSqlRelation('accounttypes', 'accounttypeid', 'accountname')
 		)
 		model.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
-		self.tracer.monitor(self.accountShareView.model(), self.accountShareView, self, model, self.accountCombo)
+#		self.tracer.monitor(self.accountShareView.model(), self.accountShareView, self, model, self.accountCombo)
 
 		self.accountCombo.currentIndexChanged.connect(self.switchAccount)
 		self.accountCombo.setModel(model)
@@ -89,26 +89,10 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		# Set the filter on accountshare table
 #		pdb.set_trace()
 		accountId = model.index(index, enum.kAccounts_Id).data()
+
+		self.dumpModel('start 1')
 		self.accountShareView.model().accountChanged(accountId)
-		return
-		self.accountShareModel.setFilter('accountshare.accountid=%s AND accountshare.userid != %s' % (accountId, db.userId))
-
-		# Clear selection and re-set
-		self.accountShareView.selectionModel().clearSelection()
-		sharedWith = [
-			self.accountShareModel.index(row, enum.kAccountShare_UserId).data()
-				for row in xrange(self.accountShareModel.rowCount())
-		]
-		print sharedWith
-
-
-		for row in xrange(self.accountShareView.model().rowCount()):
-			index = self.accountShareView.model().index(row, enum.kAccountShare_UserId)
-			print index.data()
-
-
-		#print self.accountShare.model().select()
-		#pdb.set_trace()
+		self.dumpModel('start 2')
 
 	def sortCodeChanged(self, text):
 		""" Set the new sort code
@@ -116,7 +100,9 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		model = self.accountCombo.model()
 		currentIndex = self.accountCombo.currentIndex()
 		index = model.index(currentIndex, enum.kAccounts_SortCode)
-		model.setData(index, text)
+		if index.data() != text:
+			print 'sortCodeChanged'
+			model.setData(index, text)
 
 	def accountNoChanged(self, text):
 		""" Set the new account no
@@ -124,7 +110,8 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		model = self.accountCombo.model()
 		currentIndex = self.accountCombo.currentIndex()
 		index = model.index(currentIndex, enum.kAccounts_AccountNo)
-		model.setData(index, text)
+		if index.data() != text:
+			model.setData(index, text)
 
 	def accountNameChanged(self, text):
 		""" Set the new account alias name
@@ -132,7 +119,8 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		model = self.accountCombo.model()
 		currentIndex = self.accountCombo.currentIndex()
 		index = model.index(currentIndex, enum.kAccounts_Name)
-		model.setData(index, text)
+		if index.data() != text:
+			model.setData(index, text)
 
 	def accountTypeChanged(self, idx):
 		""" Set a new account type on the account
@@ -141,17 +129,30 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		model = self.accountCombo.model()
 		currentIndex = self.accountCombo.currentIndex()
 		index = model.index(currentIndex, enum.kAccounts_AccountTypeId)
-		print model.setData(index, newAccountTypeId)
+		if self.accountType.currentText() != index.data():
+			model.setData(index, newAccountTypeId)
+
 
 	def revertChanges(self):
 		self.accountCombo.model().reset()
 		self.accountCombo.model().select()
 		self.accountCombo.setCurrentIndex(0)
 
+	def dumpModel(self, text):
+		model = self.accountCombo.model()
+		print '-' * 20, text, '-' * 20
+		for row in xrange(model.rowCount()):
+			for column in xrange(model.columnCount()):
+				index = model.index(row, column)
+				if model.isDirty(index):
+					print '%s: %d %d %r' % (text, row, column, index.data())
+		print '-' * 50
+
 	def saveSettings(self):
-		pdb.set_trace()
-		print 'accountShareView.model', self.accountShareView.model().submitAll()
-		print 'accountCombo', self.accountCombo.model().submitAll()
+		self.accountShareView.model().submitAll()
+		index = self.accountCombo.currentIndex()
+		self.accountCombo.model().submitAll()
+		self.accountCombo.setCurrentIndex(index)
 
 class Noddy:
 	def __init__(self, parent=None):
