@@ -8,7 +8,10 @@ from pydosh.database import db
 #from pydosh.models import UserAccountModel
 from pydosh.models import AccountShareModel
 
-from signaltracer import SignalTracer
+try:
+	from signaltracer import SignalTracer
+except ImportError:
+	from mpc.pyqtUtils.utils import SignalTracer
 
 import pdb
 
@@ -90,9 +93,17 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 #		pdb.set_trace()
 		accountId = model.index(index, enum.kAccounts_Id).data()
 
-		self.dumpModel('start 1')
-		self.accountShareView.model().accountChanged(accountId)
-		self.dumpModel('start 2')
+#		self.dumpModel('start 1')
+		if self.accountShareView.model().hasChangesPending():
+			if QtGui.QMessageBox.question(
+				self,
+				'Save changes',
+				'There are unsaved changes to this account, cancel changes and proceed?',
+				QtGui.QMessageBox.Yes|QtGui.QMessageBox.No
+			) == QtGui.QMessageBox.No:
+				return
+		self.accountShareView.model().changedAccount(accountId)
+#		self.dumpModel('start 2')
 
 	def sortCodeChanged(self, text):
 		""" Set the new sort code
@@ -132,10 +143,10 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		if self.accountType.currentText() != index.data():
 			model.setData(index, newAccountTypeId)
 
-
 	def revertChanges(self):
 		self.accountCombo.model().reset()
 		self.accountCombo.model().select()
+		self.accountShareView.model().reset()
 		self.accountCombo.setCurrentIndex(0)
 
 	def dumpModel(self, text):

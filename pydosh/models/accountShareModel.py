@@ -40,7 +40,7 @@ class AccountShareModel(QtSql.QSqlTableModel):
 			raise Exception(self.shareModel.lastError().text())
 		return status
 
-	def accountChanged(self, accountId):
+	def changedAccount(self, accountId):
 #		pdb.set_trace()
 		self.accountId = accountId
 		self.shareModel.setFilter(
@@ -52,6 +52,14 @@ class AccountShareModel(QtSql.QSqlTableModel):
 #				for row in xrange(self.shareModel.rowCount())
 #		]
 		#self.select()
+		self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount()-1, self.columnCount()-1))
+
+	def hasChangesPending(self):
+		for row in xrange(self.shareModel.rowCount()):
+			for column in xrange(self.shareModel.columnCount()):
+				if self.shareModel.isDirty(self.shareModel.index(row, column)):
+					return True
+		return False
 
 	def flags(self, index):
 		return QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled
@@ -66,6 +74,8 @@ class AccountShareModel(QtSql.QSqlTableModel):
 				self.shareModel.index(row, enum.kAccountShare_UserId).data()
 					for row in xrange(self.shareModel.rowCount())
 			]
+			if [v for v in sharedWith if v is None]:
+				pdb.set_trace()
 			if self.index(item.row(), enum.kUsers_UserName).data() in sharedWith:
 				print 'checked', sharedWith, self.shareModel.rowCount()
 				return QtCore.Qt.Checked
@@ -81,6 +91,7 @@ class AccountShareModel(QtSql.QSqlTableModel):
 		if role == QtCore.Qt.CheckStateRole:
 			if value == QtCore.Qt.Unchecked:
 				# Share has been de-selected.
+				print 'deleting row', self.shareModel.rowCount(),
 				match = self.shareModel.match(
 					self.shareModel.index(0, enum.kAccountShare_UserId),
 					QtCore.Qt.DisplayRole,
@@ -88,7 +99,9 @@ class AccountShareModel(QtSql.QSqlTableModel):
 				)
 				assert len(match) == 1, 'Expecting to find match in account shares'
 				status = self.shareModel.removeRow(match[0].row())
+				print self.shareModel.rowCount()
 			else:
+				print 'adding row', self.shareModel.rowCount(),
 				rowCount = self.shareModel.rowCount()
 				userId = self.index(index.row(), enum.kUsers_UserId).data()
 				self.shareModel.insertRow(rowCount)
@@ -98,6 +111,7 @@ class AccountShareModel(QtSql.QSqlTableModel):
 					self.shareModel.setData(
 						self.shareModel.index(rowCount, 2), userId)
 				)
+				print self.shareModel.rowCount()
 
 			self.dataChanged.emit(index, index)
 			return status
