@@ -5,10 +5,10 @@ from pydosh import enum
 from pydosh.database import db
 from pydosh.models import AccountShareModel
 
-try:
-	from signaltracer import SignalTracer
-except ImportError:
-	from mpc.pyqtUtils.utils import SignalTracer
+#try:
+#	from signaltracer import SignalTracer
+#except ImportError:
+#	from mpc.pyqtUtils.utils import SignalTracer
 
 import pdb
 
@@ -51,7 +51,7 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		)
 		model.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
 
-		self.tracer = SignalTracer()
+#		self.tracer = SignalTracer()
 #		self.tracer.monitor(self.accountShareView.model(), self.accountShareView, self, model, self.accountCombo)
 
 		self.accountCombo.currentIndexChanged.connect(self.switchAccount)

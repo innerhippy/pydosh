@@ -10,14 +10,12 @@ kRecordColumn_Amount = 8
 kRecordColumn_InsertDate = 9
 kRecordColumn_RawData = 10
 kRecordColumn_Currency = 11
-# TODO: fix view in main window
-kRecordColumn_AccountId = 12
 
 kImportColumn_Status = 0
 kImportColumn_Date = 1
 kImportColumn_Credit = 2
 kImportColumn_Debit = 3
-kImportColumn_Description = 4 
+kImportColumn_Description = 4
 
 kDate_All = 0
 kDate_PreviousYear = 1

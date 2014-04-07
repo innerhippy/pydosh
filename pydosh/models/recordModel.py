@@ -6,11 +6,15 @@ from pydosh.database import db
 import pydosh.pydosh_rc
 
 class RecordModel(QtSql.QSqlTableModel):
+	""" QSqlTableModel to represent the records table
+	"""
 	def __init__(self, parent=None):
 		super(RecordModel, self).__init__(parent=parent)
 		self._highlightText = None
 
 	def select(self):
+		""" Buffer the select statement for large datasets
+		"""
 		status = super(RecordModel, self).select()
 		while self.canFetchMore():
 			self.fetchMore()
@@ -18,17 +22,18 @@ class RecordModel(QtSql.QSqlTableModel):
 		return status
 
 	def flags(self, index):
+		""" Set the flags to allow checkable items
+		"""
 		flags = super(RecordModel, self).flags(index)
 		if index.column() == enum.kRecordColumn_Checked:
 			return flags | QtCore.Qt.ItemIsUserCheckable
 		return flags
 
 	def selectStatement(self):
+		""" Returns the select statement for the record table
+		"""
 		if not self.tableName():
 			return None
-
-#		queryFilter = self.filter()
-#		queryFilter = 'AND ' + queryFilter if queryFilter else ''
 
 		query = """
                 SELECT r.recordid,
@@ -53,9 +58,12 @@ class RecordModel(QtSql.QSqlTableModel):
               GROUP BY r.recordid, a.name
               ORDER BY r.date, r.recordid
 		""" % {'userid': db.userId}
+
 		return query
 
 	def deleteRecords(self, indexes):
+		""" Delete rows manually - bulk deletion way quicker than using the model
+		"""
 		recordIds = [self.index(index.row(), enum.kRecordColumn_RecordId).data() for index in indexes]
 		query = QtSql.QSqlQuery("""
             DELETE FROM records
@@ -71,6 +79,8 @@ class RecordModel(QtSql.QSqlTableModel):
 		return True
 
 	def highlightText(self, text):
+		""" Highlight text in desciption field
+		"""
 		self._highlightText = text
 		self.reset()
 
@@ -233,7 +243,9 @@ class RecordModel(QtSql.QSqlTableModel):
 
 
 class RecordProxyModel(QtGui.QSortFilterProxyModel):
-
+	""" Proxy model for records table. Allows for fast filtering without the expense
+		of extra SQL queries
+	"""
 	# Signal emitted whenever there is a change to the filter
 	filterChanged = QtCore.Signal()
 
