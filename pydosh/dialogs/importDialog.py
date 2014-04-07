@@ -32,9 +32,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 			      FROM accounts a
 			INNER JOIN accounttypes at
 			        ON at.accounttypeid=a.accounttypeid
-			INNER JOIN accountshare acs
-			        ON acs.accountid=a.id
-			       AND acs.userid=%d
+			       AND a.userid=%d
 			""" % db.userId)
 
 		rec = query.record()

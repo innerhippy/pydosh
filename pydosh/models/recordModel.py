@@ -27,8 +27,8 @@ class RecordModel(QtSql.QSqlTableModel):
 		if not self.tableName():
 			return None
 
-		queryFilter = self.filter()
-		queryFilter = 'WHERE ' + queryFilter if queryFilter else ''
+#		queryFilter = self.filter()
+#		queryFilter = 'AND ' + queryFilter if queryFilter else ''
 
 		query = """
                 SELECT r.recordid,
@@ -44,15 +44,15 @@ class RecordModel(QtSql.QSqlTableModel):
                        r.rawdata,
                        r.currency
                   FROM records r
-            INNER JOIN accounts a ON a.id=r.accountid
-			INNER JOIN accountshare acs ON acs.accountid=a.id
-                   AND acs.userid=%(userid)s
+             LEFT JOIN accounts a ON a.id=r.accountid
+             LEFT JOIN accountshare acs ON acs.accountid=r.accountid
              LEFT JOIN recordtags rt ON rt.recordid=r.recordid
              LEFT JOIN tags t ON rt.tagid=t.tagid
-                       %(filter)s
+                 WHERE (a.userid = %(userid)s
+                    OR acs.userid = %(userid)s)
               GROUP BY r.recordid, a.name
               ORDER BY r.date, r.recordid
-		""" % {'userid': db.userId, 'filter': queryFilter}
+		""" % {'userid': db.userId}
 		return query
 
 	def deleteRecords(self, indexes):

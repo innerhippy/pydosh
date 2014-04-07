@@ -77,6 +77,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.tableView.setModel(recordProxyModel)
 		recordModel.select()
+		#print recordModel.query().lastQuery()
 
 		# Set up record view
 		self.tableView.verticalHeader().hide()
@@ -156,7 +157,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		""" Tell the proxy filter to filter on selected account ids
 		"""
 		accountIds = [self.accountCombo.itemData(self.accountCombo.findText(item)) for item in items]
+		print accountIds
 		self.tableView.model().setAccountFilter(accountIds)
+		print self.tableView.model().sourceModel().query().lastQuery()
 
 	def tagSelectionChanged(self, index):
 		""" Basic tag filter (has tags or not)
@@ -431,14 +434,16 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.accountCombo.clear()
 		query = QtSql.QSqlQuery("""
 			SELECT DISTINCT a.id, a.name
-			           FROM accounts a
-			     INNER JOIN records r
-				         ON r.accountid=a.id
-			     INNER JOIN accountshare acs
-				         ON acs.accountid=a.id
-			             AND acs.userid=%s
-				   ORDER BY a.name
-			""" % db.userId)
+			           FROM records r
+			      LEFT JOIN accounts a
+			             ON a.id=r.accountid
+			      LEFT JOIN accountshare acs
+			             ON acs.accountid = r.accountid
+			          WHERE a.userid=%(userid)s
+			             OR acs.userid=%(userid)s
+			       ORDER BY a.name
+			""" % {'userid': db.userId}
+		)
 
 		if query.lastError().isValid():
 			QtGui.QMessageBox.critical(self, 'Database Error', query.lastError().text(), QtGui.QMessageBox.Ok)
@@ -451,12 +456,14 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		""" Set date fields to min and max values
 		"""
 		query = QtSql.QSqlQuery("""
-		    SELECT MIN(r.date), MAX(r.date), MAX(r.insertdate)
-		      FROM records r
-		INNER JOIN accountshare acs
-		        ON acs.accountid=r.accountid
-		       AND acs.userid=%d
-			""" % db.userId)
+			SELECT MIN(r.date), MAX(r.date), MAX(r.insertdate)
+			  FROM records r
+		 LEFT JOIN accounts a
+			    ON a.id=r.accountid
+		 LEFT JOIN accountshare acs
+			    ON acs.accountid = r.accountid
+			 WHERE a.userid=%(userid)s
+		""" % {'userid': db.userId})
 
 		if query.lastError().isValid():
 			QtGui.QMessageBox.critical(self, 'Database Error', query.lastError().text(), QtGui.QMessageBox.Ok)

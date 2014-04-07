@@ -351,10 +351,11 @@ class ImportModel(QtCore.QAbstractItemModel):
 
 		# Import all record checksums
 		query = QtSql.QSqlQuery("""
-			SELECT checksum	FROM records r
-			          INNER JOIN accountshare acs
-			                  ON acs.accountid=r.accountid
-			                 AND acs.userid=%d
+		    SELECT checksum
+		      FROM records r
+		INNER JOIN accounts a
+		        ON a.accountid=r.accountid
+		       AND a.userid=%d
 			""" % db.userId)
 
 		if query.lastError().isValid():

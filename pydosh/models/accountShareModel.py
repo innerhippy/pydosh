@@ -26,7 +26,7 @@ class AccountShareModel(QtSql.QSqlTableModel):
 		model = QtSql.QSqlRelationalTableModel(self)
 		model.setTable('accountshare')
 		model.setRelation(
-			enum.kAccountShare_UserId, 
+			enum.kAccountShare_UserId,
 			QtSql.QSqlRelation('users', 'userid', 'username')
 		)
 		model.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
@@ -41,17 +41,9 @@ class AccountShareModel(QtSql.QSqlTableModel):
 		return status
 
 	def changedAccount(self, accountId):
-#		pdb.set_trace()
 		self.accountId = accountId
-		self.shareModel.setFilter(
-			'accountshare.accountid=%s AND accountshare.userid != %s' %
-			(self.accountId, db.userId)
-		)
-#		self.sharedWith = [
-#			self.shareModel.index(row, enum.kAccountShare_UserId).data()
-#				for row in xrange(self.shareModel.rowCount())
-#		]
-		#self.select()
+		self.shareModel.revertAll()
+		self.shareModel.setFilter('accountshare.accountid=%s' % self.accountId)
 		self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount()-1, self.columnCount()-1))
 
 	def hasChangesPending(self):
@@ -69,18 +61,13 @@ class AccountShareModel(QtSql.QSqlTableModel):
 			return None
 
 		if role == QtCore.Qt.CheckStateRole:
-			print self.shareModel.query().lastQuery()
 			sharedWith = [
 				self.shareModel.index(row, enum.kAccountShare_UserId).data()
 					for row in xrange(self.shareModel.rowCount())
 			]
-			if [v for v in sharedWith if v is None]:
-				pdb.set_trace()
 			if self.index(item.row(), enum.kUsers_UserName).data() in sharedWith:
-				print 'checked', sharedWith, self.shareModel.rowCount()
 				return QtCore.Qt.Checked
 			else:
-				print 'unchecked', sharedWith, self.shareModel.rowCount()
 				return QtCore.Qt.Unchecked
 
 		return super(AccountShareModel, self).data(item, role)
@@ -90,31 +77,29 @@ class AccountShareModel(QtSql.QSqlTableModel):
 		"""
 		if role == QtCore.Qt.CheckStateRole:
 			if value == QtCore.Qt.Unchecked:
-				# Share has been de-selected.
-				print 'deleting row', self.shareModel.rowCount(),
 				match = self.shareModel.match(
 					self.shareModel.index(0, enum.kAccountShare_UserId),
 					QtCore.Qt.DisplayRole,
 					index.data(QtCore.Qt.DisplayRole)
 				)
 				assert len(match) == 1, 'Expecting to find match in account shares'
-				status = self.shareModel.removeRow(match[0].row())
-				print self.shareModel.rowCount()
+				if not self.shareModel.removeRow(match[0].row()):
+					return False
 			else:
-				print 'adding row', self.shareModel.rowCount(),
 				rowCount = self.shareModel.rowCount()
 				userId = self.index(index.row(), enum.kUsers_UserId).data()
 				self.shareModel.insertRow(rowCount)
-				status = (
+				if not (
 					self.shareModel.setData(
-						self.shareModel.index(rowCount, 1),self.accountId) and
+						self.shareModel.index(rowCount, enum.kAccountShare_AccountId), self.accountId)
+					and
 					self.shareModel.setData(
-						self.shareModel.index(rowCount, 2), userId)
-				)
-				print self.shareModel.rowCount()
+						self.shareModel.index(rowCount, enum.kAccountShare_UserId), userId)
+					):
+					return False
 
 			self.dataChanged.emit(index, index)
-			return status
+			return True
 
 		return False
 
