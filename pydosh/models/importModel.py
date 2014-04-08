@@ -1,3 +1,4 @@
+import pdb
 import re
 import os
 import csv
@@ -306,8 +307,8 @@ class CsvRecordItem(TreeItem):
 			self._setFormatted(True)
 
 	def __getAmountField(self, field):
-		""" Extract and return amount from str type to double. 
-			If a simple conversion doesn't succeed, then try and parse 
+		""" Extract and return amount from str type to double.
+			If a simple conversion doesn't succeed, then try and parse
 			the string to remove any currency sign or other junk.
 
 			Returns None if field does not contain valid double.
@@ -354,7 +355,7 @@ class ImportModel(QtCore.QAbstractItemModel):
 		    SELECT checksum
 		      FROM records r
 		INNER JOIN accounts a
-		        ON a.accountid=r.accountid
+		        ON a.id=r.accountid
 		       AND a.userid=%d
 			""" % db.userId)
 

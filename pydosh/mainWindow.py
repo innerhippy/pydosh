@@ -151,7 +151,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.amountEdit.editingFinshed.connect(self.amountFilterChanged)
 
 		self.reset()
-#		self.accountsDialog()
+		self.accountsDialog()
 
 	def accountSelectionChanged(self, items):
 		""" Tell the proxy filter to filter on selected account ids
