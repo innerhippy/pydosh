@@ -17,6 +17,8 @@ CREATE SEQUENCE accounts_id_seq
     CACHE 1;
 
 ALTER SEQUENCE accounts_id_seq OWNED BY accounts.id;
+
+-- ??
 ALTER TABLE ONLY accounts
 	ALTER COLUMN id SET DEFAULT nextval('accounts_id_seq'::regclass);
 ALTER TABLE ONLY accounts
@@ -33,9 +35,20 @@ GRANT ALL ON TABLE accounts TO PUBLIC;
 --- accountshare table
 
 CREATE TABLE accountshare (
+	id integer NOT NULL,
     accountid integer NOT NULL,
     userid integer NOT NULL
 );
+
+CREATE SEQUENCE accountshare_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE accountshare_id_seq OWNED BY accountshare.id;
+
 ALTER TABLE ONLY accountshare
     ADD CONSTRAINT accountshare_pkey PRIMARY KEY (accountid, userid);
 ALTER TABLE ONLY accountshare
@@ -62,16 +75,6 @@ INSERT INTO accounts VALUES (8, 1, 'Nat West', NULL, NULL, 1);
 INSERT INTO accounts VALUES (10, 2, 'Nat West Mastercard', NULL, NULL, 1);
 INSERT INTO accounts VALUES (3, 4, 'French', '60201325357', NULL, 2);
 
-
-INSERT INTO accountshare VALUES (1, 2);
-INSERT INTO accountshare VALUES (2, 2);
-INSERT INTO accountshare VALUES (6, 2);
-INSERT INTO accountshare VALUES (5, 2);
-INSERT INTO accountshare VALUES (4, 2);
-INSERT INTO accountshare VALUES (3, 2);
-INSERT INTO accountshare VALUES (4, 1);
-INSERT INTO accountshare VALUES (8, 1);
-INSERT INTO accountshare VALUES (10, 1);
 
 UPDATE records r SET accountid=a.id FROM accounts a WHERE a.accounttypeid=r.accounttypeid AND r.userid=a.userid;
 

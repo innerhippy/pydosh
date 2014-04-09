@@ -26,51 +26,6 @@ SET search_path = public, pg_catalog;
 
 SET default_tablespace = '';
 
-SET default_with_oids = false;
-
---
--- Name: accounts; Type: TABLE; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE TABLE accounts (
-    id integer NOT NULL,
-    accounttypeid integer NOT NULL,
-    name text NOT NULL,
-    accountno text,
-    sortcode text,
-    userid integer NOT NULL
-);
-
-
---
--- Name: accounts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE accounts_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: accounts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE accounts_id_seq OWNED BY accounts.id;
-
-
---
--- Name: accountshare; Type: TABLE; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE TABLE accountshare (
-    accountid integer NOT NULL,
-    userid integer NOT NULL
-);
-
-
 SET default_with_oids = true;
 
 --
@@ -117,14 +72,14 @@ CREATE TABLE records (
     checked integer DEFAULT 0 NOT NULL,
     checkdate timestamp without time zone,
     date date NOT NULL,
+    userid integer NOT NULL,
+    accounttypeid integer NOT NULL,
     description text NOT NULL,
-    txdate timestamp without time zone,
     amount numeric(15,2) NOT NULL,
     insertdate timestamp without time zone,
     rawdata text NOT NULL,
     checksum text NOT NULL,
-    currency character(3) NOT NULL,
-    accountid integer
+    currency character(3) NOT NULL
 );
 
 
@@ -237,13 +192,6 @@ ALTER SEQUENCE users_userid_seq OWNED BY users.userid;
 
 
 --
--- Name: id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY accounts ALTER COLUMN id SET DEFAULT nextval('accounts_id_seq'::regclass);
-
-
---
 -- Name: accounttypeid; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -279,30 +227,6 @@ ALTER TABLE ONLY users ALTER COLUMN userid SET DEFAULT nextval('users_userid_seq
 
 
 --
--- Name: accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
---
-
-ALTER TABLE ONLY accounts
-    ADD CONSTRAINT accounts_pkey PRIMARY KEY (id);
-
-
---
--- Name: accounts_unique; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
---
-
-ALTER TABLE ONLY accounts
-    ADD CONSTRAINT accounts_unique UNIQUE (name, userid);
-
-
---
--- Name: accountshare_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
---
-
-ALTER TABLE ONLY accountshare
-    ADD CONSTRAINT accountshare_pkey PRIMARY KEY (accountid, userid);
-
-
---
 -- Name: accounttypes_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -324,6 +248,14 @@ ALTER TABLE ONLY accounttypes
 
 ALTER TABLE ONLY records
     ADD CONSTRAINT records_pkey PRIMARY KEY (recordid);
+
+
+--
+-- Name: records_unique_records; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY records
+    ADD CONSTRAINT records_unique_records UNIQUE (userid, accounttypeid, checksum);
 
 
 --
@@ -375,6 +307,20 @@ ALTER TABLE ONLY users
 
 
 --
+-- Name: fki_records_account_fkey; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX fki_records_account_fkey ON records USING btree (accounttypeid);
+
+
+--
+-- Name: fki_records_user_fkey; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX fki_records_user_fkey ON records USING btree (userid);
+
+
+--
 -- Name: fki_recordtags_record_fkey; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -403,43 +349,19 @@ CREATE INDEX records_rawdata_idx ON records USING btree (rawdata);
 
 
 --
--- Name: accounts_accounttypeid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY accounts
-    ADD CONSTRAINT accounts_accounttypeid_fkey FOREIGN KEY (accounttypeid) REFERENCES accounttypes(accounttypeid) ON DELETE CASCADE;
-
-
---
--- Name: accounts_userid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY accounts
-    ADD CONSTRAINT accounts_userid_fkey FOREIGN KEY (userid) REFERENCES users(userid) ON DELETE CASCADE;
-
-
---
--- Name: accountshare_accounts_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY accountshare
-    ADD CONSTRAINT accountshare_accounts_fkey FOREIGN KEY (accountid) REFERENCES accounts(id) ON DELETE CASCADE;
-
-
---
--- Name: accountshare_users_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY accountshare
-    ADD CONSTRAINT accountshare_users_fkey FOREIGN KEY (userid) REFERENCES users(userid) ON DELETE CASCADE;
-
-
---
--- Name: records_accounts_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: records_accounttype_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY records
-    ADD CONSTRAINT records_accounts_fkey FOREIGN KEY (accountid) REFERENCES accounts(id);
+    ADD CONSTRAINT records_accounttype_fkey FOREIGN KEY (accounttypeid) REFERENCES accounttypes(accounttypeid);
+
+
+--
+-- Name: records_users_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY records
+    ADD CONSTRAINT records_users_fkey FOREIGN KEY (userid) REFERENCES users(userid) ON DELETE CASCADE;
 
 
 --
