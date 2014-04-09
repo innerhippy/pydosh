@@ -77,7 +77,6 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		self.tableView.setModel(recordProxyModel)
 		recordModel.select()
-		#print recordModel.query().lastQuery()
 
 		# Set up record view
 		self.tableView.verticalHeader().hide()
@@ -151,14 +150,12 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.amountEdit.editingFinshed.connect(self.amountFilterChanged)
 
 		self.reset()
-		self.accountsDialog()
 
 	def accountSelectionChanged(self, items):
 		""" Tell the proxy filter to filter on selected account ids
 		"""
 		accountIds = [self.accountCombo.itemData(self.accountCombo.findText(item)) for item in items]
 		self.tableView.model().setAccountFilter(accountIds)
-		print self.tableView.model().sourceModel().query().lastQuery()
 
 	def tagSelectionChanged(self, index):
 		""" Basic tag filter (has tags or not)
@@ -294,8 +291,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			user account information
 		"""
 		dialog = dialogs.AccountsDialog(self)
-		dialog.exec_()
-
+		if dialog.exec_():
+			self.populateAccounts()
 
 	def importDialog(self):
 		""" Launch the import dialog

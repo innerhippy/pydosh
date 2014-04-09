@@ -1,4 +1,3 @@
-import pdb
 from PySide import QtCore, QtSql
 
 from pydosh import enum
@@ -6,10 +5,10 @@ from pydosh.database import db
 
 
 class AccountShareModel(QtSql.QSqlTableModel):
+	""" QSqlTable model to account share table
+	"""
 	def __init__(self, parent=None):
 		super(AccountShareModel, self).__init__(parent=parent)
-
-
 		self.setTable('users')
 		self.setFilter('userid != %s' % db.userId)
 		self.setSort(enum.kUsers_UserName, QtCore.Qt.AscendingOrder)

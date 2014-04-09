@@ -5,25 +5,19 @@ from pydosh import enum, utils
 from pydosh.database import db
 from pydosh.models import AccountShareModel
 
-try:
-	from signaltracer import SignalTracer
-except ImportError:
-	from mpc.pyqtUtils.utils import SignalTracer
-
-import pdb
-
 class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 	def __init__(self, parent=None):
 		super(AccountsDialog, self).__init__(parent=parent)
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 		self.setupUi(self)
-		self.closeButton.clicked.connect(self.close)
+		self.closeButton.clicked.connect(self._close)
 		self.saveButton.clicked.connect(self.saveSettings)
 		self.revertButton.clicked.connect(self.revertChanges)
 		self.saveButton.setEnabled(False)
 		self.revertButton.setEnabled(False)
-		self._changedMade = False
+		self._changesMade = False
 		self._allowAccountShareEdit = True
+		self._accountRecordCount = None
 		self.addAccountButton.clicked.connect(self.addNewAccount)
 		self.removeAccountButton.clicked.connect(self.removeAccount)
 
@@ -52,10 +46,6 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		)
 		model.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
 
-		self.tracer = SignalTracer()
-#		self.tracer.monitor(self.accountShareView.model(), self.accountShareView, self, model, self.accountCombo)
-		self.tracer.monitor(self.accountShareView.model(), model, self.accountCombo)
-
 		self.accountCombo.currentIndexChanged.connect(self.switchAccount)
 		self.accountCombo.setModel(model)
 		self.accountCombo.setModelColumn(enum.kAccounts_Name)
@@ -69,10 +59,17 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 
 		self.accountCombo.setCurrentIndex(0)
 
+	def _close(self):
+		""" Close dialog with exit code indicating if changes
+			have been made
+		"""
+		self.done(self._changesMade)
+
 	def addNewAccount(self):
 		""" Add new account
 			Disable account share until save has been committed
 		"""
+		self.revertChanges()
 		model = self.accountCombo.model()
 		row = model.rowCount()
 		model.insertRow(row)
@@ -89,12 +86,14 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 
 	def removeAccount(self):
 		""" Delete an account.
-			This will fail if account is referenced by records table
+			Only accounts with no records assigned can be deleted.
 		"""
 		index = self.accountCombo.currentIndex()
 		self.accountCombo.removeItem(index)
+		self.accountCombo.model().submitAll()
 		self.setButtonsEnabled()
 
+	@utils.showWaitCursorDecorator
 	def switchAccount(self, index):
 		""" Account changed by user, populate all fields
 		"""
@@ -111,6 +110,10 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		accountId = model.index(index, enum.kAccounts_Id).data()
 		self.accountShareView.model().changedAccount(accountId)
 		self._allowAccountShareEdit = True
+
+		query = QtSql.QSqlQuery('SELECT count(*) FROM records WHERE accountid=%s' % accountId)
+		query.next()
+		self._accountRecordCount = query.value(0)
 		self.setButtonsEnabled()
 
 	def setButtonsEnabled(self):
@@ -138,6 +141,8 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		self.saveButton.setEnabled(changesPending)
 		self.accountShareView.setEnabled(self._allowAccountShareEdit)
 
+		self.removeAccountButton.setEnabled(self._accountRecordCount == 0)
+
 	def sortCodeChanged(self, text):
 		""" Set the new sort code
 		"""
@@ -145,7 +150,6 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		currentIndex = self.accountCombo.currentIndex()
 		index = model.index(currentIndex, enum.kAccounts_SortCode)
 		if index.data() != text:
-			print 'sortCodeChanged'
 			model.setData(index, text.strip())
 		self.setButtonsEnabled()
 
@@ -197,11 +201,14 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		"""
 		self._changesMade = True
 		self.accountShareView.model().submitAll()
-		index = self.accountCombo.currentIndex()
+		text = self.accountCombo.currentText()
+
 		if not self.accountCombo.model().submitAll():
 			QtGui.QMessageBox.critical(self, 'Database Error',
 				str(self.accountCombo.model().lastError()))
 			self.revertChanges()
+
+		index = self.accountCombo.findText(text)
 		self.accountCombo.setCurrentIndex(index)
 		self._allowAccountShareEdit = True
 		self.setButtonsEnabled()

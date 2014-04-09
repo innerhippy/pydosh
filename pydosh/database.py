@@ -144,7 +144,7 @@ class _Database(QtCore.QObject):
 			Raises ConnectionException if cannot be found
 		"""
 		query=QtSql.QSqlQuery()
-		query.prepare('SELECT userid from users where username=(?)')
+		query.prepare('SELECT userid FROM users WHERE username=(?)')
 		query.addBindValue(self.username)
 		query.exec_()
 		query.next()
