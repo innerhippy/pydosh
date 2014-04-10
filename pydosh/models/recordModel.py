@@ -21,11 +21,17 @@ class RecordModel(QtSql.QSqlTableModel):
 
 		return status
 
+	def isWritable(self, index):
+		""" True if the row from the index is owned
+			by the current user
+		"""
+		return self.index(index.row(), enum.kRecordColumn_UserId).data() == db.userId
+
 	def flags(self, index):
 		""" Set the flags to allow checkable items
 		"""
 		flags = super(RecordModel, self).flags(index)
-		if index.column() == enum.kRecordColumn_Checked:
+		if index.column() == enum.kRecordColumn_Checked and self.isWritable(index):
 			return flags | QtCore.Qt.ItemIsUserCheckable
 		return flags
 
@@ -42,6 +48,7 @@ class RecordModel(QtSql.QSqlTableModel):
                        r.checkdate,
                        r.date,
                        r.accountid,
+                       a2.userid,
                        a.name,
                        r.description,
                        r.amount,
@@ -49,13 +56,21 @@ class RecordModel(QtSql.QSqlTableModel):
                        r.rawdata,
                        r.currency
                   FROM records r
-             LEFT JOIN accounts a ON a.id=r.accountid
-             LEFT JOIN accountshare acs ON acs.accountid=r.accountid
-             LEFT JOIN recordtags rt ON rt.recordid=r.recordid
-             LEFT JOIN tags t ON rt.tagid=t.tagid
+             LEFT JOIN accounts a
+                    ON a.id=r.accountid
+             LEFT JOIN accountshare acs
+                    ON acs.accountid=r.accountid
+             LEFT JOIN recordtags rt
+                    ON rt.recordid=r.recordid
+             LEFT JOIN tags t
+                    ON rt.tagid=t.tagid
+            INNER JOIN records r2
+                    ON r2.recordid=r.recordid
+            INNER JOIN accounts a2
+                    ON a2.id=r2.accountid
                  WHERE (a.userid = %(userid)s
                     OR acs.userid = %(userid)s)
-              GROUP BY r.recordid, a.name
+              GROUP BY r.recordid, a.name, a2.userid
               ORDER BY r.date, r.recordid
 		""" % {'userid': db.userId}
 
@@ -64,7 +79,11 @@ class RecordModel(QtSql.QSqlTableModel):
 	def deleteRecords(self, indexes):
 		""" Delete rows manually - bulk deletion way quicker than using the model
 		"""
-		recordIds = [self.index(index.row(), enum.kRecordColumn_RecordId).data() for index in indexes]
+		recordIds = (
+			self.index(index.row(), enum.kRecordColumn_RecordId).data()
+				for index in indexes if self.isWritable(index)
+		)
+
 		query = QtSql.QSqlQuery("""
             DELETE FROM records
                   WHERE recordid in (%s)

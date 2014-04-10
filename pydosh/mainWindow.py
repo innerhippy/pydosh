@@ -83,6 +83,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.tableView.setColumnHidden(enum.kRecordColumn_RecordId, True)
 		self.tableView.setColumnHidden(enum.kRecordColumn_AccountId, True)
 		self.tableView.setColumnHidden(enum.kRecordColumn_CheckDate, True)
+		self.tableView.setColumnHidden(enum.kRecordColumn_UserId, True)
 		self.tableView.setColumnHidden(enum.kRecordColumn_RawData, True)
 		self.tableView.setColumnHidden(enum.kRecordColumn_InsertDate, True)
 		self.tableView.setColumnHidden(enum.kRecordColumn_Currency, True)
@@ -329,10 +330,22 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.populateDates()
 		self.setDateRange()
 
+	def _getWriteableSelectedModelIndexes(self):
+		""" Returns a list of model indexes that are selected in
+			the view *and* are owned by the current user
+		"""
+		proxyModel = self.tableView.model()
+		indexes = (proxyModel.mapToSource(index) for index in self.tableView.selectionModel().selectedRows())
+
+		# Prune out rows we don't own
+		return [
+			index for index in indexes if proxyModel.sourceModel().isWritable(index)
+		]
+
 	def recordSelectionChanged(self):
 		""" Only enable buttons if a selection has been made
 		"""
-		enable = len(self.tableView.selectionModel().selectedRows()) > 0
+		enable = len(self._getWriteableSelectedModelIndexes()) > 0
 		self.toggleCheckButton.setEnabled(enable)
 		self.deleteButton.setEnabled(enable)
 
@@ -371,25 +384,25 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 	def deleteRecords(self):
 		""" Delete selected records
 		"""
-		selectionModel = self.tableView.selectionModel()
-		proxyModel = self.tableView.model()
+		indexes = self._getWriteableSelectedModelIndexes()
 
-		if QtGui.QMessageBox.question(
-				self, 'Delete Records',
-				'Are you sure you want to delete %d rows?' % len(selectionModel.selectedRows()),
-				QtGui.QMessageBox.Yes|QtGui.QMessageBox.No) != QtGui.QMessageBox.Yes:
-			return
+		if indexes:
+			proxyModel = self.tableView.model()
+			if QtGui.QMessageBox.question(
+					self, 'Delete Records',
+					'Are you sure you want to delete %d rows?' % len(indexes),
+					QtGui.QMessageBox.Yes|QtGui.QMessageBox.No) != QtGui.QMessageBox.Yes:
+				return
 
-		with utils.showWaitCursor():
-			indexes = [proxyModel.mapToSource(index) for index in selectionModel.selectedRows()]
-			if not proxyModel.sourceModel().deleteRecords(indexes):
-				QtGui.QMessageBox.critical(self, 'Database Error',
-					proxyModel.sourceModel().lastError().text(), QtGui.QMessageBox.Ok)
+			with utils.showWaitCursor():
+				if not proxyModel.sourceModel().deleteRecords(indexes):
+					QtGui.QMessageBox.critical(self, 'Database Error',
+						proxyModel.sourceModel().lastError().text(), QtGui.QMessageBox.Ok)
 
-			# Finally, re-populate accounts and date range in case this has changed
-			self.populateAccounts()
-			self.populateDates()
-			self.setDateRange()
+				# Finally, re-populate accounts and date range in case this has changed
+				self.populateAccounts()
+				self.populateDates()
+				self.setDateRange()
 
 	@contextmanager
 	def keepSelection(self):
@@ -435,8 +448,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			             ON a.id=r.accountid
 			      LEFT JOIN accountshare acs
 			             ON acs.accountid = r.accountid
-			          WHERE a.userid=%(userid)s
-			             OR acs.userid=%(userid)s
+			          WHERE (a.userid=%(userid)s
+			             OR acs.userid=%(userid)s)
 			       ORDER BY a.name
 			""" % {'userid': db.userId}
 		)
@@ -452,13 +465,14 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		""" Set date fields to min and max values
 		"""
 		query = QtSql.QSqlQuery("""
-			SELECT MIN(r.date), MAX(r.date), MAX(r.insertdate)
-			  FROM records r
+		    SELECT MIN(r.date), MAX(r.date), MAX(r.insertdate)
+		      FROM records r
 		 LEFT JOIN accounts a
-			    ON a.id=r.accountid
+		        ON a.id=r.accountid
 		 LEFT JOIN accountshare acs
-			    ON acs.accountid = r.accountid
-			 WHERE a.userid=%(userid)s
+		        ON acs.accountid = r.accountid
+		     WHERE (a.userid=%(userid)s
+		        OR acs.userid=%(userid)s)
 		""" % {'userid': db.userId})
 
 		if query.lastError().isValid():
@@ -526,6 +540,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.tagView.sortByColumn(enum.kTagsColumn_TagName, QtCore.Qt.AscendingOrder)
 
 		self.tableView.model().sourceModel().select()
+
 		# Need signals to clear highlight filter on model
 		self.scrolltoEdit.clear()
 		self.tableView.model().reset()
