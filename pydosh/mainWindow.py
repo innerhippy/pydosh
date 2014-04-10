@@ -80,32 +80,32 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		# Set up record view
 		self.tableView.verticalHeader().hide()
-		self.tableView.setColumnHidden(enum.kRecordColumn_RecordId, True)
-		self.tableView.setColumnHidden(enum.kRecordColumn_AccountId, True)
-		self.tableView.setColumnHidden(enum.kRecordColumn_CheckDate, True)
-		self.tableView.setColumnHidden(enum.kRecordColumn_UserId, True)
-		self.tableView.setColumnHidden(enum.kRecordColumn_RawData, True)
-		self.tableView.setColumnHidden(enum.kRecordColumn_InsertDate, True)
-		self.tableView.setColumnHidden(enum.kRecordColumn_Currency, True)
+		self.tableView.setColumnHidden(enum.kRecords_RecordId, True)
+		self.tableView.setColumnHidden(enum.kRecords_AccountId, True)
+		self.tableView.setColumnHidden(enum.kRecords_CheckDate, True)
+		self.tableView.setColumnHidden(enum.kRecords_UserId, True)
+		self.tableView.setColumnHidden(enum.kRecords_RawData, True)
+		self.tableView.setColumnHidden(enum.kRecords_InsertDate, True)
+		self.tableView.setColumnHidden(enum.kRecords_Currency, True)
 		self.tableView.setSortingEnabled(True)
 		self.tableView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 		self.tableView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
 		self.tableView.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 		self.tableView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
-		self.tableView.horizontalHeader().setResizeMode(enum.kRecordColumn_Description, QtGui.QHeaderView.Stretch)
+		self.tableView.horizontalHeader().setResizeMode(enum.kRecords_Description, QtGui.QHeaderView.Stretch)
 		self.tableView.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
 
 		# Set up tag model
 		tagModel = models.TagModel(self)
 		tagProxyModel = models.TagProxyModel(self)
 		tagProxyModel.setSourceModel(tagModel)
-		tagProxyModel.sort(enum.kTagsColumn_Amount_out, QtCore.Qt.AscendingOrder)
+		tagProxyModel.sort(enum.kTags_Amount_out, QtCore.Qt.AscendingOrder)
 
 		# Set up tag view
 		self.tagView.setModel(tagProxyModel)
 		self.tagView.verticalHeader().hide()
-		self.tagView.setColumnHidden(enum.kTagsColumn_TagId, True)
-		self.tagView.setColumnHidden(enum.kTagsColumn_RecordIds, True)
+		self.tagView.setColumnHidden(enum.kTags_TagId, True)
+		self.tagView.setColumnHidden(enum.kTags_RecordIds, True)
 		self.tagView.setSortingEnabled(True)
 		self.tagView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 		self.tagView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
@@ -269,7 +269,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 			# Find the min/max dates for the last import from the proxy model
 			for row in xrange(proxyModel.rowCount()):
-				dateForRow = proxyModel.index(row, enum.kRecordColumn_Date).data(QtCore.Qt.UserRole)
+				dateForRow = proxyModel.index(row, enum.kRecords_Date).data(QtCore.Qt.UserRole)
 				if not endDate.isValid() or dateForRow > endDate:
 					endDate = dateForRow
 				if not startDate.isValid() or dateForRow < startDate:
@@ -356,7 +356,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		recordIds = []
 
 		for proxyIndex in self.tableView.selectionModel().selectedRows():
-			index = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kRecordColumn_RecordId)
+			index = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kRecords_RecordId)
 			recordIds.append(index.data())
 		return recordIds
 
@@ -424,7 +424,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			proxyModel = self.tableView.model()
 
 			for recordId in selectedRecords:
-				currentIndex = proxyModel.sourceModel().index(0, enum.kRecordColumn_RecordId)
+				currentIndex = proxyModel.sourceModel().index(0, enum.kRecords_RecordId)
 				match = proxyModel.sourceModel().match(currentIndex, QtCore.Qt.DisplayRole, recordId, 1, QtCore.Qt.MatchExactly)
 				if match:
 					self.tableView.selectRow(proxyModel.mapFromSource(match[0]).row())
@@ -536,8 +536,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 			self.amountEdit.clear()
 			self.descEdit.clear()
 
-			self.tableView.sortByColumn(enum.kRecordColumn_Date, QtCore.Qt.AscendingOrder)
-			self.tagView.sortByColumn(enum.kTagsColumn_TagName, QtCore.Qt.AscendingOrder)
+			self.tableView.sortByColumn(enum.kRecords_Date, QtCore.Qt.AscendingOrder)
+			self.tagView.sortByColumn(enum.kTags_TagName, QtCore.Qt.AscendingOrder)
 
 		self.tableView.model().sourceModel().select()
 
@@ -593,7 +593,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		model = self.tableView.model()
 		for row in xrange(model.rowCount()):
-			amount = model.index(row, enum.kRecordColumn_Amount).data(QtCore.Qt.UserRole)
+			amount = model.index(row, enum.kRecords_Amount).data(QtCore.Qt.UserRole)
 			if amount > 0.0:
 				inTotal += amount
 			else:
@@ -618,7 +618,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		model = self.tableView.model()
 
 		for i in xrange(model.rowCount()):
-			recordIds.append(model.index(i, enum.kRecordColumn_RecordId).data())
+			recordIds.append(model.index(i, enum.kRecords_RecordId).data())
 
 		self.tagView.model().sourceModel().setRecordFilter(recordIds)
 		self.tagView.resizeColumnsToContents()
@@ -632,7 +632,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
 		proxyModel = self.tagView.model()
 		if ok and tagName:
-			match = proxyModel.match(proxyModel.index(0, enum.kTagsColumn_TagName), QtCore.Qt.DisplayRole, tagName, 1, QtCore.Qt.MatchExactly)
+			match = proxyModel.match(proxyModel.index(0, enum.kTags_TagName), QtCore.Qt.DisplayRole, tagName, 1, QtCore.Qt.MatchExactly)
 			if match:
 				QtGui.QMessageBox.critical( self, 'Tag Error', 'Tag already exists!', QtGui.QMessageBox.Ok)
 				return
@@ -647,7 +647,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		"""
 		proxyModel = self.tagView.model()
 		for proxyIndex in self.tagView.selectionModel().selectedRows():
-			assignedRecords = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kTagsColumn_RecordIds).data()
+			assignedRecords = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kTags_RecordIds).data()
 			if assignedRecords:
 				if QtGui.QMessageBox.question(
 						self, 'Delete Tags',
@@ -655,7 +655,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 						QtGui.QMessageBox.Yes|QtGui.QMessageBox.No) != QtGui.QMessageBox.Yes:
 					continue
 			with utils.showWaitCursor():
-				tagId = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kTagsColumn_TagId).data()
+				tagId = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kTags_TagId).data()
 				proxyModel.sourceModel().removeTag(tagId)
 
 		self.tagView.resizeColumnsToContents()
@@ -671,9 +671,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		model = self.tagView.model()
 
 		for row in xrange(model.rowCount()):
-			tagId = model.index(row, enum.kTagsColumn_TagId).data()
-			tagName = model.index(row, enum.kTagsColumn_TagName).data()
-			tagRecordIds = model.index(row, enum.kTagsColumn_RecordIds).data()
+			tagId = model.index(row, enum.kTags_TagId).data()
+			tagName = model.index(row, enum.kTags_TagName).data()
+			tagRecordIds = model.index(row, enum.kTags_RecordIds).data()
 
 			item = QtGui.QListWidgetItem(tagName)
 			item.setData(QtCore.Qt.UserRole, tagId)
@@ -732,7 +732,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		self.tableView.model().sourceModel().highlightText(text)
 
 		if text:
-			currentIndex = self.tableView.model().index(0, enum.kRecordColumn_Description)
+			currentIndex = self.tableView.model().index(0, enum.kRecords_Description)
 			matches = self.tableView.model().match(currentIndex, QtCore.Qt.DisplayRole, text)
 			if matches:
 				self.tableView.scrollTo(matches[0], QtGui.QAbstractItemView.EnsureVisible)

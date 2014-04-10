@@ -26,13 +26,13 @@ class TagModel(QtSql.QSqlTableModel):
 
 	def clearSelection(self):
 		for row in xrange(self.rowCount()):
-			index = self.index(row, enum.kTagsColumn_TagName)
+			index = self.index(row, enum.kTags_TagName)
 			self.setData(index, QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
 
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
 		""" Handle checkstate role changes
 		"""
-		if index.column() == enum.kTagsColumn_TagName:
+		if index.column() == enum.kTags_TagName:
 			if role == QtCore.Qt.CheckStateRole:
 				tagName = index.data()
 
@@ -60,21 +60,21 @@ class TagModel(QtSql.QSqlTableModel):
 	def data(self, item, role=QtCore.Qt.DisplayRole):
 
 		if role == QtCore.Qt.DisplayRole:
-			if item.column() == enum.kTagsColumn_RecordIds:
+			if item.column() == enum.kTags_RecordIds:
 				tags = set([int(i) for i in super(TagModel, self).data(item).split(',') if i])
 				return tags
 
-			elif item.column() in (enum.kTagsColumn_Amount_in, enum.kTagsColumn_Amount_out):
+			elif item.column() in (enum.kTags_Amount_in, enum.kTags_Amount_out):
 				amount = super(TagModel, self).data(item)
 				return currency.formatCurrency(amount) if amount else None
 
-		elif role == QtCore.Qt.CheckStateRole and item.column() == enum.kTagsColumn_TagName:
+		elif role == QtCore.Qt.CheckStateRole and item.column() == enum.kTags_TagName:
 			if item.data() in self.__selectedTagNames:
 				return QtCore.Qt.Checked
 			else:
 				return QtCore.Qt.Unchecked
 
-		elif role == QtCore.Qt.UserRole and item.column() in (enum.kTagsColumn_Amount_in, enum.kTagsColumn_Amount_out):
+		elif role == QtCore.Qt.UserRole and item.column() in (enum.kTags_Amount_in, enum.kTags_Amount_out):
 			return super(TagModel, self).data(item)
 
 		return super(TagModel, self).data(item, role)
@@ -82,11 +82,11 @@ class TagModel(QtSql.QSqlTableModel):
 	def flags(self, index):
 		flags = super(TagModel, self).flags(index)
 
-		if index.column() == enum.kTagsColumn_TagName:
+		if index.column() == enum.kTags_TagName:
 			flags |= QtCore.Qt.ItemIsUserCheckable
 
 		# Only allow tag name to be editable
-		if index.column() != enum.kTagsColumn_TagName:
+		if index.column() != enum.kTags_TagName:
 			flags ^= QtCore.Qt.ItemIsEditable
 
 		return flags
@@ -115,11 +115,11 @@ class TagModel(QtSql.QSqlTableModel):
 
 	def headerData (self, section, orientation, role):
 		if role == QtCore.Qt.DisplayRole:
-			if section == enum.kTagsColumn_TagName:
+			if section == enum.kTags_TagName:
 				return "tag"
-			elif section == enum.kTagsColumn_Amount_in:
+			elif section == enum.kTags_Amount_in:
 				return "in"
-			elif section == enum.kTagsColumn_Amount_out:
+			elif section == enum.kTags_Amount_out:
 				return "out"
 		return None
 
@@ -143,13 +143,13 @@ class TagModel(QtSql.QSqlTableModel):
 		return insertId
 
 	def removeTag(self, tagId):
-		currentIndex = self.index(0, enum.kTagsColumn_TagId)
+		currentIndex = self.index(0, enum.kTags_TagId)
 		match = self.match(currentIndex, QtCore.Qt.DisplayRole, tagId, 1, QtCore.Qt.MatchExactly)
 		assert match
 		match = match[0]
 
 		# Ensure this tag is unchecked
-		self.setData(self.index(match.row(), enum.kTagsColumn_TagName), QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
+		self.setData(self.index(match.row(), enum.kTags_TagName), QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
 
 		# Now delete it
 		self.removeRows(match.row(), 1, QtCore.QModelIndex())
@@ -161,10 +161,10 @@ class TagModel(QtSql.QSqlTableModel):
 			return False
 
 		# Remove records that already have this tag
-		currentIndex = self.index(0, enum.kTagsColumn_TagId)
+		currentIndex = self.index(0, enum.kTags_TagId)
 		match = self.match(currentIndex, QtCore.Qt.DisplayRole, tagId, 1, QtCore.Qt.MatchExactly)
 		if match:
-			existingRecordsForTag = self.index(match[0].row(), enum.kTagsColumn_RecordIds).data()
+			existingRecordsForTag = self.index(match[0].row(), enum.kTags_RecordIds).data()
 			recordIds = set(recordIds) - existingRecordsForTag
 
 		query = QtSql.QSqlQuery()
@@ -206,7 +206,7 @@ class TagProxyModel(QtGui.QSortFilterProxyModel):
 	def lessThan(self, left, right):
 		""" Define the comparison to ensure column data is sorted correctly
 		"""
-		if left.column() in (enum.kTagsColumn_Amount_in, enum.kTagsColumn_Amount_out):
+		if left.column() in (enum.kTags_Amount_in, enum.kTags_Amount_out):
 			return left.data(QtCore.Qt.UserRole) > right.data(QtCore.Qt.UserRole)
 
 		return super(TagProxyModel, self).lessThan(left, right)

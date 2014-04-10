@@ -32,7 +32,7 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		model = QtSql.QSqlTableModel(self)
 		model.setTable('accounttypes')
 		self.accountType.setModel(model)
-		self.accountType.setModelColumn(enum.kAccountTypeColumn_AccountName)
+		self.accountType.setModelColumn(enum.kAccountType__AccountName)
 		model.select()
 
 		# Accounts model
@@ -177,7 +177,7 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
 		""" Set a new account type on the account
 		"""
 		newAccountTypeId = self.accountType.model().index(
-			idx, enum.kAccountTypeColumn_AccountTypeId).data()
+			idx, enum.kAccountType__AccountTypeId).data()
 		model = self.accountCombo.model()
 		currentIndex = self.accountCombo.currentIndex()
 		index = model.index(currentIndex, enum.kAccounts_AccountTypeId)

@@ -27,11 +27,11 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 		model.select()
 
 		self.view.setModel(model)
-		self.view.setColumnHidden(enum.kAccountTypeColumn_AccountTypeId, True)
+		self.view.setColumnHidden(enum.kAccountType__AccountTypeId, True)
 		self.view.verticalHeader().hide()
 		self.view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
 		self.view.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
-		self.view.sortByColumn(enum.kAccountTypeColumn_AccountName, QtCore.Qt.AscendingOrder)
+		self.view.sortByColumn(enum.kAccountType__AccountName, QtCore.Qt.AscendingOrder)
 		self.view.resizeColumnsToContents()
 		self.view.horizontalHeader().setStretchLastSection(True)
 		self.view.setItemDelegate(AccountDelegate(self))
@@ -47,30 +47,30 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 
 	def validateNewAccount(self, record):
 		try:
-			if not record.value(enum.kAccountTypeColumn_AccountName):
+			if not record.value(enum.kAccountType__AccountName):
 				raise Exception('Account name cannot be empty')
 
-			value = record.value(enum.kAccountTypeColumn_DateField)
+			value = record.value(enum.kAccountType__DateField)
 			if value < 0:
 				raise Exception('Date field must be set (index of date field)')
 
-			value = record.value(enum.kAccountTypeColumn_CreditField)
+			value = record.value(enum.kAccountType__CreditField)
 			if value < 0:
 				raise Exception('Credit field must be set (index of credit field)')
 
-			value  = record.value(enum.kAccountTypeColumn_DebitField)
+			value  = record.value(enum.kAccountType__DebitField)
 			if value < 0:
 				raise Exception('Debit field must be set (index of debit field)')
 
-			value = record.value(enum.kAccountTypeColumn_DescriptionField)
+			value = record.value(enum.kAccountType__DescriptionField)
 			if value < 0:
 				raise Exception('Description field must be set (index of description field)')
 
-			value = record.value(enum.kAccountTypeColumn_CurrencySign)
+			value = record.value(enum.kAccountType__CurrencySign)
 			if value not in (1, -1):
 				raise Exception('Currency sign value must be 1 or -1')
 
-			if not record.value(enum.kAccountTypeColumn_DateFormat):
+			if not record.value(enum.kAccountType__DateFormat):
 				raise Exception('"Date format cannot be empty (eg "dd/MM/yyyy")')
 
 		except Exception, err:
@@ -105,14 +105,14 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 			index = self.model.index(rowCount, column)
 			self.model.setData(index, None, QtCore.Qt.EditRole)
 
-		index = self.model.index(rowCount, enum.kAccountTypeColumn_AccountName)
+		index = self.model.index(rowCount, enum.kAccountType__AccountName)
 		self.view.setCurrentIndex(index)
 		self.view.edit(index)
 
 	def deleteAccount(self):
 		for index in self.view.selectionModel().selectedRows():
 
-			accountTypeId = self.model.index(index.row(), enum.kAccountTypeColumn_AccountTypeId).data()
+			accountTypeId = self.model.index(index.row(), enum.kAccountType__AccountTypeId).data()
 
 			query = QtSql.QSqlQuery('SELECT COUNT(*) FROM records WHERE accounttypeid=%s' % accountTypeId)
 			query.next()

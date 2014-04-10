@@ -25,13 +25,13 @@ class RecordModel(QtSql.QSqlTableModel):
 		""" True if the row from the index is owned
 			by the current user
 		"""
-		return self.index(index.row(), enum.kRecordColumn_UserId).data() == db.userId
+		return self.index(index.row(), enum.kRecords_UserId).data() == db.userId
 
 	def flags(self, index):
 		""" Set the flags to allow checkable items
 		"""
 		flags = super(RecordModel, self).flags(index)
-		if index.column() == enum.kRecordColumn_Checked and self.isWritable(index):
+		if index.column() == enum.kRecords_Checked and self.isWritable(index):
 			return flags | QtCore.Qt.ItemIsUserCheckable
 		return flags
 
@@ -80,7 +80,7 @@ class RecordModel(QtSql.QSqlTableModel):
 		""" Delete rows manually - bulk deletion way quicker than using the model
 		"""
 		recordIds = (
-			self.index(index.row(), enum.kRecordColumn_RecordId).data()
+			self.index(index.row(), enum.kRecords_RecordId).data()
 				for index in indexes if self.isWritable(index)
 		)
 
@@ -110,56 +110,56 @@ class RecordModel(QtSql.QSqlTableModel):
 			return None
 
 		if role == QtCore.Qt.CheckStateRole:
-			if item.column() == enum.kRecordColumn_Checked:
+			if item.column() == enum.kRecords_Checked:
 				if super(RecordModel, self).data(item):
 					return QtCore.Qt.Checked
 				else:
 					return QtCore.Qt.Unchecked
 
 		elif role == QtCore.Qt.FontRole:
-			if item.column() == enum.kRecordColumn_Description:
+			if item.column() == enum.kRecords_Description:
 				if self._highlightText and self._highlightText.lower() in item.data(QtCore.Qt.DisplayRole).lower():
 					font = QtGui.QFont()
 					font.setBold(True)
 					return font
 
 		elif role == QtCore.Qt.ToolTipRole:
-			if item.column() == enum.kRecordColumn_Tags:
+			if item.column() == enum.kRecords_Tags:
 				# Show tag names for this record
 				return ', '.join(item.data(QtCore.Qt.UserRole))
 
-			elif item.column() == enum.kRecordColumn_Checked:
+			elif item.column() == enum.kRecords_Checked:
 				if item.data(QtCore.Qt.CheckStateRole) == QtCore.Qt.Checked:
 					text = "Checked: " + super(RecordModel, self).data(
-						self.index(item.row(), enum.kRecordColumn_CheckDate)).toString("dd/MM/yy hh:mm")
+						self.index(item.row(), enum.kRecords_CheckDate)).toString("dd/MM/yy hh:mm")
 					return text
 
-			elif item.column() == enum.kRecordColumn_Date:
+			elif item.column() == enum.kRecords_Date:
 				# Show when the record was imported
 				text = "Imported: " + super(RecordModel, self).data(
-					self.index(item.row(), enum.kRecordColumn_InsertDate)).toString("dd/MM/yy hh:mm")
+					self.index(item.row(), enum.kRecords_InsertDate)).toString("dd/MM/yy hh:mm")
 				return text
 
-			elif item.column() == enum.kRecordColumn_Description:
+			elif item.column() == enum.kRecords_Description:
 				# Full, raw text
 				return super(RecordModel, self).data(item, QtCore.Qt.DisplayRole)
 
 		elif role == QtCore.Qt.UserRole:
-			if item.column() == enum.kRecordColumn_Tags:
+			if item.column() == enum.kRecords_Tags:
 				# Tags as comma separated string (from database)
 				tags = super(RecordModel, self).data(item, QtCore.Qt.DisplayRole)
 				return tags.split(',') if tags else []
 
-			elif item.column() == enum.kRecordColumn_Amount:
+			elif item.column() == enum.kRecords_Amount:
 				# signed float
 				return super(RecordModel, self).data(item, QtCore.Qt.DisplayRole)
 
-			elif item.column() == enum.kRecordColumn_Date:
+			elif item.column() == enum.kRecords_Date:
 				# QDate object
 				return super(RecordModel, self).data(item, QtCore.Qt.DisplayRole)
 
 		elif role == QtCore.Qt.ForegroundRole:
-			if item.column() == enum.kRecordColumn_Amount:
+			if item.column() == enum.kRecords_Amount:
 				# Indicate credit/debit with colour
 				if item.data(QtCore.Qt.UserRole) > 0.0:
 					return QtGui.QColor(0, 255, 0)
@@ -167,26 +167,26 @@ class RecordModel(QtSql.QSqlTableModel):
 					return QtGui.QColor(255, 0, 0)
 
 		elif role == QtCore.Qt.DecorationRole:
-			if item.column() == enum.kRecordColumn_Tags:
+			if item.column() == enum.kRecords_Tags:
 				# Show tag icon if we have any
 				if item.data(QtCore.Qt.UserRole):
 					return QtGui.QIcon(':/icons/tag_yellow.png')
 
 		elif role == QtCore.Qt.DisplayRole:
-			if item.column() in (enum.kRecordColumn_Checked, enum.kRecordColumn_Tags):
+			if item.column() in (enum.kRecords_Checked, enum.kRecords_Tags):
 				# Don't display anything for these fields
 				return None
 
-			elif item.column() == enum.kRecordColumn_Amount:
+			elif item.column() == enum.kRecords_Amount:
 				# Display absolute currency values. credit/debit is indicated by background colour
-				code = self.index(item.row(), enum.kRecordColumn_Currency).data()
+				code = self.index(item.row(), enum.kRecords_Currency).data()
 				return currency.toCurrencyStr(abs(super(RecordModel, self).data(item)), code)
 
-			elif item.column() == enum.kRecordColumn_Description:
+			elif item.column() == enum.kRecords_Description:
 				# Replace multiple spaces with single
 				return re.sub('[ ]+', ' ', super(RecordModel, self).data(item))
 
-			elif item.column() == enum.kRecordColumn_Date:
+			elif item.column() == enum.kRecords_Date:
 				# Ensure date display is day/month/year, or I'll get confused.
 				# Use UserRole to return QDate object
 				return super(RecordModel, self).data(item, role).toString('dd/MM/yyyy')
@@ -198,8 +198,8 @@ class RecordModel(QtSql.QSqlTableModel):
 		unCheckedRecords = []
 
 		for index in indexes:
-			recordId = self.index(index.row(), enum.kRecordColumn_RecordId).data()
-			if self.index(index.row(), enum.kRecordColumn_Checked).data(QtCore.Qt.CheckStateRole) == QtCore.Qt.Checked:
+			recordId = self.index(index.row(), enum.kRecords_RecordId).data()
+			if self.index(index.row(), enum.kRecords_Checked).data(QtCore.Qt.CheckStateRole) == QtCore.Qt.Checked:
 				checkedRecords.append(recordId)
 			else:
 				unCheckedRecords.append(recordId)
@@ -230,14 +230,14 @@ class RecordModel(QtSql.QSqlTableModel):
 		self.select()
 
 		for index in indexes:
-			checkedIndex = self.index(index.row(), enum.kRecordColumn_Checked)
+			checkedIndex = self.index(index.row(), enum.kRecords_Checked)
 			self.dataChanged.emit(checkedIndex, checkedIndex)
 
 	@utils.showWaitCursorDecorator
 	def setData(self, index, value, role=QtCore.Qt.EditRole):
 		""" Save new checkstate role changes in database
 		"""
-		if role == QtCore.Qt.CheckStateRole and index.column() == enum.kRecordColumn_Checked:
+		if role == QtCore.Qt.CheckStateRole and index.column() == enum.kRecords_Checked:
 			self.toggleChecked([index])
 			return True
 
@@ -247,17 +247,17 @@ class RecordModel(QtSql.QSqlTableModel):
 		""" Set the header labels for the view
 		"""
 		if role == QtCore.Qt.DisplayRole:
-			if section == enum.kRecordColumn_Checked:
+			if section == enum.kRecords_Checked:
 				return "Check"
-			elif section == enum.kRecordColumn_Tags:
+			elif section == enum.kRecords_Tags:
 				return "Tags"
-			elif section == enum.kRecordColumn_Date:
+			elif section == enum.kRecords_Date:
 				return "Date"
-			elif section == enum.kRecordColumn_AccountTypeName:
+			elif section == enum.kRecords_AccountTypeName:
 				return "Account"
-			elif section == enum.kRecordColumn_Description:
+			elif section == enum.kRecords_Description:
 				return "Description"
-			elif section == enum.kRecordColumn_Amount:
+			elif section == enum.kRecords_Amount:
 				return "Amount"
 
 
@@ -381,43 +381,43 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 		""" Filters row to display
 		"""
 		if self._startDate:
-			if self.sourceModel().index(sourceRow, enum.kRecordColumn_Date, parent).data(QtCore.Qt.UserRole) < self._startDate:
+			if self.sourceModel().index(sourceRow, enum.kRecords_Date, parent).data(QtCore.Qt.UserRole) < self._startDate:
 				return False
 
 		if self._endDate:
-			if self.sourceModel().index(sourceRow, enum.kRecordColumn_Date, parent).data(QtCore.Qt.UserRole) > self._endDate:
+			if self.sourceModel().index(sourceRow, enum.kRecords_Date, parent).data(QtCore.Qt.UserRole) > self._endDate:
 				return False
 
 		if self._insertDate:
-			if self.sourceModel().index(sourceRow, enum.kRecordColumn_InsertDate, parent).data() != self._insertDate:
+			if self.sourceModel().index(sourceRow, enum.kRecords_InsertDate, parent).data() != self._insertDate:
 				return False
 
 		if self._accountids:
-			if self.sourceModel().index(sourceRow, enum.kRecordColumn_AccountId).data() not in self._accountids:
+			if self.sourceModel().index(sourceRow, enum.kRecords_AccountId).data() not in self._accountids:
 				return False
 
 		if self._hasTags is not None:
-			hasTags = bool(self.sourceModel().index(sourceRow, enum.kRecordColumn_Tags).data(QtCore.Qt.UserRole))
+			hasTags = bool(self.sourceModel().index(sourceRow, enum.kRecords_Tags).data(QtCore.Qt.UserRole))
 			if self._hasTags != hasTags:
 				return False
 
 		if self._checked is not None:
-			isChecked = self.sourceModel().index(sourceRow, enum.kRecordColumn_Checked).data(QtCore.Qt.CheckStateRole) == QtCore.Qt.Checked
+			isChecked = self.sourceModel().index(sourceRow, enum.kRecords_Checked).data(QtCore.Qt.CheckStateRole) == QtCore.Qt.Checked
 			if self._checked != isChecked:
 				return False
 
 		if self._creditFilter is not None:
-			amount = self.sourceModel().index(sourceRow, enum.kRecordColumn_Amount).data(QtCore.Qt.UserRole)
+			amount = self.sourceModel().index(sourceRow, enum.kRecords_Amount).data(QtCore.Qt.UserRole)
 			if self._creditFilter != (amount >= 0.0):
 				return False
 
 		if self._description:
-			description = self.sourceModel().index(sourceRow, enum.kRecordColumn_Description).data()
+			description = self.sourceModel().index(sourceRow, enum.kRecords_Description).data()
 			if self._description not in description.lower():
 				return False
 
 		if self._amountFilter:
-			amount = self.sourceModel().index(sourceRow, enum.kRecordColumn_Amount).data(QtCore.Qt.UserRole)
+			amount = self.sourceModel().index(sourceRow, enum.kRecords_Amount).data(QtCore.Qt.UserRole)
 			if self._amountOperator is None:
 				if self._amountFilter not in '{:.2f}'.format(amount):
 					return False
@@ -427,7 +427,7 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 					return False
 
 		if self._tagFilter:
-			tags = self.sourceModel().index(sourceRow, enum.kRecordColumn_Tags).data(QtCore.Qt.UserRole)
+			tags = self.sourceModel().index(sourceRow, enum.kRecords_Tags).data(QtCore.Qt.UserRole)
 			if not set(self._tagFilter).intersection(set(tags)):
 				return False
 
@@ -439,26 +439,26 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 		leftVal = None
 		rightVal = None
 
-		if left.column() == enum.kRecordColumn_Tags:
+		if left.column() == enum.kRecords_Tags:
 			leftVal = len(left.data(QtCore.Qt.UserRole))
 			rightVal = len(right.data(QtCore.Qt.UserRole))
 
-		elif left.column() == enum.kRecordColumn_Checked:
+		elif left.column() == enum.kRecords_Checked:
 			leftVal = left.data(QtCore.Qt.CheckStateRole)
 			rightVal = right.data(QtCore.Qt.CheckStateRole)
 
-		elif left.column() == enum.kRecordColumn_Amount:
+		elif left.column() == enum.kRecords_Amount:
 			leftVal = left.data(QtCore.Qt.UserRole)
 			rightVal = right.data(QtCore.Qt.UserRole)
 
-		elif left.column() == enum.kRecordColumn_Date:
+		elif left.column() == enum.kRecords_Date:
 			leftVal =  left.data(QtCore.Qt.UserRole)
 			rightVal = right.data(QtCore.Qt.UserRole)
 
 			if leftVal == rightVal:
 				# Dates are the same - sort by recordId just to ensure the results are consistent
-				leftVal = self.sourceModel().index(left.row(), enum.kRecordColumn_RecordId).data(QtCore.Qt.UserRole)
-				rightVal = self.sourceModel().index(right.row(), enum.kRecordColumn_RecordId).data(QtCore.Qt.UserRole)
+				leftVal = self.sourceModel().index(left.row(), enum.kRecords_RecordId).data(QtCore.Qt.UserRole)
+				rightVal = self.sourceModel().index(right.row(), enum.kRecords_RecordId).data(QtCore.Qt.UserRole)
 
 		if leftVal or rightVal:
 			return leftVal > rightVal

@@ -238,7 +238,7 @@ class CsvRecordItem(TreeItem):
 	def _dataFuncProcessed(self, column, role):
 
 		if role == QtCore.Qt.ForegroundRole:
-			if column == enum.kImportColumn_Status:
+			if column == enum.kImport_Status:
 				if not self.isValid():
 					return QtGui.QColor(255, 0, 0)
 				elif self._imported:
@@ -248,15 +248,15 @@ class CsvRecordItem(TreeItem):
 				return QtGui.QColor(0, 255, 0)
 
 		elif role == QtCore.Qt.DisplayRole:
-			if column == enum.kImportColumn_Status:
+			if column == enum.kImport_Status:
 				return self._statusAsText
-			elif column == enum.kImportColumn_Date:
+			elif column == enum.kImport_Date:
 				return self._date
-			elif column == enum.kImportColumn_Credit:
+			elif column == enum.kImport_Credit:
 				return '%.02f' % self._credit if self._credit else None
-			elif column == enum.kImportColumn_Debit:
+			elif column == enum.kImport_Debit:
 				return '%.02f' % abs(self._debit) if self._debit else None
-			elif column == enum.kImportColumn_Description:
+			elif column == enum.kImport_Description:
 				return self._desc
 
 		elif role == QtCore.Qt.ToolTipRole:

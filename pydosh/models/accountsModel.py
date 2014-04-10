@@ -34,19 +34,19 @@ class AccountEditModel(QtSql.QSqlTableModel):
 	def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
 
 		if role == QtCore.Qt.DisplayRole:
-			if section == enum.kAccountTypeColumn_AccountName:
+			if section == enum.kAccountType__AccountName:
 				return 'Account Name'
-			elif section == enum.kAccountTypeColumn_DateField:
+			elif section == enum.kAccountType__DateField:
 				return 'Date'
-			elif section == enum.kAccountTypeColumn_DescriptionField:
+			elif section == enum.kAccountType__DescriptionField:
 				return 'Description'
-			elif section == enum.kAccountTypeColumn_CreditField:
+			elif section == enum.kAccountType__CreditField:
 				return 'Credit'
-			elif section == enum.kAccountTypeColumn_DebitField:
+			elif section == enum.kAccountType__DebitField:
 				return 'Debit'
-			elif section == enum.kAccountTypeColumn_CurrencySign:
+			elif section == enum.kAccountType__CurrencySign:
 				return 'Currency sign'
-			elif section == enum.kAccountTypeColumn_DateFormat:
+			elif section == enum.kAccountType__DateFormat:
 				return 'Date formats'
 
 		return None
