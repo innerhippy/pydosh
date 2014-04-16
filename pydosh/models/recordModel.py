@@ -423,7 +423,7 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 					return False
 			else:
 				# Use operator to perform match
-				if not self._amountOperator(float(amount), float(self._amountFilter)):
+				if not self._amountOperator(abs(float(amount)), float(self._amountFilter)):
 					return False
 
 		if self._tagFilter:
