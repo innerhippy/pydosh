@@ -24,3 +24,6 @@ pydosh/*_rc.py
 
 /*.dmg
 .DS_Store
+
+# PyCharrm
+/.idea/

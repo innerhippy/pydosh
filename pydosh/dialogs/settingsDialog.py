@@ -50,23 +50,23 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 			if not record.value(enum.kAccountType__AccountName):
 				raise Exception('Account name cannot be empty')
 
-			value = record.value(enum.kAccountType__DateField)
+			value = int(record.value(enum.kAccountType__DateField))
 			if value < 0:
 				raise Exception('Date field must be set (index of date field)')
 
-			value = record.value(enum.kAccountType__CreditField)
+			value = int(record.value(enum.kAccountType__CreditField))
 			if value < 0:
 				raise Exception('Credit field must be set (index of credit field)')
 
-			value  = record.value(enum.kAccountType__DebitField)
+			value  = int(record.value(enum.kAccountType__DebitField))
 			if value < 0:
 				raise Exception('Debit field must be set (index of debit field)')
 
-			value = record.value(enum.kAccountType__DescriptionField)
+			value = int(record.value(enum.kAccountType__DescriptionField))
 			if value < 0:
 				raise Exception('Description field must be set (index of description field)')
 
-			value = record.value(enum.kAccountType__CurrencySign)
+			value = int(record.value(enum.kAccountType__CurrencySign))
 			if value not in (1, -1):
 				raise Exception('Currency sign value must be 1 or -1')
 
@@ -83,7 +83,7 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
 		if not self.model.submitAll() and self.model.lastError().isValid():
 			# If we've cleared the record from validateNewAccount() then the database error
 			# will be empty. No need to issue a second error message
-			if self.	model.lastError().databaseText():
+			if self.model.lastError().databaseText():
 				QtGui.QMessageBox.critical(self, 'Error saving data', self.model.lastError().text(), QtGui.QMessageBox.Ok)
 			self.model.revertAll()
 

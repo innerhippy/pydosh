@@ -10,14 +10,14 @@ class AccountDelegate(QtGui.QItemDelegate):
 		pattern = None
 
 		if index.column() in (
-						enum.kAccountType__DateField,
-						enum.kAccountType__DescriptionField,
-						enum.kAccountType__CreditField,
-						enum.kAccountType__DebitField):
+				enum.kAccountType__DateField,
+				enum.kAccountType__DescriptionField,
+				enum.kAccountType__CreditField,
+				enum.kAccountType__DebitField):
 			pattern = QtCore.QRegExp('[0-9]+')
 
 		elif index.column() == enum.kAccountType__DateFormat:
-			pattern = QtCore.QRegExp('[dMy/]+')
+			pattern = QtCore.QRegExp('[dMy/ ]+')
 
 		elif index.column() == enum.kAccountType__CurrencySign:
 			pattern = QtCore.QRegExp('-1|1')
