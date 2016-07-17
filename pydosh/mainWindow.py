@@ -100,6 +100,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 		tagProxyModel = models.TagProxyModel(self)
 		tagProxyModel.setSourceModel(tagModel)
 		tagProxyModel.sort(enum.kTags_Amount_out, QtCore.Qt.AscendingOrder)
+		tagProxyModel.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
 		# Set up tag view
 		self.tagView.setModel(tagProxyModel)
