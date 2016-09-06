@@ -15,7 +15,7 @@ class Currency(unittest.TestCase):
 
 	def tearDown(self):
 		if self.lang:
-			os.environ['LANG'] = self.lang
+		    os.environ['LANG'] = self.lang
 
 	def test_formatCurrency(self):
 		self.assertEqual(currency.formatCurrency(23), u'23.00')
@@ -48,6 +48,9 @@ class Currency_GB(Currency):
 	def setUp(self):
 		self.lang = os.environ.get('LANG')
 		os.environ['LANG'] = 'en_GB.utf-8'
+
+	def tearDown(self):
+		os.environ['LANG'] = self.lang
 
 	def test_defaultCurrencyCode(self):
 		self.assertEqual(currency.defaultCurrencyCode(), 'GBP')

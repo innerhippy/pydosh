@@ -20,7 +20,7 @@ $(UI_TARGETS): pydosh/ui_%.py: ui/%.ui
 	pyside-uic $< -o $@
 
 deb: clean all
-	python setup.py --command-packages=stdeb.command sdist_dsc bdist_deb
+	env PYTHONPATH=$(shell pwd) python setup.py --command-packages=stdeb.command sdist_dsc bdist_deb
 
 dmg: clean all
 	python setup.py py2app

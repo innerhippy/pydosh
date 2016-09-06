@@ -47,8 +47,7 @@ def defaultCurrencyCode():
 			$LANG=en_GB.utf-8 -> 'GBP'
 			$LANG=en_US.utf-8 -> 'USD'
 	"""
-
-	locale.setlocale(locale.LC_ALL, '')
+	locale.setlocale(locale.LC_ALL, os.getenv('LANG'))
 	conv=locale.localeconv()
 	return conv['int_curr_symbol'].strip()
 

@@ -1,2 +1,5 @@
 include README.rst
+include pydosh.desktop
+include icons/pydosh.png
+include icons/pydosh.xpm
 
