@@ -1,4 +1,3 @@
-import pdb
 import re
 import os
 import csv
@@ -281,7 +280,7 @@ class CsvRecordItem(TreeItem):
 			self._desc = self._fields[descriptionIdx]
 
 			if debitIdx == creditIdx:
-				amount = self.__getAmountField(self._fields[debitIdx])
+				amount = self._getAmountField(self._fields[debitIdx])
 				if amount is not None:
 					# Use currency multiplier to ensure that credit is +ve (money in),
 					# debit -ve (money out)
@@ -292,8 +291,8 @@ class CsvRecordItem(TreeItem):
 					else:
 						self._debit = amount
 			else:
-				debitField = self.__getAmountField(self._fields[debitIdx])
-				creditField = self.__getAmountField(self._fields[creditIdx])
+				debitField = self._getAmountField(self._fields[debitIdx])
+				creditField = self._getAmountField(self._fields[creditIdx])
 				self._debit = abs(debitField) * -1.0 if debitField else None
 				self._credit = abs(creditField) if creditField else None
 
@@ -306,29 +305,22 @@ class CsvRecordItem(TreeItem):
 		finally:
 			self._setFormatted(True)
 
-	def __getAmountField(self, field):
+	def _getAmountField(self, field):
 		""" Extract and return amount from str type to double.
 			If a simple conversion doesn't succeed, then try and parse
 			the string to remove any currency sign or other junk.
 
 			Returns None if field does not contain valid double.
 		"""
-		value = None
-		field = field.replace(',', '')
 
-		# Get rid of commas from amount field and try and covert to double
+		# Sanitise field
+		field = re.sub('[^\d.-]', '', field)
+
 		try:
-			value = float(field)
+			return float(field)
 		except ValueError:
-			# Probably has currency sign - extract all valid currency characters
-			match = re.search('([\d\-\.]+)', field)
-			if match:
-				try:
-					value = float(match.group(1))
-				except ValueError:
-					pass
+			pass
 
-		return value
 
 	def __getDateField(self, field, dateFormat):
 		""" Extract date field using supplied format
