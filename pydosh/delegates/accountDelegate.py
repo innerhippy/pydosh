@@ -17,7 +17,7 @@ class AccountDelegate(QtGui.QItemDelegate):
 			pattern = QtCore.QRegExp('[0-9]+')
 
 		elif index.column() == enum.kAccountType__DateFormat:
-			pattern = QtCore.QRegExp('[dMy/ ]+')
+			pattern = QtCore.QRegExp('[dMy/- ]+')
 
 		elif index.column() == enum.kAccountType__CurrencySign:
 			pattern = QtCore.QRegExp('-1|1')

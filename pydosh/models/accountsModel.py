@@ -45,9 +45,9 @@ class AccountEditModel(QtSql.QSqlTableModel):
 			elif section == enum.kAccountType__DebitField:
 				return 'Debit'
 			elif section == enum.kAccountType__CurrencySign:
-				return 'Currency sign'
+				return 'Currency Sign'
 			elif section == enum.kAccountType__DateFormat:
-				return 'Date formats'
+				return 'Date Format'
 
 		return None
 
