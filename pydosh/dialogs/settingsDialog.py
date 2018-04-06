@@ -8,124 +8,124 @@ from pydosh.models import AccountEditModel
 
 
 class SettingsDialog(Ui_Settings, QtGui.QDialog):
-	def __init__(self, parent=None):
-		super(SettingsDialog, self).__init__(parent=parent)
-		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-		self.setupUi(self)
+    def __init__(self, parent=None):
+        super(SettingsDialog, self).__init__(parent=parent)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
 
-		self.saveButton.clicked.connect(self.saveSettings)
-		self.revertButton.clicked.connect(self.cancelSettings)
-		self.closeButton.clicked.connect(self.close)
-		self.addButton.clicked.connect(self.addAccount)
-		self.deleteButton.clicked.connect(self.deleteAccount)
+        self.saveButton.clicked.connect(self.saveSettings)
+        self.revertButton.clicked.connect(self.cancelSettings)
+        self.closeButton.clicked.connect(self.close)
+        self.addButton.clicked.connect(self.addAccount)
+        self.deleteButton.clicked.connect(self.deleteAccount)
 
-		self.enableCommit(False)
+        self.enableCommit(False)
 
-		model = AccountEditModel(self)
-		model.setTable('accounttypes')
-		model.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
-		model.select()
+        model = AccountEditModel(self)
+        model.setTable('accounttypes')
+        model.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
+        model.select()
 
-		self.view.setModel(model)
-		self.view.setColumnHidden(enum.kAccountType__AccountTypeId, True)
-		self.view.verticalHeader().hide()
-		self.view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
-		self.view.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
-		self.view.sortByColumn(enum.kAccountType__AccountName, QtCore.Qt.AscendingOrder)
-		self.view.resizeColumnsToContents()
-		self.view.horizontalHeader().setStretchLastSection(True)
-		self.view.setItemDelegate(AccountDelegate(self))
+        self.view.setModel(model)
+        self.view.setColumnHidden(enum.kAccountType__AccountTypeId, True)
+        self.view.verticalHeader().hide()
+        self.view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+        self.view.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+        self.view.sortByColumn(enum.kAccountType__AccountName, QtCore.Qt.AscendingOrder)
+        self.view.resizeColumnsToContents()
+        self.view.horizontalHeader().setStretchLastSection(True)
+        self.view.setItemDelegate(AccountDelegate(self))
 
-		model.dataChanged.connect(self.view.clearSelection)
-		model.dataChanged.connect(self.__dataChanged)
-		model.beforeInsert.connect(self.validateNewAccount)
+        model.dataChanged.connect(self.view.clearSelection)
+        model.dataChanged.connect(self.__dataChanged)
+        model.beforeInsert.connect(self.validateNewAccount)
 
-		self.model = model
+        self.model = model
 
-	def __dataChanged(self, left, right):
-		self.enableCommit(True)
+    def __dataChanged(self, left, right):
+        self.enableCommit(True)
 
-	def validateNewAccount(self, record):
-		try:
-			if not record.value(enum.kAccountType__AccountName):
-				raise Exception('Account name cannot be empty')
+    def validateNewAccount(self, record):
+        try:
+            if not record.value(enum.kAccountType__AccountName):
+                raise Exception('Account name cannot be empty')
 
-			value = int(record.value(enum.kAccountType__DateField))
-			if value < 0:
-				raise Exception('Date field must be set (index of date field)')
+            value = int(record.value(enum.kAccountType__DateField))
+            if value < 0:
+                raise Exception('Date field must be set (index of date field)')
 
-			value = int(record.value(enum.kAccountType__CreditField))
-			if value < 0:
-				raise Exception('Credit field must be set (index of credit field)')
+            value = int(record.value(enum.kAccountType__CreditField))
+            if value < 0:
+                raise Exception('Credit field must be set (index of credit field)')
 
-			value  = int(record.value(enum.kAccountType__DebitField))
-			if value < 0:
-				raise Exception('Debit field must be set (index of debit field)')
+            value  = int(record.value(enum.kAccountType__DebitField))
+            if value < 0:
+                raise Exception('Debit field must be set (index of debit field)')
 
-			value = int(record.value(enum.kAccountType__DescriptionField))
-			if value < 0:
-				raise Exception('Description field must be set (index of description field)')
+            value = int(record.value(enum.kAccountType__DescriptionField))
+            if value < 0:
+                raise Exception('Description field must be set (index of description field)')
 
-			value = int(record.value(enum.kAccountType__CurrencySign))
-			if value not in (1, -1):
-				raise Exception('Currency sign value must be 1 or -1')
+            value = int(record.value(enum.kAccountType__CurrencySign))
+            if value not in (1, -1):
+                raise Exception('Currency sign value must be 1 or -1')
 
-			if not record.value(enum.kAccountType__DateFormat):
-				raise Exception('"Date format cannot be empty (eg "dd/MM/yyyy")')
+            if not record.value(enum.kAccountType__DateFormat):
+                raise Exception('"Date format cannot be empty (eg "dd/MM/yyyy")')
 
-		except Exception, err:
-			QtGui.QMessageBox.critical(self, 'Account failed', str(err), QtGui.QMessageBox.Ok)
-			# Trash the bad record
-			record.clear()
+        except Exception, err:
+            QtGui.QMessageBox.critical(self, 'Account failed', str(err), QtGui.QMessageBox.Ok)
+            # Trash the bad record
+            record.clear()
 
-	def saveSettings(self):
+    def saveSettings(self):
 
-		if not self.model.submitAll() and self.model.lastError().isValid():
-			# If we've cleared the record from validateNewAccount() then the database error
-			# will be empty. No need to issue a second error message
-			if self.model.lastError().databaseText():
-				QtGui.QMessageBox.critical(self, 'Error saving data', self.model.lastError().text(), QtGui.QMessageBox.Ok)
-			self.model.revertAll()
+        if not self.model.submitAll() and self.model.lastError().isValid():
+            # If we've cleared the record from validateNewAccount() then the database error
+            # will be empty. No need to issue a second error message
+            if self.model.lastError().databaseText():
+                QtGui.QMessageBox.critical(self, 'Error saving data', self.model.lastError().text(), QtGui.QMessageBox.Ok)
+            self.model.revertAll()
 
-		self.enableCommit(False)
+        self.enableCommit(False)
 
-	def cancelSettings(self): 
-		self.model.revertAll()
-		self.enableCommit(False)
+    def cancelSettings(self): 
+        self.model.revertAll()
+        self.enableCommit(False)
 
-	def enableCommit(self, enable):
-		self.saveButton.setEnabled(enable)
-		self.revertButton.setEnabled(enable)
+    def enableCommit(self, enable):
+        self.saveButton.setEnabled(enable)
+        self.revertButton.setEnabled(enable)
 
-	def addAccount(self):
-		rowCount = self.model.rowCount()
-		self.model.insertRow(rowCount)
+    def addAccount(self):
+        rowCount = self.model.rowCount()
+        self.model.insertRow(rowCount)
 
-		for column in xrange(1, self.model.columnCount()):
-			index = self.model.index(rowCount, column)
-			self.model.setData(index, None, QtCore.Qt.EditRole)
+        for column in xrange(1, self.model.columnCount()):
+            index = self.model.index(rowCount, column)
+            self.model.setData(index, None, QtCore.Qt.EditRole)
 
-		index = self.model.index(rowCount, enum.kAccountType__AccountName)
-		self.view.setCurrentIndex(index)
-		self.view.edit(index)
+        index = self.model.index(rowCount, enum.kAccountType__AccountName)
+        self.view.setCurrentIndex(index)
+        self.view.edit(index)
 
-	def deleteAccount(self):
-		for index in self.view.selectionModel().selectedRows():
+    def deleteAccount(self):
+        for index in self.view.selectionModel().selectedRows():
 
-			accountTypeId = self.model.index(index.row(), enum.kAccountType__AccountTypeId).data()
+            accountTypeId = self.model.index(index.row(), enum.kAccountType__AccountTypeId).data()
 
-			query = QtSql.QSqlQuery('SELECT COUNT(*) FROM records WHERE accounttypeid=%s' % accountTypeId)
-			query.next()
+            query = QtSql.QSqlQuery('SELECT COUNT(*) FROM records WHERE accounttypeid=%s' % accountTypeId)
+            query.next()
 
-			recordCount = query.value(0)
+            recordCount = query.value(0)
 
-			if recordCount:
-				QtGui.QMessageBox.critical(self, 'Account Delete ', 
-					'Cannot delete account, %d records exist for this account' % recordCount)
-				return
+            if recordCount:
+                QtGui.QMessageBox.critical(self, 'Account Delete ', 
+                    'Cannot delete account, %d records exist for this account' % recordCount)
+                return
 
-			if index.isValid():
-				self.model.removeRows(index.row(), 1, QtCore.QModelIndex())
+            if index.isValid():
+                self.model.removeRows(index.row(), 1, QtCore.QModelIndex())
 
-		self.view.clearSelection()
-		self.enableCommit(True)
+        self.view.clearSelection()
+        self.enableCommit(True)

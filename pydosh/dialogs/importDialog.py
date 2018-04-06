@@ -7,182 +7,182 @@ from pydosh.database import db
 from pydosh.models import ImportModel
 
 class UserCancelledException(Exception):
-	"""Exception to indicate user has cancelled the current operation
-	"""
+    """Exception to indicate user has cancelled the current operation
+    """
 
 
 class ImportDialog(Ui_Import, QtGui.QDialog):
-	def __init__(self, files, parent=None):
-		super(ImportDialog, self).__init__(parent=parent)
-		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-		self.setupUi(self)
-		self.__dataSaved = False
-		self.__importInProgress = False
-		self.__cancelImport = False
+    def __init__(self, files, parent=None):
+        super(ImportDialog, self).__init__(parent=parent)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.__dataSaved = False
+        self.__importInProgress = False
+        self.__cancelImport = False
 
-		self.progressBar.setVisible(False)
+        self.progressBar.setVisible(False)
 
-		self.currencyComboBox.addItems(currency.currencyCodes())
-		self.currencyComboBox.setCurrentIndex(
-			self.currencyComboBox.findText(currency.defaultCurrencyCode())
-		)
+        self.currencyComboBox.addItems(currency.currencyCodes())
+        self.currencyComboBox.setCurrentIndex(
+            self.currencyComboBox.findText(currency.defaultCurrencyCode())
+        )
 
-		query = QtSql.QSqlQuery("""
-			    SELECT a.id, a.name, at.*
-			      FROM accounts a
-			INNER JOIN accounttypes at
-			        ON at.accounttypeid=a.accounttypeid
-			       AND a.userid=%d
-			""" % db.userId)
+        query = QtSql.QSqlQuery("""
+                SELECT a.id, a.name, at.*
+                  FROM accounts a
+            INNER JOIN accounttypes at
+                    ON at.accounttypeid=a.accounttypeid
+                   AND a.userid=%d
+            """ % db.userId)
 
-		rec = query.record()
-		self.accountTypeComboBox.addItem('Raw')
+        rec = query.record()
+        self.accountTypeComboBox.addItem('Raw')
 
-		while query.next():
-			accountId =  query.value(rec.indexOf('id'))
-			name = query.value(rec.indexOf('name'))
-			dateIdx = query.value(rec.indexOf('datefield'))
-			descIdx = query.value(rec.indexOf('descriptionfield'))
-			creditIdx = query.value(rec.indexOf('creditfield'))
-			debitIdx = query.value(rec.indexOf('debitfield'))
-			currencySign = query.value(rec.indexOf('currencysign'))
-			dateFormat = query.value(rec.indexOf('dateFormat'))
-			self.accountTypeComboBox.addItem(name, (
-				accountId, (dateIdx, descIdx, creditIdx, debitIdx, currencySign, dateFormat,))
-			)
+        while query.next():
+            accountId =  query.value(rec.indexOf('id'))
+            name = query.value(rec.indexOf('name'))
+            dateIdx = query.value(rec.indexOf('datefield'))
+            descIdx = query.value(rec.indexOf('descriptionfield'))
+            creditIdx = query.value(rec.indexOf('creditfield'))
+            debitIdx = query.value(rec.indexOf('debitfield'))
+            currencySign = query.value(rec.indexOf('currencysign'))
+            dateFormat = query.value(rec.indexOf('dateFormat'))
+            self.accountTypeComboBox.addItem(name, (
+                accountId, (dateIdx, descIdx, creditIdx, debitIdx, currencySign, dateFormat,))
+            )
 
-		self.accountTypeComboBox.setCurrentIndex(-1)
+        self.accountTypeComboBox.setCurrentIndex(-1)
 
-		model = ImportModel(files)
+        model = ImportModel(files)
 
-		self.importCancelButton.setEnabled(False)
-		self.selectAllButton.setEnabled(False)
-		self.view.setModel(model)
-		model.modelReset.connect(self.view.expandAll)
-		self.view.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
-		self.view.expandAll()
+        self.importCancelButton.setEnabled(False)
+        self.selectAllButton.setEnabled(False)
+        self.view.setModel(model)
+        model.modelReset.connect(self.view.expandAll)
+        self.view.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+        self.view.expandAll()
 
-		selectionModel = self.view.selectionModel()
-		selectionModel.selectionChanged.connect(self._recordsSelected)
-		self.accountTypeComboBox.currentIndexChanged.connect(self._accountChanged)
+        selectionModel = self.view.selectionModel()
+        selectionModel.selectionChanged.connect(self._recordsSelected)
+        self.accountTypeComboBox.currentIndexChanged.connect(self._accountChanged)
 
-		self.importCancelButton.clicked.connect(self.__importCancelPressed)
-		self.selectAllButton.clicked.connect(self.view.selectAll)
-		self.closeButton.clicked.connect(self.__close)
+        self.importCancelButton.clicked.connect(self.__importCancelPressed)
+        self.selectAllButton.clicked.connect(self.view.selectAll)
+        self.closeButton.clicked.connect(self.__close)
 
-		self.accountTypeComboBox.setCurrentIndex(0)
+        self.accountTypeComboBox.setCurrentIndex(0)
 
-	def _accountChanged(self, index):
-		model = self.view.model()
-		selection = self.accountTypeComboBox.itemData(index, QtCore.Qt.UserRole)
+    def _accountChanged(self, index):
+        model = self.view.model()
+        selection = self.accountTypeComboBox.itemData(index, QtCore.Qt.UserRole)
 
-		# If not 'Raw' (ie index 0) then extract the account data
-		if selection is not None:
-			selection = selection[1]
+        # If not 'Raw' (ie index 0) then extract the account data
+        if selection is not None:
+            selection = selection[1]
 
-		model.accountChanged(selection)
-		self.selectAllButton.setEnabled(bool(model.numRecordsToImport()))
-		self.__setCounters()
+        model.accountChanged(selection)
+        self.selectAllButton.setEnabled(bool(model.numRecordsToImport()))
+        self.__setCounters()
 
-		for column in xrange(model.columnCount()):
-			self.view.resizeColumnToContents(column)
+        for column in xrange(model.columnCount()):
+            self.view.resizeColumnToContents(column)
 
-	def __importCancelPressed(self):
-		if self.__importInProgress:
-			self.__cancelImport = True
-		else:
-			self.__importRecords()
+    def __importCancelPressed(self):
+        if self.__importInProgress:
+            self.__cancelImport = True
+        else:
+            self.__importRecords()
 
-	def __setCounters(self):
-		model = self.view.model()
-		self.errorsCounter.setNum(model.numBadRecords())
-		self.importedCounter.setNum(model.numRecordsImported())
-		self.toImportCounter.setNum(model.numRecordsToImport())
+    def __setCounters(self):
+        model = self.view.model()
+        self.errorsCounter.setNum(model.numBadRecords())
+        self.importedCounter.setNum(model.numRecordsImported())
+        self.toImportCounter.setNum(model.numRecordsToImport())
 
-	def _recordsSelected(self):
-		""" Enable button cancel when we have selection
-		"""
-		numSelected = len(self.view.selectionModel().selectedRows())
-		self.selectedCounter.setNum(numSelected)
-		self.importCancelButton.setEnabled(bool(numSelected))
+    def _recordsSelected(self):
+        """ Enable button cancel when we have selection
+        """
+        numSelected = len(self.view.selectionModel().selectedRows())
+        self.selectedCounter.setNum(numSelected)
+        self.importCancelButton.setEnabled(bool(numSelected))
 
-	def __close(self):
-		""" Exit with bool value to indicate if data was saved,
-			but not if it's our initial model
-		"""
-		self.done(self.__dataSaved)
+    def __close(self):
+        """ Exit with bool value to indicate if data was saved,
+            but not if it's our initial model
+        """
+        self.done(self.__dataSaved)
 
-	def __importRecords(self):
-		""" Import selected rows to database
-		"""
+    def __importRecords(self):
+        """ Import selected rows to database
+        """
 
-		if self.currencyComboBox.currentIndex() == -1:
-			QtGui.QMessageBox.critical(
-				self,
-				'Import Error',
-				'Please select currency',
-				QtGui.QMessageBox.Ok
-			)
-			return
+        if self.currencyComboBox.currentIndex() == -1:
+            QtGui.QMessageBox.critical(
+                self,
+                'Import Error',
+                'Please select currency',
+                QtGui.QMessageBox.Ok
+            )
+            return
 
-		currencyCode = self.currencyComboBox.currentText()
-		accountId, _ = self.accountTypeComboBox.itemData(self.accountTypeComboBox.currentIndex(), QtCore.Qt.UserRole)
+        currencyCode = self.currencyComboBox.currentText()
+        accountId, _ = self.accountTypeComboBox.itemData(self.accountTypeComboBox.currentIndex(), QtCore.Qt.UserRole)
 
-		model = self.view.model()
-		selectionModel = self.view.selectionModel()
-		indexes = selectionModel.selectedRows()
+        model = self.view.model()
+        selectionModel = self.view.selectionModel()
+        indexes = selectionModel.selectedRows()
 
-		if len(indexes) == 0:
-			return
+        if len(indexes) == 0:
+            return
 
-		try:
-			self.progressBar.setVisible(True)
+        try:
+            self.progressBar.setVisible(True)
 
-			self.progressBar.setValue(0)
-			self.progressBar.setMaximum(len(indexes))
-			self.view.clearSelection()
+            self.progressBar.setValue(0)
+            self.progressBar.setMaximum(len(indexes))
+            self.view.clearSelection()
 
-			self.__importInProgress = True
-			self.closeButton.setEnabled(False)
-			self.selectAllButton.setEnabled(False)
-			self.importCancelButton.setText('Cancel')
-			self.importCancelButton.setEnabled(True)
+            self.__importInProgress = True
+            self.closeButton.setEnabled(False)
+            self.selectAllButton.setEnabled(False)
+            self.importCancelButton.setText('Cancel')
+            self.importCancelButton.setEnabled(True)
 
-			# Wrap the import in a transaction
-			with db.transaction():
-				for num, index in enumerate(indexes, 1):
-					model.saveRecord(accountId, currencyCode, index)
-					self.view.scrollTo(index, QtGui.QAbstractItemView.EnsureVisible)
-					self.__setCounters()
-					QtCore.QCoreApplication.processEvents()
-					self.progressBar.setValue(self.progressBar.value() +1)
+            # Wrap the import in a transaction
+            with db.transaction():
+                for num, index in enumerate(indexes, 1):
+                    model.saveRecord(accountId, currencyCode, index)
+                    self.view.scrollTo(index, QtGui.QAbstractItemView.EnsureVisible)
+                    self.__setCounters()
+                    QtCore.QCoreApplication.processEvents()
+                    self.progressBar.setValue(self.progressBar.value() +1)
 
-					if self.__cancelImport:
-						raise UserCancelledException
+                    if self.__cancelImport:
+                        raise UserCancelledException
 
-				if num:
-					self.__dataSaved = True
-					if QtGui.QMessageBox.question(
-						self, 'Import', 'Imported %d records successfully' % num,
-						QtGui.QMessageBox.Save|QtGui.QMessageBox.Cancel) != QtGui.QMessageBox.Save:
-						# By raising here we will rollback the database transaction
-						raise UserCancelledException
+                if num:
+                    self.__dataSaved = True
+                    if QtGui.QMessageBox.question(
+                        self, 'Import', 'Imported %d records successfully' % num,
+                        QtGui.QMessageBox.Save|QtGui.QMessageBox.Cancel) != QtGui.QMessageBox.Save:
+                        # By raising here we will rollback the database transaction
+                        raise UserCancelledException
 
-		except UserCancelledException:
-			self.__dataSaved = False
-			model.reset()
+        except UserCancelledException:
+            self.__dataSaved = False
+            model.reset()
 
-		except Exception, exc:
-			QtGui.QMessageBox.critical(self, 'Import Error', str(exc), QtGui.QMessageBox.Ok)
+        except Exception, exc:
+            QtGui.QMessageBox.critical(self, 'Import Error', str(exc), QtGui.QMessageBox.Ok)
 
-		finally:
-			self.__cancelImport = False
-			self.__importInProgress = False
-			self.closeButton.setEnabled(True)
-			self.importCancelButton.setText('Import')
-			self.progressBar.setVisible(False)
-			self.__setCounters()
+        finally:
+            self.__cancelImport = False
+            self.__importInProgress = False
+            self.closeButton.setEnabled(True)
+            self.importCancelButton.setText('Import')
+            self.progressBar.setVisible(False)
+            self.__setCounters()
 
-			canImport = bool(model.numRecordsToImport())
-			self.importCancelButton.setEnabled(canImport)
-			self.selectAllButton.setEnabled(canImport)
+            canImport = bool(model.numRecordsToImport())
+            self.importCancelButton.setEnabled(canImport)
+            self.selectAllButton.setEnabled(canImport)

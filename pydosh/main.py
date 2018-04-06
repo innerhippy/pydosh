@@ -10,26 +10,26 @@ import pydosh_rc
 
 def main():
 
-	app = QtGui.QApplication(sys.argv)
-	app.setWindowIcon(QtGui.QIcon(":/icons/pydosh.png"))
+    app = QtGui.QApplication(sys.argv)
+    app.setWindowIcon(QtGui.QIcon(":/icons/pydosh.png"))
 
-	QtCore.QCoreApplication.setApplicationName("pydosh")
-	QtCore.QCoreApplication.setOrganizationName("innerhippy")
-	QtCore.QCoreApplication.setOrganizationDomain("innerhippy.com")
-	menubar = QtGui.QMenuBar()
+    QtCore.QCoreApplication.setApplicationName("pydosh")
+    QtCore.QCoreApplication.setOrganizationName("innerhippy")
+    QtCore.QCoreApplication.setOrganizationDomain("innerhippy.com")
+    menubar = QtGui.QMenuBar()
 
-	stylesheet.setStylesheet()
+    stylesheet.setStylesheet()
 
-	loginDialog = LoginDialog()
-	loginDialog.show()
-	loginDialog.raise_()
+    loginDialog = LoginDialog()
+    loginDialog.show()
+    loginDialog.raise_()
 
-	if loginDialog.exec_():
-		window = PydoshWindow()
-		window.show()
-		return app.exec_()
+    if loginDialog.exec_():
+        window = PydoshWindow()
+        window.show()
+        return app.exec_()
 
-	return -1
+    return -1
 
 if __name__ == '__main__':
-	sys.exit(main())
+    sys.exit(main())
