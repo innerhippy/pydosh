@@ -448,7 +448,7 @@ class ImportModel(QtCore.QAbstractItemModel):
 	def readFiles(self, files):
 		for filename in files:
 			item = CsvFileItem(filename)
-			with codecs.open(filename, 'rb', 'UTF-8') as f:
+			with codecs.open(filename, 'rb', 'ISO-8859-1') as f:
 				for line in f:
 					recItem = CsvRecordItem(line.strip())
 					item.appendChild(recItem)
