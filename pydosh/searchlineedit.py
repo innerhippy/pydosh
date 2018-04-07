@@ -1,15 +1,15 @@
-from PyQt5 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore, QtWidgets
 import pydosh_rc
 
-class SearchLineEdit(QtGui.QLineEdit):
-    controlKeyPressed = QtCore.Signal(int)
-    clearButtonPressed = QtCore.Signal()
-    editingFinshed = QtCore.Signal(str)
+class SearchLineEdit(QtWidgets.QLineEdit):
+    controlKeyPressed = QtCore.pyqtSignal(int)
+    clearButtonPressed = QtCore.pyqtSignal()
+    editingFinshed = QtCore.pyqtSignal(str)
 
     def __init__(self, parent=None):
         super(SearchLineEdit, self).__init__(parent=parent)
 
-        clearButton = QtGui.QToolButton(self)
+        clearButton = QtWidgets.QToolButton(self)
         pixmap = QtGui.QPixmap(":/icons/clearsearch.png").scaledToHeight(15, QtCore.Qt.SmoothTransformation)
         clearButton.setIcon(QtGui.QIcon(pixmap))
         clearButton.setIconSize(pixmap.size())
@@ -21,7 +21,7 @@ class SearchLineEdit(QtGui.QLineEdit):
         clearButton.clicked.connect(self.clearButtonPressed.emit)
         self.textChanged.connect(self.updateCloseButton)
 
-        frameWidth = self.style().pixelMetric(QtGui.QStyle.PM_DefaultFrameWidth)
+        frameWidth = self.style().pixelMetric(QtWidgets.QStyle.PM_DefaultFrameWidth)
         self.setStyleSheet("QLineEdit { padding-right: %dpx; } " % (clearButton.sizeHint().width() + frameWidth + 1))
 
         self.clearButton = clearButton
@@ -59,7 +59,7 @@ class SearchLineEdit(QtGui.QLineEdit):
 
     def resizeEvent(self, event):
         sz = self.clearButton.sizeHint()
-        frameWidth = self.style().pixelMetric(QtGui.QStyle.PM_DefaultFrameWidth)
+        frameWidth = self.style().pixelMetric(QtWidgets.QStyle.PM_DefaultFrameWidth)
         self.clearButton.move(self.rect().right() - frameWidth - sz.width(),
             (self.rect().bottom() + 1 - sz.height())/2)
 

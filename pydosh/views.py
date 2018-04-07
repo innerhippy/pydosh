@@ -1,6 +1,6 @@
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore, QtWidgets
 
-class TagTableView(QtGui.QTableView):
+class TagTableView(QtWidgets.QTableView):
     def __init__(self, parent=None):
         super(TagTableView, self).__init__(parent=parent)
 

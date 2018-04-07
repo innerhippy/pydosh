@@ -11,8 +11,8 @@ class DatabaseNotInitialisedException(Exception):
     """
 
 class _Database(QtCore.QObject):
-    commit = QtCore.Signal()
-    rollback = QtCore.Signal()
+    commit = QtCore.pyqtSignal()
+    rollback = QtCore.pyqtSignal()
 
     def __init__(self):
         super(_Database, self).__init__()

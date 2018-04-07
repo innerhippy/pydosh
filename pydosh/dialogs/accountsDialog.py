@@ -1,11 +1,11 @@
-from PyQt5 import QtCore, QtGui, QtSql
+from PyQt5 import QtCore, QtSql, QtWidgets
 
 from pydosh.ui_accounts import Ui_Accounts
 from pydosh import enum, utils
 from pydosh.database import db
 from pydosh.models import AccountShareModel
 
-class AccountsDialog(Ui_Accounts, QtGui.QDialog):
+class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
     def __init__(self, parent=None):
         super(AccountsDialog, self).__init__(parent=parent)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
@@ -22,7 +22,7 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
         self.removeAccountButton.clicked.connect(self.removeAccount)
 
         # Account shares, filter is set in switchAccounts
-        self.accountShareView.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
+        self.accountShareView.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
         model = AccountShareModel(self)
         self.accountShareView.setModel(model)
         model.dataChanged.connect(self.setButtonsEnabled)
@@ -204,7 +204,7 @@ class AccountsDialog(Ui_Accounts, QtGui.QDialog):
         text = self.accountCombo.currentText()
 
         if not self.accountCombo.model().submitAll():
-            QtGui.QMessageBox.critical(self, 'Database Error',
+            QtWidgets.QMessageBox.critical(self, 'Database Error',
                 str(self.accountCombo.model().lastError()))
             self.revertChanges()
 

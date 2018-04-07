@@ -1,4 +1,4 @@
-from PyQt5 import QtCore, QtGui, QtSql
+from PyQt5 import QtCore, QtGui, QtSql, QtWidgets
 
 from pydosh.ui_settings import Ui_Settings
 from pydosh import enum
@@ -7,7 +7,7 @@ from pydosh.delegates import AccountDelegate
 from pydosh.models import AccountEditModel
 
 
-class SettingsDialog(Ui_Settings, QtGui.QDialog):
+class SettingsDialog(Ui_Settings, QtWidgets.QDialog):
     def __init__(self, parent=None):
         super(SettingsDialog, self).__init__(parent=parent)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
@@ -29,8 +29,8 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
         self.view.setModel(model)
         self.view.setColumnHidden(enum.kAccountType__AccountTypeId, True)
         self.view.verticalHeader().hide()
-        self.view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
-        self.view.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+        self.view.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.view.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.view.sortByColumn(enum.kAccountType__AccountName, QtCore.Qt.AscendingOrder)
         self.view.resizeColumnsToContents()
         self.view.horizontalHeader().setStretchLastSection(True)
@@ -74,7 +74,7 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
                 raise Exception('"Date format cannot be empty (eg "dd/MM/yyyy")')
 
         except Exception, err:
-            QtGui.QMessageBox.critical(self, 'Account failed', str(err), QtGui.QMessageBox.Ok)
+            QtWidgets.QMessageBox.critical(self, 'Account failed', str(err), QtWidgets.QMessageBox.Ok)
             # Trash the bad record
             record.clear()
 
@@ -84,7 +84,7 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
             # If we've cleared the record from validateNewAccount() then the database error
             # will be empty. No need to issue a second error message
             if self.model.lastError().databaseText():
-                QtGui.QMessageBox.critical(self, 'Error saving data', self.model.lastError().text(), QtGui.QMessageBox.Ok)
+                QtWidgets.QMessageBox.critical(self, 'Error saving data', self.model.lastError().text(), QtWidgets.QMessageBox.Ok)
             self.model.revertAll()
 
         self.enableCommit(False)
@@ -120,7 +120,7 @@ class SettingsDialog(Ui_Settings, QtGui.QDialog):
             recordCount = query.value(0)
 
             if recordCount:
-                QtGui.QMessageBox.critical(self, 'Account Delete ', 
+                QtWidgets.QMessageBox.critical(self, 'Account Delete ', 
                     'Cannot delete account, %d records exist for this account' % recordCount)
                 return
 

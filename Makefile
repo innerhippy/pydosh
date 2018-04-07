@@ -5,7 +5,7 @@ VERSION=$(shell python -c 'from pydosh import __version__; print __version__')
 all: $(ALL_TARGETS)
 
 pydosh/pydosh_rc.py: ui/pydosh.qrc ui/*.qss sql/*.sql
-	pyside-rcc $< -o $@
+	pyrcc5 $< -o $@
 
 clean:
 	@find tests pydosh \( -name "*.pyc" -o -name "ui_*.py" -o -name "*_rc.py" \) -delete
@@ -17,7 +17,7 @@ clean:
 		pydosh*.dmg
 
 $(UI_TARGETS): pydosh/ui_%.py: ui/%.ui
-	pyside-uic $< -o $@
+	pyuic5 $< -o $@
 
 deb: clean all
 	env PYTHONPATH=$(shell pwd) python setup.py --command-packages=stdeb.command sdist_dsc bdist_deb

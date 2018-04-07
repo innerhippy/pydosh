@@ -1,5 +1,5 @@
 import sys
-from PyQt5 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore, Qt, QtWidgets
 from dialogs import LoginDialog
 from mainWindow import PydoshWindow
 import stylesheet
@@ -10,13 +10,13 @@ import pydosh_rc
 
 def main():
 
-    app = QtGui.QApplication(sys.argv)
+    app = Qt.QApplication(sys.argv)
     app.setWindowIcon(QtGui.QIcon(":/icons/pydosh.png"))
 
     QtCore.QCoreApplication.setApplicationName("pydosh")
     QtCore.QCoreApplication.setOrganizationName("innerhippy")
     QtCore.QCoreApplication.setOrganizationDomain("innerhippy.com")
-    menubar = QtGui.QMenuBar()
+    menubar = QtWidgets.QMenuBar()
 
     stylesheet.setStylesheet()
 

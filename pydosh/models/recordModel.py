@@ -119,7 +119,7 @@ class RecordModel(QtSql.QSqlTableModel):
         elif role == QtCore.Qt.FontRole:
             if item.column() == enum.kRecords_Description:
                 if self._highlightText and self._highlightText.lower() in item.data(QtCore.Qt.DisplayRole).lower():
-                    font = QtGui.QFont()
+                    font = QtWidgets.QFont()
                     font.setBold(True)
                     return font
 
@@ -261,16 +261,21 @@ class RecordModel(QtSql.QSqlTableModel):
                 return "Amount"
 
 
-class RecordProxyModel(QtGui.QSortFilterProxyModel):
+class RecordProxyModel(QtCore.QSortFilterProxyModel):
     """ Proxy model for records table. Allows for fast filtering without the expense
         of extra SQL queries
     """
-    # Signal emitted whenever there is a change to the filter
-    filterChanged = QtCore.Signal()
+    # pyqtSignal emitted whenever there is a change to the filter
+    filterChanged = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
         super(RecordProxyModel, self).__init__(parent=parent)
         self.__reset()
+
+    def reset(self):
+        self.beginResetModel()
+        self.__reset()
+        self.endResetModel()
 
     def __reset(self):
         """ Create or re-create all filter
@@ -327,7 +332,7 @@ class RecordProxyModel(QtGui.QSortFilterProxyModel):
 
     def setTagFilter(self, tags):
         if tags != self._tagFilter:
-            self._tagFilter = tags.copy()
+            self._tagFilter = tags[:]
             self.invalidateFilter()
 
     def setCheckedFilter(self, value):

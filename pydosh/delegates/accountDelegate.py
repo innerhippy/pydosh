@@ -1,12 +1,12 @@
-from PyQt5 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore, QtWidgets
 from pydosh import enum
 
-class AccountDelegate(QtGui.QItemDelegate):
+class AccountDelegate(QtWidgets.QItemDelegate):
     def __init__(self, parent=None):
         super(AccountDelegate, self).__init__(parent=parent)
 
     def createEditor(self, parent, option, index):
-        lineEdit = QtGui.QLineEdit(parent=parent)
+        lineEdit = QtWidgets.QLineEdit(parent=parent)
         pattern = None
 
         if index.column() in (

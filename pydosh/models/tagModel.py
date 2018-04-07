@@ -6,8 +6,8 @@ from pydosh.database import db
 import pydosh.pydosh_rc
 
 class TagModel(QtSql.QSqlTableModel):
-    tagsChanged = QtCore.Signal()
-    selectionChanged = QtCore.Signal(list)
+    tagsChanged = QtCore.pyqtSignal()
+    selectionChanged = QtCore.pyqtSignal(list)
 
     def __init__(self, parent=None):
         super(TagModel, self).__init__(parent=parent)
@@ -48,7 +48,7 @@ class TagModel(QtSql.QSqlTableModel):
                     self.__selectedTagNames.remove(tagName)
 
                 self.dataChanged.emit(index, index)
-                self.selectionChanged.emit(self.__selectedTagNames)
+                self.selectionChanged.emit(list(self.__selectedTagNames))
                 return True
 
             elif role == QtCore.Qt.EditRole:
@@ -199,7 +199,7 @@ class TagModel(QtSql.QSqlTableModel):
         self.tagsChanged.emit()
         return self.select()
 
-class TagProxyModel(QtGui.QSortFilterProxyModel):
+class TagProxyModel(QtCore.QSortFilterProxyModel):
     def __init__(self, parent=None):
         super(TagProxyModel, self).__init__(parent=parent)
 

@@ -2,13 +2,13 @@
     This widget is a Python port of QxtCheckComboBox from http://dev.libqxt.org/libqxt/src
     (published under public license, but not specifically GPL)
 """
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore, QtGui, QtWidgets
 import pydosh_rc
 import utils
 
 class MultiComboBoxModel(QtGui.QStandardItemModel):
 
-    checkStateChanged = QtCore.Signal()
+    checkStateChanged = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
         super(MultiComboBoxModel, self).__init__(0, 1, parent)
@@ -32,11 +32,11 @@ class MultiComboBoxModel(QtGui.QStandardItemModel):
             self.checkStateChanged.emit()
         return result
 
-class MultiComboBox(QtGui.QComboBox):
+class MultiComboBox(QtWidgets.QComboBox):
     """ Extension of QComboBox widget that allows for multiple selection
     """
-    # Signal containing list of selected items
-    selectionChanged = QtCore.Signal(list)
+    # pyqtSignal containing list of selected items
+    selectionChanged = QtCore.pyqtSignal(list)
 
     def __init__(self, parent=None):
         super(MultiComboBox, self).__init__(parent=parent)
@@ -44,8 +44,8 @@ class MultiComboBox(QtGui.QComboBox):
         self._defaultText = ''
         self.__persistDropdown = False
 
-        self.setLineEdit(QtGui.QLineEdit())
-        self.setInsertPolicy(QtGui.QComboBox.NoInsert)
+        self.setLineEdit(QtWidgets.QLineEdit())
+        self.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
         self.lineEdit().blockSignals(True)
         self.lineEdit().setReadOnly(True)
 
@@ -59,7 +59,7 @@ class MultiComboBox(QtGui.QComboBox):
         self.view().viewport().installEventFilter(self)
         self.installEventFilter(self)
 
-        self.clearMenu = QtGui.QMenu(self)
+        self.clearMenu = QtWidgets.QMenu(self)
         self.clearMenu.addAction(QtGui.QIcon(':/icons/cross.png'), 'Clear All')
 
         self.activated[int].connect(self.__toggleCheckState)
@@ -146,7 +146,7 @@ class MultiComboBox(QtGui.QComboBox):
         self.selectionChanged.emit(items)
 
     def showPopup(self):
-        self.__persistDropdown = QtGui.QApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier
+        self.__persistDropdown = Qt.QApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier
         super(MultiComboBox, self).showPopup()
 
     def hidePopup(self):
@@ -155,12 +155,12 @@ class MultiComboBox(QtGui.QComboBox):
 
 
 def main():
-#    from  signaltracer import SignalTracer
-#    tracer = SignalTracer()
-    app = QtGui.QApplication(sys.argv)
-    app.setStyle(QtGui.QStyleFactory.create("Plastique"))
-    widget = QtGui.QWidget()
-    layout = QtGui.QVBoxLayout()
+#    from  signaltracer import pyqtSignalTracer
+#    tracer = pyqtSignalTracer()
+    app = Qt.QApplication(sys.argv)
+    app.setStyle(QtWidgets.QStyleFactory.create("Plastique"))
+    widget = QtWidgets.QWidget()
+    layout = QtWidgets.QVBoxLayout()
     combo = MultiComboBox()
     layout.addWidget(combo)
     widget.setLayout(layout)
@@ -174,7 +174,7 @@ def main():
 
     widget.show()
 
-    return app.exec_()    
+    return app.exec_()
 
 
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
 import pdb
-from PyQt5 import QtCore, QtGui, QtSql
+from PyQt5 import QtCore, QtGui, QtSql, QtWidgets
 
 from pydosh import enum, currency
 from pydosh.ui_import import Ui_Import
@@ -11,7 +11,7 @@ class UserCancelledException(Exception):
     """
 
 
-class ImportDialog(Ui_Import, QtGui.QDialog):
+class ImportDialog(Ui_Import, QtWidgets.QDialog):
     def __init__(self, files, parent=None):
         super(ImportDialog, self).__init__(parent=parent)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
@@ -59,7 +59,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
         self.selectAllButton.setEnabled(False)
         self.view.setModel(model)
         model.modelReset.connect(self.view.expandAll)
-        self.view.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+        self.view.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.view.expandAll()
 
         selectionModel = self.view.selectionModel()
@@ -117,11 +117,11 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
         """
 
         if self.currencyComboBox.currentIndex() == -1:
-            QtGui.QMessageBox.critical(
+            QtWidgets.QMessageBox.critical(
                 self,
                 'Import Error',
                 'Please select currency',
-                QtGui.QMessageBox.Ok
+                QtWidgets.QMessageBox.Ok
             )
             return
 
@@ -152,7 +152,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
             with db.transaction():
                 for num, index in enumerate(indexes, 1):
                     model.saveRecord(accountId, currencyCode, index)
-                    self.view.scrollTo(index, QtGui.QAbstractItemView.EnsureVisible)
+                    self.view.scrollTo(index, QtWidgets.QAbstractItemView.EnsureVisible)
                     self.__setCounters()
                     QtCore.QCoreApplication.processEvents()
                     self.progressBar.setValue(self.progressBar.value() +1)
@@ -162,9 +162,9 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
 
                 if num:
                     self.__dataSaved = True
-                    if QtGui.QMessageBox.question(
+                    if QtWidgets.QMessageBox.question(
                         self, 'Import', 'Imported %d records successfully' % num,
-                        QtGui.QMessageBox.Save|QtGui.QMessageBox.Cancel) != QtGui.QMessageBox.Save:
+                        QtWidgets.QMessageBox.Save|QtWidgets.QMessageBox.Cancel) != QtWidgets.QMessageBox.Save:
                         # By raising here we will rollback the database transaction
                         raise UserCancelledException
 
@@ -173,7 +173,7 @@ class ImportDialog(Ui_Import, QtGui.QDialog):
             model.reset()
 
         except Exception, exc:
-            QtGui.QMessageBox.critical(self, 'Import Error', str(exc), QtGui.QMessageBox.Ok)
+            QtWidgets.QMessageBox.critical(self, 'Import Error', str(exc), QtWidgets.QMessageBox.Ok)
 
         finally:
             self.__cancelImport = False

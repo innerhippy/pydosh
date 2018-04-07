@@ -1,4 +1,4 @@
-from PyQt5 import QtGui, QtCore, QtSql, __version__ as pyside_version
+from PyQt5 import QtGui, QtCore, QtSql, Qt, QtWidgets
 from contextlib  import contextmanager
 import operator
 import re
@@ -14,7 +14,7 @@ import stylesheet
 import enum
 import pydosh_rc
 
-class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
+class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
     __operatorMap = {
         '=':  operator.eq,
         '>':  operator.gt,
@@ -88,11 +88,11 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
         self.tableView.setColumnHidden(enum.kRecords_InsertDate, True)
         self.tableView.setColumnHidden(enum.kRecords_Currency, True)
         self.tableView.setSortingEnabled(True)
-        self.tableView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
-        self.tableView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+        self.tableView.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        self.tableView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.tableView.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        self.tableView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
-        self.tableView.horizontalHeader().setResizeMode(enum.kRecords_Description, QtGui.QHeaderView.Stretch)
+        self.tableView.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.tableView.horizontalHeader().setSectionResizeMode(enum.kRecords_Description, QtWidgets.QHeaderView.Stretch)
         self.tableView.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
 
         # Set up tag model
@@ -108,8 +108,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
         self.tagView.setColumnHidden(enum.kTags_TagId, True)
         self.tagView.setColumnHidden(enum.kTags_RecordIds, True)
         self.tagView.setSortingEnabled(True)
-        self.tagView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
-        self.tagView.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+        self.tagView.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        self.tagView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.tagView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.tagView.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         self.tagView.setShowGrid(False)
@@ -211,7 +211,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
     def showAbout(self):
         """ Show 'about' info
         """
-        QtGui.QMessageBox.about(self,
+        QtWidgets.QMessageBox.about(self,
             'About pydosh',
             "<html><p><h2>pydosh</h2></p>"
             "<p>version %s</p>"
@@ -219,7 +219,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
             "<p>Copywrite (c) 2013.</p>"
             "<p>Written using Qt %s, PyQt5 %s</p>"
             "<p><a href=\"http://www.innerhippy.com\">www.innerhippy.com</a></p>"
-            "enjoy!</html>" % (__version__, QtCore.__version__, pyside_version)
+            "enjoy!</html>" % (__version__, QtCore.QT_VERSION_STR, Qt.PYQT_VERSION_STR)
             )
 
     def endDateChanged(self, date):
@@ -306,8 +306,8 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
         if not importDir:
             importDir = QtCore.QDir.homePath()
 
-        dialog = QtGui.QFileDialog(self, 'Open File', importDir, "*.csv")
-        dialog.setFileMode(QtGui.QFileDialog.ExistingFiles)
+        dialog = QtWidgets.QFileDialog(self, 'Open File', importDir, "*.csv")
+        dialog.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
 
         if not dialog.exec_():
             return
@@ -389,16 +389,16 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
         if indexes:
             proxyModel = self.tableView.model()
-            if QtGui.QMessageBox.question(
+            if QtWidgets.QMessageBox.question(
                     self, 'Delete Records',
                     'Are you sure you want to delete %d rows?' % len(indexes),
-                    QtGui.QMessageBox.Yes|QtGui.QMessageBox.No) != QtGui.QMessageBox.Yes:
+                    QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No) != QtWidgets.QMessageBox.Yes:
                 return
 
             with utils.showWaitCursor():
                 if not proxyModel.sourceModel().deleteRecords(indexes):
-                    QtGui.QMessageBox.critical(self, 'Database Error',
-                        proxyModel.sourceModel().lastError().text(), QtGui.QMessageBox.Ok)
+                    QtWidgets.QMessageBox.critical(self, 'Database Error',
+                        proxyModel.sourceModel().lastError().text(), QtWidgets.QMessageBox.Ok)
 
                 # Finally, re-populate accounts and date range in case this has changed
                 self.populateAccounts()
@@ -421,7 +421,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
             yield
         finally:
             # Set this temporarily so that we can select more than one row
-            self.tableView.setSelectionMode(QtGui.QAbstractItemView.MultiSelection)
+            self.tableView.setSelectionMode(QtWidgets.QAbstractItemView.MultiSelection)
             proxyModel = self.tableView.model()
 
             for recordId in selectedRecords:
@@ -436,7 +436,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
 
             # Scroll to first selected row
             if selected:
-                self.tableView.scrollTo(selected[0], QtGui.QAbstractItemView.EnsureVisible)
+                self.tableView.scrollTo(selected[0], QtWidgets.QAbstractItemView.EnsureVisible)
 
     def populateAccounts(self):
         """ Populate account data for the current user
@@ -456,7 +456,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
         )
 
         if query.lastError().isValid():
-            QtGui.QMessageBox.critical(self, 'Database Error', query.lastError().text(), QtGui.QMessageBox.Ok)
+            QtWidgets.QMessageBox.critical(self, 'Database Error', query.lastError().text(), QtWidgets.QMessageBox.Ok)
             return
 
         while query.next():
@@ -477,7 +477,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
         """ % {'userid': db.userId})
 
         if query.lastError().isValid():
-            QtGui.QMessageBox.critical(self, 'Database Error', query.lastError().text(), QtGui.QMessageBox.Ok)
+            QtWidgets.QMessageBox.critical(self, 'Database Error', query.lastError().text(), QtWidgets.QMessageBox.Ok)
             return
 
         if query.next():
@@ -629,13 +629,13 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
     def addTag(self):
         """ Add a new tag to the tag model and assign any selected records
         """
-        tagName, ok = QtGui.QInputDialog.getText(self, 'New Tag', 'Tag', QtGui.QLineEdit.Normal)
+        tagName, ok = QtWidgets.QInputDialog.getText(self, 'New Tag', 'Tag', QtWidgets.QLineEdit.Normal)
 
         proxyModel = self.tagView.model()
         if ok and tagName:
             match = proxyModel.match(proxyModel.index(0, enum.kTags_TagName), QtCore.Qt.DisplayRole, tagName, 1, QtCore.Qt.MatchExactly)
             if match:
-                QtGui.QMessageBox.critical( self, 'Tag Error', 'Tag already exists!', QtGui.QMessageBox.Ok)
+                QtWidgets.QMessageBox.critical( self, 'Tag Error', 'Tag already exists!', QtWidgets.QMessageBox.Ok)
                 return
 
         # Assign selected records with the new tag
@@ -650,10 +650,10 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
         for proxyIndex in self.tagView.selectionModel().selectedRows():
             assignedRecords = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kTags_RecordIds).data()
             if assignedRecords:
-                if QtGui.QMessageBox.question(
+                if QtWidgets.QMessageBox.question(
                         self, 'Delete Tags',
                         'There are %d records assigned to this tag\nSure you want to delete it?' % len(assignedRecords),
-                        QtGui.QMessageBox.Yes|QtGui.QMessageBox.No) != QtGui.QMessageBox.Yes:
+                        QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No) != QtWidgets.QMessageBox.Yes:
                     continue
             with utils.showWaitCursor():
                 tagId = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kTags_TagId).data()
@@ -665,7 +665,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
         self.tableView.viewport().mapToGlobal(pos)
 
         tagList = TagListWidget(self)
-        tagList.setPersistEditor(QtGui.QApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier)
+        tagList.setPersistEditor(Qt.QApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier)
         tagList.itemChanged.connect(self.saveTagChanges)
 
         selectedRecordIds = set(self.selectedRecordIds())
@@ -676,7 +676,7 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
             tagName = model.index(row, enum.kTags_TagName).data()
             tagRecordIds = model.index(row, enum.kTags_RecordIds).data()
 
-            item = QtGui.QListWidgetItem(tagName)
+            item = QtWidgets.QListWidgetItem(tagName)
             item.setData(QtCore.Qt.UserRole, tagId)
 
             if selectedRecordIds and selectedRecordIds.issubset(tagRecordIds):
@@ -696,9 +696,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
             tagList.addItem(item)
 
         if tagList.count():
-            action = QtGui.QWidgetAction(self)
+            action = QtWidgets.QWidgetAction(self)
             action.setDefaultWidget(tagList)
-            menu = QtGui.QMenu(self)
+            menu = QtWidgets.QMenu(self)
             menu.addAction(action)
             menu.exec_(self.tableView.viewport().mapToGlobal(pos))
 
@@ -736,9 +736,9 @@ class PydoshWindow(Ui_pydosh, QtGui.QMainWindow):
             currentIndex = self.tableView.model().index(0, enum.kRecords_Description)
             matches = self.tableView.model().match(currentIndex, QtCore.Qt.DisplayRole, text)
             if matches:
-                self.tableView.scrollTo(matches[0], QtGui.QAbstractItemView.EnsureVisible)
+                self.tableView.scrollTo(matches[0], QtWidgets.QAbstractItemView.EnsureVisible)
 
-class TagListWidget(QtGui.QListWidget):
+class TagListWidget(QtWidgets.QListWidget):
     """ Simple extension to QListWidget to allow persistence of editor
         when used in QMenu popup
     """

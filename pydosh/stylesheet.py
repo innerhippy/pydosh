@@ -1,4 +1,4 @@
-from PyQt5 import QtGui, QtCore
+from PyQt5 import QtCore, Qt
 
 __styleNames = ['Default', 'Dark']
 
@@ -16,12 +16,12 @@ def setStylesheet(name=None):
         name = settings.value("options/stylesheet", __styleNames[0])
 
     if name not in __styleNames:
-        QtGui.QMessageBox.warning(
+        QtWidgets.QMessageBox.warning(
             None, 
             'Stylesheet Error',
             'Stylesheet %r not recognised - must be one of %r' % (
                 name, ', '.join(__styleNames)),
-            QtGui.QMessageBox.Ok
+            QtWidgets.QMessageBox.Ok
         )
         name = __styleNames[0]
 
@@ -29,5 +29,5 @@ def setStylesheet(name=None):
     styleSheetFile.open(QtCore.QIODevice.ReadOnly)
     styleSheet = styleSheetFile.readAll()
 
-    QtGui.QApplication.instance().setStyleSheet(str(styleSheet))
+    Qt.QApplication.instance().setStyleSheet(str(styleSheet))
     settings.setValue('options/stylesheet', name)
