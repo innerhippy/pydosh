@@ -3,7 +3,7 @@ import os
 import csv
 import hashlib
 import codecs
-from PySide import QtCore, QtGui, QtSql
+from PyQt5 import QtCore, QtGui, QtSql
 
 from pydosh import enum
 from pydosh import currency, utils

@@ -1,5 +1,5 @@
 import sys
-from PySide import QtGui, QtCore
+from PyQt5 import QtGui, QtCore
 from dialogs import LoginDialog
 from mainWindow import PydoshWindow
 import stylesheet

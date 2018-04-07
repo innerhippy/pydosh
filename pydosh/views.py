@@ -1,4 +1,4 @@
-from PySide import QtCore, QtGui
+from PyQt5 import QtCore, QtGui
 
 class TagTableView(QtGui.QTableView):
     def __init__(self, parent=None):

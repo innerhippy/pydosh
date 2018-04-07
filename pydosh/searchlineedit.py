@@ -1,4 +1,4 @@
-from PySide import QtGui, QtCore
+from PyQt5 import QtGui, QtCore
 import pydosh_rc
 
 class SearchLineEdit(QtGui.QLineEdit):

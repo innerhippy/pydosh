@@ -1,5 +1,5 @@
 import pdb
-from PySide import QtCore, QtGui, QtSql
+from PyQt5 import QtCore, QtGui, QtSql
 
 from pydosh import enum, currency
 from pydosh.ui_import import Ui_Import

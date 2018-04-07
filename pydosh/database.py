@@ -1,4 +1,4 @@
-from PySide import QtCore, QtSql
+from PyQt5 import QtCore, QtSql
 from contextlib  import contextmanager
 import pydosh_rc
 
