@@ -42,37 +42,37 @@ class RecordModel(QtSql.QSqlTableModel):
             return None
 
         query = """
-                SELECT r.recordid,
-                       r.checked,
-                       array_to_string(array_agg(t.tagname ORDER BY t.tagname), ','),
-                       r.checkdate,
-                       r.date,
-                       r.accountid,
-                       a2.userid,
-                       a.name,
-                       r.description,
-                       r.amount,
-                       r.insertdate,
-                       r.rawdata,
-                       r.currency
-                  FROM records r
-             LEFT JOIN accounts a
-                    ON a.id=r.accountid
-             LEFT JOIN accountshare acs
-                    ON acs.accountid=r.accountid
-             LEFT JOIN recordtags rt
-                    ON rt.recordid=r.recordid
-             LEFT JOIN tags t
-                    ON rt.tagid=t.tagid
-            INNER JOIN records r2
-                    ON r2.recordid=r.recordid
-            INNER JOIN accounts a2
-                    ON a2.id=r2.accountid
-                 WHERE (a.userid = %(userid)s
-                    OR acs.userid = %(userid)s)
-              GROUP BY r.recordid, a.name, a2.userid
-              ORDER BY r.date, r.recordid
-        """ % {'userid': db.userId}
+			SELECT r.recordid,
+				   r.checked,
+				   array_to_string(array_agg(t.tagname ORDER BY t.tagname), ','),
+				   r.checkdate,
+				   r.date,
+				   r.accountid,
+				   a2.userid,
+				   a.name,
+				   r.description,
+				   r.amount,
+				   r.insertdate,
+				   r.rawdata,
+				   r.currency
+			  FROM records r
+		 LEFT JOIN accounts a
+				ON a.id=r.accountid
+		 LEFT JOIN accountshare acs
+				ON acs.accountid=r.accountid
+		 LEFT JOIN recordtags rt
+				ON rt.recordid=r.recordid
+		 LEFT JOIN tags t
+				ON rt.tagid=t.tagid
+		INNER JOIN records r2
+				ON r2.recordid=r.recordid
+		INNER JOIN accounts a2
+				ON a2.id=r2.accountid
+			 WHERE (a.userid = %(userid)s
+				OR acs.userid = %(userid)s)
+		  GROUP BY r.recordid, a.name, a2.userid
+		  ORDER BY r.date, r.recordid
+	""" % {'userid': db.userId}
 
         return query
 
@@ -101,7 +101,9 @@ class RecordModel(QtSql.QSqlTableModel):
         """ Highlight text in desciption field
         """
         self._highlightText = text
-        self.reset()
+#        self.beginResetModel()
+#        self.reset()
+#        self.endResetModel()
 
     def data(self, item, role=QtCore.Qt.DisplayRole):
         """ Return data from the model, formatted for viewing
@@ -119,7 +121,7 @@ class RecordModel(QtSql.QSqlTableModel):
         elif role == QtCore.Qt.FontRole:
             if item.column() == enum.kRecords_Description:
                 if self._highlightText and self._highlightText.lower() in item.data(QtCore.Qt.DisplayRole).lower():
-                    font = QtWidgets.QFont()
+                    font = QtGui.QFont()
                     font.setBold(True)
                     return font
 
@@ -418,8 +420,11 @@ class RecordProxyModel(QtCore.QSortFilterProxyModel):
 
         if self._description:
             description = self.sourceModel().index(sourceRow, enum.kRecords_Description).data()
-            if self._description not in description.lower():
-                return False
+            try:
+                if not re.search(self._description, description, re.IGNORECASE):
+                  return False
+            except Exception, exc:
+                pass
 
         if self._amountFilter:
             amount = self.sourceModel().index(sourceRow, enum.kRecords_Amount).data(QtCore.Qt.UserRole)

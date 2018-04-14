@@ -1,6 +1,7 @@
 from PyQt5 import QtGui, QtCore, QtSql, Qt, QtWidgets
 from contextlib  import contextmanager
 import operator
+import logging
 import re
 
 from pydosh import __version__
@@ -14,6 +15,11 @@ import stylesheet
 import enum
 import pydosh_rc
 
+# import pdb
+# QtCore.pyqtRemoveInputHook()
+
+_log = logging.getLogger('pydosh.mainWindow')
+
 class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
     __operatorMap = {
         '=':  operator.eq,
@@ -26,6 +32,8 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(PydoshWindow, self).__init__(parent=parent)
         self.setupUi(self)
+
+        _log.debug('Main window init')
 
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
@@ -505,18 +513,19 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
     def reset(self, *args):
         """ Reset all filters and combo boxes to a default state
         """
+        _log.debug('reset')
         signalsToBlock = (
-                self.accountCombo,
-                self.checkedCombo,
-                self.tagsCombo,
-                self.inoutCombo,
-                self.descEdit,
-                self.scrolltoEdit,
-                self.amountEdit,
-                self.dateCombo,
-                self.startDateEdit,
-                self.endDateEdit,
-                self.tableView.model(),
+            self.accountCombo,
+            self.checkedCombo,
+            self.tagsCombo,
+            self.inoutCombo,
+            self.descEdit,
+            self.scrolltoEdit,
+            self.amountEdit,
+            self.dateCombo,
+            self.startDateEdit,
+            self.endDateEdit,
+            self.tableView.model(),
         )
 
         with utils.signalsBlocked(signalsToBlock):
@@ -602,7 +611,12 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
 
         self.inTotalLabel.setText(currency.toCurrencyStr(inTotal))
         self.outTotalLabel.setText(currency.toCurrencyStr(outTotal))
-        self.recordCountLabel.setText('%d / %d' % (model.rowCount(), self.tableView.model().sourceModel().rowCount()))
+        self.recordCountLabel.setText(
+            '%d / %d' % (
+                model.rowCount(),
+                self.tableView.model().sourceModel().rowCount()
+            )
+        )
 
     def tagModelChanged(self):
         """ Tag model has changed - call select on record model to refresh the changes (in tag column)
@@ -633,7 +647,13 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
 
         proxyModel = self.tagView.model()
         if ok and tagName:
-            match = proxyModel.match(proxyModel.index(0, enum.kTags_TagName), QtCore.Qt.DisplayRole, tagName, 1, QtCore.Qt.MatchExactly)
+            match = proxyModel.match(
+                proxyModel.index(0, enum.kTags_TagName),
+                QtCore.Qt.DisplayRole,
+                tagName,
+                1,
+                QtCore.Qt.MatchExactly
+            )
             if match:
                 QtWidgets.QMessageBox.critical( self, 'Tag Error', 'Tag already exists!', QtWidgets.QMessageBox.Ok)
                 return

@@ -2,7 +2,7 @@
     This widget is a Python port of QxtCheckComboBox from http://dev.libqxt.org/libqxt/src
     (published under public license, but not specifically GPL)
 """
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets, Qt
 import pydosh_rc
 import utils
 

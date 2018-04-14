@@ -1,14 +1,18 @@
 import sys
+import logging
+import argparse
 from PyQt5 import QtGui, QtCore, Qt, QtWidgets
 from dialogs import LoginDialog
 from mainWindow import PydoshWindow
 import stylesheet
 import pydosh_rc
 
-# from PyQt4.QtCore import pyqtRemoveInputHook
-# pyqtRemoveInputHook()
 
 def main():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', '--debug', action='store_true', help='Debug')
+    args = parser.parse_args()
 
     app = Qt.QApplication(sys.argv)
     app.setWindowIcon(QtGui.QIcon(":/icons/pydosh.png"))
@@ -19,6 +23,17 @@ def main():
     menubar = QtWidgets.QMenuBar()
 
     stylesheet.setStylesheet()
+
+    logFormatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    consoleHandler = logging.StreamHandler()
+    consoleHandler.setFormatter(logFormatter)
+
+    logger = logging.getLogger('pydosh')
+    logger.addHandler(consoleHandler)
+    level = logging.DEBUG if args.debug else logging.ERROR
+    logger.setLevel(level)
 
     loginDialog = LoginDialog()
     loginDialog.show()

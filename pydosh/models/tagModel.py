@@ -1,5 +1,5 @@
 import re
-from PyQt5 import QtCore, QtGui, QtSql
+from PyQt5 import QtCore, QtSql
 
 from pydosh import enum, currency
 from pydosh.database import db

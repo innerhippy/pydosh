@@ -1,4 +1,4 @@
-from PyQt5 import QtCore, QtGui, QtSql, QtWidgets
+from PyQt5 import QtCore, QtSql, QtWidgets
 
 from pydosh.ui_settings import Ui_Settings
 from pydosh import enum
