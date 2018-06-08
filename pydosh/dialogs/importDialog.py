@@ -1,4 +1,3 @@
-import pdb
 from PyQt5 import QtCore, QtGui, QtSql, QtWidgets
 
 from pydosh import enum, currency

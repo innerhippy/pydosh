@@ -137,7 +137,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         self.dateCombo.currentIndexChanged.connect(self.setDateRange)
         self.reloadButton.clicked.connect(self.reset)
         self.addTagButton.clicked.connect(self.addTag)
-        self.removeTagButton.clicked.connect(self.removeTag)
+        self.removeTagButton.clicked.connect(self.removeTagClicked)
         recordModel.dataChanged.connect(self.updateTagFilter)
         recordProxyModel.filterChanged.connect(self.updateTagFilter)
         recordProxyModel.modelReset.connect(self.updateTagFilter)
@@ -224,7 +224,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
             "<html><p><h2>pydosh</h2></p>"
             "<p>version %s</p>"
             "<p>by Will Hall <a href=\"mailto:will@innerhippy.com\">will@innerhippy.com</a></p>"
-            "<p>Copywrite (c) 2013.</p>"
+            "<p>Copywrite (c) 2018.</p>"
             "<p>Written using Qt %s, PyQt5 %s</p>"
             "<p><a href=\"http://www.innerhippy.com\">www.innerhippy.com</a></p>"
             "enjoy!</html>" % (__version__, QtCore.QT_VERSION_STR, Qt.PYQT_VERSION_STR)
@@ -421,7 +421,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
             There should be a better way of doing this, but the only accurate means
             of determining what rows were selected is by saving the recordIds before
             the yield, and then restoring them with a call to match.
-            """
+        """
         try:
             # Save selection
             selectedRecords = self.selectedRecordIds()
@@ -663,16 +663,20 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         proxyModel.sourceModel().addRecordTags(tagId, self.selectedRecordIds())
         self.tagView.resizeColumnsToContents()
 
-    def removeTag(self):
+    def removeTagClicked(self):
         """ Delete a tag - ask for confirmation if tag is currently assigned to records
         """
         proxyModel = self.tagView.model()
         for proxyIndex in self.tagView.selectionModel().selectedRows():
-            assignedRecords = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kTags_RecordIds).data()
+            proxyRow = proxyModel.mapToSource(proxyIndex).row()
+            assignedRecords = proxyModel.sourceModel().index(proxyRow, enum.kTags_RecordIds).data()
+            name = proxyModel.sourceModel().index(proxyRow, enum.kTags_TagName).data()
             if assignedRecords:
                 if QtWidgets.QMessageBox.question(
-                        self, 'Delete Tags',
-                        'There are %d records assigned to this tag\nSure you want to delete it?' % len(assignedRecords),
+                        self,
+                        'Delete Tags',
+                        'There are %d records assigned to tag %r\n'
+                        'Sure you want to delete it?' % (len(assignedRecords), name),
                         QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No) != QtWidgets.QMessageBox.Yes:
                     continue
             with utils.showWaitCursor():

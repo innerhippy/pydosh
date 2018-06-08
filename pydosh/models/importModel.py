@@ -3,11 +3,11 @@ import os
 import csv
 import hashlib
 import codecs
+
 from PyQt5 import QtCore, QtGui, QtSql
 
-from pydosh import currency, utils, enum
+from pydosh import utils, enum
 from pydosh.database import db
-import pydosh.pydosh_rc
 
 class DecoderError(Exception):
     """ General Decoder exceptions

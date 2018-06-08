@@ -1,9 +1,8 @@
-import re
 from PyQt5 import QtCore, QtSql
 
 from pydosh import enum, currency
 from pydosh.database import db
-import pydosh.pydosh_rc
+
 
 class TagModel(QtSql.QSqlTableModel):
     tagsChanged = QtCore.pyqtSignal()
@@ -198,6 +197,7 @@ class TagModel(QtSql.QSqlTableModel):
 
         self.tagsChanged.emit()
         return self.select()
+
 
 class TagProxyModel(QtCore.QSortFilterProxyModel):
     def __init__(self, parent=None):

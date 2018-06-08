@@ -3,7 +3,7 @@ from PyQt5 import QtCore, QtGui, QtSql
 
 from pydosh import enum, currency, utils
 from pydosh.database import db
-import pydosh.pydosh_rc
+
 
 class RecordModel(QtSql.QSqlTableModel):
     """ QSqlTableModel to represent the records table
@@ -42,37 +42,37 @@ class RecordModel(QtSql.QSqlTableModel):
             return None
 
         query = """
-			SELECT r.recordid,
-				   r.checked,
-				   array_to_string(array_agg(t.tagname ORDER BY t.tagname), ','),
-				   r.checkdate,
-				   r.date,
-				   r.accountid,
-				   a2.userid,
-				   a.name,
-				   r.description,
-				   r.amount,
-				   r.insertdate,
-				   r.rawdata,
-				   r.currency
-			  FROM records r
-		 LEFT JOIN accounts a
-				ON a.id=r.accountid
-		 LEFT JOIN accountshare acs
-				ON acs.accountid=r.accountid
-		 LEFT JOIN recordtags rt
-				ON rt.recordid=r.recordid
-		 LEFT JOIN tags t
-				ON rt.tagid=t.tagid
-		INNER JOIN records r2
-				ON r2.recordid=r.recordid
-		INNER JOIN accounts a2
-				ON a2.id=r2.accountid
-			 WHERE (a.userid = %(userid)s
-				OR acs.userid = %(userid)s)
-		  GROUP BY r.recordid, a.name, a2.userid
-		  ORDER BY r.date, r.recordid
-	""" % {'userid': db.userId}
+        SELECT r.recordid,
+               r.checked,
+               array_to_string(array_agg(t.tagname ORDER BY t.tagname), ','),
+               r.checkdate,
+               r.date,
+               r.accountid,
+               a2.userid,
+               a.name,
+               r.description,
+               r.amount,
+               r.insertdate,
+               r.rawdata,
+               r.currency
+          FROM records r
+     LEFT JOIN accounts a
+            ON a.id=r.accountid
+     LEFT JOIN accountshare acs
+            ON acs.accountid=r.accountid
+     LEFT JOIN recordtags rt
+            ON rt.recordid=r.recordid
+     LEFT JOIN tags t
+            ON rt.tagid=t.tagid
+    INNER JOIN records r2
+            ON r2.recordid=r.recordid
+    INNER JOIN accounts a2
+            ON a2.id=r2.accountid
+         WHERE (a.userid = %(userid)s
+            OR acs.userid = %(userid)s)
+      GROUP BY r.recordid, a.name, a2.userid
+      ORDER BY r.date, r.recordid
+    """ % {'userid': db.userId}
 
         return query
 

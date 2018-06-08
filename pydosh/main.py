@@ -39,12 +39,22 @@ def main():
     loginDialog.show()
     loginDialog.raise_()
 
-    if loginDialog.exec_():
-        window = PydoshWindow()
-        window.show()
-        return app.exec_()
+    status = -1
 
-    return -1
+    if loginDialog.exec_():
+        try:
+            window = PydoshWindow()
+            window.show()
+            status = app.exec_()
+        except Exception, exc:
+            QtWidgets.QMessageBox.critical(
+                None,
+                'Error',
+                str(exc),
+                QtWidgets.QMessageBox.Ok
+            )
+
+    return status
 
 if __name__ == '__main__':
     sys.exit(main())
