@@ -95,16 +95,19 @@ class TagModel(QtSql.QSqlTableModel):
             return None
 
         queryFilter = self.filter()
-        queryFilter = 'AND r.recordid IN (%s)' %  queryFilter if queryFilter else ''
+        queryFilter = 'AND r.recordid IN (%s)' % queryFilter if queryFilter else ''
 
         query = """
-               SELECT t.tagid, t.tagname,
+               SELECT t.tagid, 
+                      t.tagname,
                       ARRAY_TO_STRING(ARRAY_AGG(r.recordid), ',') AS recordids,
                       SUM(CASE WHEN r.amount > 0 THEN r.amount ELSE 0 END) AS amount_in,
                       ABS(SUM(CASE WHEN r.amount < 0 THEN r.amount ELSE 0 END)) AS amount_out
-                      FROM tags t
-            LEFT JOIN recordtags rt ON rt.tagid=t.tagid
-            LEFT JOIN records r ON r.recordid=rt.recordid
+                 FROM tags t
+            LEFT JOIN recordtags rt
+                   ON rt.tagid=t.tagid
+            LEFT JOIN records r 
+                   ON r.recordid=rt.recordid
                   %s
                 WHERE t.userid=%d
              GROUP BY t.tagid
@@ -141,17 +144,12 @@ class TagModel(QtSql.QSqlTableModel):
         self.tagsChanged.emit()
         return insertId
 
-    def removeTag(self, tagId):
-        currentIndex = self.index(0, enum.kTags_TagId)
-        match = self.match(currentIndex, QtCore.Qt.DisplayRole, tagId, 1, QtCore.Qt.MatchExactly)
-        assert match
-        match = match[0]
 
-        # Ensure this tag is unchecked
-        self.setData(self.index(match.row(), enum.kTags_TagName), QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
+    def removeTags(self, indexes):
+        for row in [QtCore.QPersistentModelIndex(index).row() for index in indexes]:
+            self.setData(self.index(row, enum.kTags_TagName), QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
+            self.removeRow(row, QtCore.QModelIndex())
 
-        # Now delete it
-        self.removeRows(match.row(), 1, QtCore.QModelIndex())
         self.select()
         self.tagsChanged.emit()
 

@@ -667,23 +667,31 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         """ Delete a tag - ask for confirmation if tag is currently assigned to records
         """
         proxyModel = self.tagView.model()
-        for proxyIndex in self.tagView.selectionModel().selectedRows():
-            proxyRow = proxyModel.mapToSource(proxyIndex).row()
-            assignedRecords = proxyModel.sourceModel().index(proxyRow, enum.kTags_RecordIds).data()
-            name = proxyModel.sourceModel().index(proxyRow, enum.kTags_TagName).data()
-            if assignedRecords:
-                if QtWidgets.QMessageBox.question(
-                        self,
-                        'Delete Tags',
-                        'There are %d records assigned to tag %r\n'
-                        'Sure you want to delete it?' % (len(assignedRecords), name),
-                        QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No) != QtWidgets.QMessageBox.Yes:
-                    continue
-            with utils.showWaitCursor():
-                tagId = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kTags_TagId).data()
-                proxyModel.sourceModel().removeTag(tagId)
+        tagModel = proxyModel.sourceModel()
 
-        self.tagView.resizeColumnsToContents()
+        indexes = []
+        assigned = []
+
+        for index in self.tagView.selectionModel().selectedRows():
+            indexes.append(proxyModel.mapToSource(index))
+            tagName = tagModel.index(index.row(), enum.kTags_TagName).data()
+            recs = len(tagModel.index(index.row(), enum.kTags_RecordIds).data())
+            if recs:
+                assigned.append((tagName, recs))
+
+        if assigned and QtWidgets.QMessageBox.question(
+                self,
+                'Delete Tags',
+                'There following tags have records assigned:\n'
+                '%s\n'
+                'Sure you want to delete them?' % 
+                    '\n'.join('   %r: %d' % (str(a), b) for a, b in assigned),
+                QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No) != QtWidgets.QMessageBox.Yes:
+            return
+
+        with utils.showWaitCursor():
+            tagModel.removeTags(indexes)
+            self.tagView.resizeColumnsToContents()
 
     def tagEditPopup(self, pos):
         self.tableView.viewport().mapToGlobal(pos)
