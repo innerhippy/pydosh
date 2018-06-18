@@ -1,5 +1,5 @@
 from PyQt5 import QtGui, QtCore, QtSql, Qt, QtWidgets
-from contextlib  import contextmanager
+from contextlib import contextmanager
 import operator
 import logging
 import re
@@ -15,8 +15,8 @@ import stylesheet
 import enum
 import pydosh_rc
 
-# import pdb
-# QtCore.pyqtRemoveInputHook()
+import pdb
+QtCore.pyqtRemoveInputHook()
 
 _log = logging.getLogger('pydosh.mainWindow')
 
@@ -57,6 +57,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         self.toggleCheckButton.setEnabled(False)
         self.deleteButton.setEnabled(False)
         self.removeTagButton.setEnabled(False)
+        self.tagPlotButton.setEnabled(False)
 
         self.connectionStatusText.setText('connected to %s@%s' % (db.database, db.hostname))
 
@@ -138,6 +139,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         self.reloadButton.clicked.connect(self.reset)
         self.addTagButton.clicked.connect(self.addTag)
         self.removeTagButton.clicked.connect(self.removeTagClicked)
+        self.tagPlotButton.clicked.connect(self.tagPlot)
         recordModel.dataChanged.connect(self.updateTagFilter)
         recordProxyModel.filterChanged.connect(self.updateTagFilter)
         recordProxyModel.modelReset.connect(self.updateTagFilter)
@@ -147,7 +149,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         tagModel.tagsChanged.connect(self.tagModelChanged)
         tagModel.selectionChanged.connect(recordProxyModel.setTagFilter)
         selectionModel = self.tagView.selectionModel()
-        selectionModel.selectionChanged.connect(self.enableRemoveTagButton)
+        selectionModel.selectionChanged.connect(self.enableTagButtons)
         self.startDateEdit.dateChanged.connect(recordProxyModel.setStartDate)
         self.endDateEdit.dateChanged.connect(self.endDateChanged)
         self.endDateEdit.dateChanged.connect(recordProxyModel.setEndDate)
@@ -232,7 +234,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
 
     def endDateChanged(self, date):
         """ End date has changed - if date mode is "previous" month,
-            the update start date accordingly
+            then update start date accordingly
         """
         if self.dateCombo.currentIndex() == enum.kDate_PreviousMonth:
             self.startDateEdit.setDate(self.endDateEdit.date().addMonths(-1))
@@ -369,9 +371,10 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
             recordIds.append(index.data())
         return recordIds
 
-    def enableRemoveTagButton(self):
+    def enableTagButtons(self):
         enable = len(self.tagView.selectionModel().selectedRows()) > 0
         self.removeTagButton.setEnabled(enable)
+        self.tagPlotButton.setEnabled(enable)
 
     def controlKeyPressed(self, key):
         """ Control key has been pressed
@@ -529,6 +532,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         )
 
         with utils.signalsBlocked(signalsToBlock):
+            self.tableView.model().reset()
             self.tagView.model().sourceModel().clearSelection()
             self.tableView.model().clearFilters()
 
@@ -553,7 +557,6 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
 
         # Need signals to clear highlight filter on model
         self.scrolltoEdit.clear()
-        self.tableView.model().reset()
 
         self.tagView.resizeColumnsToContents()
         self.tableView.resizeColumnsToContents()
@@ -629,6 +632,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
     def updateTagFilter(self, *args):
         """ Tell the tag model to limit tag amounts to current displayed records
         """
+        _log.debug('updateTagFilter')
         recordIds = []
         model = self.tableView.model()
 
@@ -663,19 +667,33 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         proxyModel.sourceModel().addRecordTags(tagId, self.selectedRecordIds())
         self.tagView.resizeColumnsToContents()
 
+    def tagPlot(self):
+        proxyModel = self.tagView.model()
+        data = {}
+        tagModel = proxyModel.sourceModel()
+        for index in self.tagView.selectionModel().selectedRows():
+            tag = proxyModel.index(index.row(), enum.kTags_TagName).data()
+            tagData = list(
+                tagModel.getTagSeries(tag, self.startDateEdit.date(), self.endDateEdit.date())
+            )
+            if tagData:
+                data[tag] = tagData
+
+        plt = dialogs.TagPlot(data, parent=self)
+        plt.show()
+
     def removeTagClicked(self):
         """ Delete a tag - ask for confirmation if tag is currently assigned to records
         """
         proxyModel = self.tagView.model()
-        tagModel = proxyModel.sourceModel()
 
         indexes = []
         assigned = []
 
         for index in self.tagView.selectionModel().selectedRows():
             indexes.append(proxyModel.mapToSource(index))
-            tagName = tagModel.index(index.row(), enum.kTags_TagName).data()
-            recs = len(tagModel.index(index.row(), enum.kTags_RecordIds).data())
+            tagName = proxyModel.index(index.row(), enum.kTags_TagName).data()
+            recs = len(proxyModel.index(index.row(), enum.kTags_RecordIds).data())
             if recs:
                 assigned.append((tagName, recs))
 
@@ -690,7 +708,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
             return
 
         with utils.showWaitCursor():
-            tagModel.removeTags(indexes)
+            proxyModel.sourceModel().removeTags(indexes)
             self.tagView.resizeColumnsToContents()
 
     def tagEditPopup(self, pos):

@@ -90,6 +90,32 @@ class TagModel(QtSql.QSqlTableModel):
 
         return flags
 
+    def getTagSeries(self, tagName, startDate, endDate):
+
+        query = QtSql.QSqlQuery()
+        query.prepare("""
+            SELECT r.date, r.amount
+              FROM records r 
+        INNER JOIN recordtags rt 
+                ON rt.recordid=r.recordid 
+        INNER JOIN tags t 
+                ON t.tagid=rt.tagid
+             WHERE t.tagname = ?
+               AND r.date >= ?
+               AND r.date <= ?
+          ORDER BY r.date
+        """)
+
+        query.addBindValue(tagName)
+        query.addBindValue(startDate)
+        query.addBindValue(endDate)
+
+        if not query.exec_():
+            raise Exception(query.lastError().text())
+
+        while query.next():
+            yield query.value(0).toPyDate(), query.value(1) * -1
+
     def selectStatement(self):
         if not self.tableName():
             return None
@@ -112,7 +138,6 @@ class TagModel(QtSql.QSqlTableModel):
                 WHERE t.userid=%d
              GROUP BY t.tagid
         """ % (queryFilter, db.userId)
-
         return query
 
     def headerData (self, section, orientation, role):

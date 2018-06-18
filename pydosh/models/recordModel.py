@@ -101,9 +101,6 @@ class RecordModel(QtSql.QSqlTableModel):
         """ Highlight text in desciption field
         """
         self._highlightText = text
-#        self.beginResetModel()
-#        self.reset()
-#        self.endResetModel()
 
     def data(self, item, role=QtCore.Qt.DisplayRole):
         """ Return data from the model, formatted for viewing
