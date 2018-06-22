@@ -161,6 +161,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         self.amountEdit.controlKeyPressed.connect(self.controlKeyPressed)
         self.amountEdit.editingFinshed.connect(self.amountFilterChanged)
 
+        self.setStyle()
         self.reset()
 
     def accountSelectionChanged(self, items):
@@ -600,6 +601,10 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         if action:
             stylesheet.setStylesheet(action.text())
 
+        # Set Tag plot icon according to current stylesheet
+        icon = ':/icons/graph-white.png' if stylesheet.isDark() else ':/icons/graph-black.png'
+        self.tagPlotButton.setIcon(QtGui.QIcon(icon))
+
     def displayRecordCount(self):
         inTotal = 0.0
         outTotal = 0.0
@@ -679,7 +684,11 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
             if tagData:
                 data[tag] = tagData
 
-        plt = dialogs.TagPlot(data, parent=self)
+        plt = dialogs.TagPlot(
+            data,
+            dark=stylesheet.isDark(),
+            parent=self
+        )
         plt.show()
 
     def removeTagClicked(self):

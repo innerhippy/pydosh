@@ -15,6 +15,7 @@
 		<file>../icons/help.png</file>
 		<file>../icons/brush.png</file>
 		<file>../icons/graph-white.png</file>
+		<file>../icons/graph-black.png</file>
 		<file>../sql/accounttypes_data.sql</file>
 		<file>../sql/schema.sql</file>
 	</qresource>

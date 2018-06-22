@@ -1,4 +1,4 @@
-from PyQt5 import QtCore, Qt
+from PyQt5 import Qt, QtCore, QtWidgets
 
 __styleNames = ['Default', 'Dark']
 
@@ -31,3 +31,8 @@ def setStylesheet(name=None):
 
     Qt.QApplication.instance().setStyleSheet(str(styleSheet))
     settings.setValue('options/stylesheet', name)
+
+def isDark():
+    """ True if current style is dark"""
+    settings = QtCore.QSettings()
+    return settings.value("options/stylesheet") == __styleNames[1]
