@@ -20,7 +20,6 @@ def main():
     QtCore.QCoreApplication.setApplicationName("pydosh")
     QtCore.QCoreApplication.setOrganizationName("innerhippy")
     QtCore.QCoreApplication.setOrganizationDomain("innerhippy.com")
-    menubar = QtWidgets.QMenuBar()
 
     stylesheet.setStylesheet()
 

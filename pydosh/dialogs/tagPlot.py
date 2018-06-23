@@ -6,12 +6,12 @@ from matplotlib.figure import Figure
 from pydosh.ui_tagPlot import Ui_TagPlot
 
 class TagPlot(Ui_TagPlot, QtWidgets.QDialog):
-    def __init__(self, data, isDark=False, parent=None):
+    def __init__(self, data, dark=False, parent=None):
         super(TagPlot, self).__init__(parent=parent)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setupUi(self)
 
-        if isDark:
+        if dark:
             import matplotlib.pyplot as plt
             plt.style.use('dark_background')
 
@@ -41,18 +41,21 @@ class PlotCanvas(FigureCanvas):
         legend = []
         import pandas as pd
         ax = self.figure.add_subplot(111)
-
+        y_mins = set()
+        y_maxs = set()
         for tag, values in data.iteritems():
             df = pd.DataFrame(values, columns=['date', 'amount'])
             df.date = pd.to_datetime(df.date)
-            df = df.set_index('date').resample('M', how='sum').interpolate()
-            line, = ax.plot(df, '%s-' % cols.next())
+            df = df.set_index('date')
+            resampled = df.resample('M', how='sum').interpolate()
+            line, = ax.plot(resampled, '%s-' % cols.next())
             legend.append((line, tag))
+            y_mins.add(min(resampled.amount))
+            y_maxs.add(max(resampled.amount))
 
-        # Find the lowest number for the plot
-        all_values = [v[1] for v in itertools.chain.from_iterable(data.itervalues())]
-        y_lim = 0 if min(all_values) > 0 else min(all_values)
-        ax.set_ylim(bottom=y_lim, top=max(all_values)+10)
+        y_min = min(y_mins) if min(y_mins) < 0 else 0
+        y_max = max(y_maxs) * 1.1
+        ax.set_ylim(bottom=y_min, top=y_max)
 
         if len(legend) > 1:
             ax.set_title('Tag time series')
