@@ -537,7 +537,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
             self.tagView.model().sourceModel().clearSelection()
             self.tableView.model().clearFilters()
 
-            self.dateCombo.setCurrentIndex(enum.kDate_PreviousMonth)
+            self.dateCombo.setCurrentIndex(enum.kDate_PreviousYear)
 
             # Signals blocked so need to reset filter manually
             self.setDateRange()
