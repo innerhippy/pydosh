@@ -133,6 +133,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
 
         # Set up connections
         self.scrolltoEdit.textChanged.connect(self.scrollTo)
+        self.tagFilter.textChanged.connect(tagProxyModel.setFilter)
         self.toggleCheckButton.clicked.connect(self.toggleSelected)
         self.deleteButton.clicked.connect(self.deleteRecords)
         self.dateCombo.currentIndexChanged.connect(self.setDateRange)
@@ -525,6 +526,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
             self.inoutCombo,
             self.descEdit,
             self.scrolltoEdit,
+            self.tagFilter,
             self.amountEdit,
             self.dateCombo,
             self.startDateEdit,
@@ -558,6 +560,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
 
         # Need signals to clear highlight filter on model
         self.scrolltoEdit.clear()
+        self.tagFilter.clear()
 
         self.tagView.resizeColumnsToContents()
         self.tableView.resizeColumnsToContents()

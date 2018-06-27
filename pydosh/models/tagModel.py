@@ -225,6 +225,7 @@ class TagModel(QtSql.QSqlTableModel):
 class TagProxyModel(QtCore.QSortFilterProxyModel):
     def __init__(self, parent=None):
         super(TagProxyModel, self).__init__(parent=parent)
+        self._filter = ''
 
     def lessThan(self, left, right):
         """ Define the comparison to ensure column data is sorted correctly
@@ -234,3 +235,12 @@ class TagProxyModel(QtCore.QSortFilterProxyModel):
 
         return super(TagProxyModel, self).lessThan(left, right)
 
+    def setFilter(self, text):
+        self._filter = text or ''
+        self.invalidateFilter()
+
+    def filterAcceptsRow(self, sourceRow, parent):
+        """ Filters row to display
+        """
+        currentTag = self.sourceModel().index(sourceRow, enum.kTags_TagName, parent).data().lower()
+        return self._filter.lower() in currentTag
