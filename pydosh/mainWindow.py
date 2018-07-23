@@ -57,7 +57,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         self.toggleCheckButton.setEnabled(False)
         self.deleteButton.setEnabled(False)
         self.removeTagButton.setEnabled(False)
-        self.tagPlotButton.setEnabled(False)
+        self.recPlotButton.setEnabled(True)
 
         self.connectionStatusText.setText('connected to %s@%s' % (db.database, db.hostname))
 
@@ -140,7 +140,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         self.reloadButton.clicked.connect(self.reset)
         self.addTagButton.clicked.connect(self.addTag)
         self.removeTagButton.clicked.connect(self.removeTagClicked)
-        self.tagPlotButton.clicked.connect(self.tagPlot)
+        self.recPlotButton.clicked.connect(self.recPlot)
         recordModel.dataChanged.connect(self.updateTagFilter)
         recordProxyModel.filterChanged.connect(self.updateTagFilter)
         recordProxyModel.modelReset.connect(self.updateTagFilter)
@@ -368,15 +368,14 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         proxyModel = self.tableView.model()
         recordIds = []
 
-        for proxyIndex in self.tableView.selectionModel().selectedRows():
-            index = proxyModel.sourceModel().index(proxyModel.mapToSource(proxyIndex).row(), enum.kRecords_RecordId)
-            recordIds.append(index.data())
+        for index in self.tableView.selectionModel().selectedRows():
+            recordIds.append(proxyModel.index(index.row(), enum.kRecords_RecordId).data())
+
         return recordIds
 
     def enableTagButtons(self):
         enable = len(self.tagView.selectionModel().selectedRows()) > 0
         self.removeTagButton.setEnabled(enable)
-        self.tagPlotButton.setEnabled(enable)
 
     def controlKeyPressed(self, key):
         """ Control key has been pressed
@@ -606,7 +605,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
 
         # Set Tag plot icon according to current stylesheet
         icon = ':/icons/graph-white.png' if stylesheet.isDark() else ':/icons/graph-black.png'
-        self.tagPlotButton.setIcon(QtGui.QIcon(icon))
+        self.recPlotButton.setIcon(QtGui.QIcon(icon))
 
     def displayRecordCount(self):
         inTotal = 0.0
@@ -657,37 +656,47 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         """
         tagName, ok = QtWidgets.QInputDialog.getText(self, 'New Tag', 'Tag', QtWidgets.QLineEdit.Normal)
 
+        if not all([tagName.strip(), ok]):
+            return
+
         proxyModel = self.tagView.model()
-        if ok and tagName:
-            match = proxyModel.match(
-                proxyModel.index(0, enum.kTags_TagName),
-                QtCore.Qt.DisplayRole,
-                tagName,
-                1,
-                QtCore.Qt.MatchExactly
-            )
-            if match:
-                QtWidgets.QMessageBox.critical( self, 'Tag Error', 'Tag already exists!', QtWidgets.QMessageBox.Ok)
-                return
+        match = proxyModel.match(
+            proxyModel.index(0, enum.kTags_TagName),
+            QtCore.Qt.DisplayRole,
+            tagName,
+            1,
+            QtCore.Qt.MatchExactly
+        )
+        if match:
+            QtWidgets.QMessageBox.critical(self, 'Tag Error', 'Tag already exists!', QtWidgets.QMessageBox.Ok)
+            return
 
         # Assign selected records with the new tag
         tagId = proxyModel.sourceModel().addTag(tagName)
         proxyModel.sourceModel().addRecordTags(tagId, self.selectedRecordIds())
         self.tagView.resizeColumnsToContents()
 
-    def tagPlot(self):
-        proxyModel = self.tagView.model()
-        data = {}
-        tagModel = proxyModel.sourceModel()
-        for index in self.tagView.selectionModel().selectedRows():
-            tag = proxyModel.index(index.row(), enum.kTags_TagName).data()
-            tagData = list(
-                tagModel.getTagSeries(tag, self.startDateEdit.date(), self.endDateEdit.date())
-            )
-            if tagData:
-                data[tag] = tagData
+    def recPlot(self):
+        model = self.tableView.model()
 
-        plt = dialogs.TagPlot(
+        indexes = self.tableView.selectionModel().selectedRows()
+        # If no selection, then get everything
+        if not indexes:
+            indexes = [
+                model.index(row, enum.kRecords_RecordId)
+                    for row in xrange(model.rowCount())
+            ]
+
+        data = {}
+        for index in indexes:
+            tags = model.index(index.row(), enum.kRecords_Tags).data(QtCore.Qt.UserRole)
+            for tag in tags or ['No tag']:
+                tagData = data.setdefault(tag, [])
+                date = model.index(index.row(), enum.kRecords_Date).data(QtCore.Qt.UserRole)
+                amount = model.index(index.row(), enum.kRecords_Amount).data(QtCore.Qt.UserRole)
+                tagData.append((date.toPyDate(), amount * -1.0))
+
+        plt = dialogs.RecPlot(
             data,
             dark=stylesheet.isDark(),
             parent=self

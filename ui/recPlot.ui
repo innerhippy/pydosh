@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>TagPlot</class>
- <widget class="QDialog" name="TagPlot">
+ <class>RecPlot</class>
+ <widget class="QDialog" name="RecPlot">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -14,10 +14,7 @@
    <string>Dialog</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0">
-    <widget class="QWidget" name="canvas" native="true"/>
-   </item>
-   <item row="1" column="0">
+   <item row="1" column="2">
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
@@ -27,6 +24,16 @@
      </property>
     </widget>
    </item>
+   <item row="1" column="1">
+    <widget class="QCheckBox" name="aggregateButton">
+     <property name="text">
+      <string>Aggregate Plot</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1" colspan="2">
+    <widget class="QWidget" name="canvas" native="true"/>
+   </item>
   </layout>
  </widget>
  <resources/>
@@ -34,7 +41,7 @@
   <connection>
    <sender>buttonBox</sender>
    <signal>accepted()</signal>
-   <receiver>TagPlot</receiver>
+   <receiver>RecPlot</receiver>
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -50,7 +57,7 @@
   <connection>
    <sender>buttonBox</sender>
    <signal>rejected()</signal>
-   <receiver>TagPlot</receiver>
+   <receiver>RecPlot</receiver>
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
