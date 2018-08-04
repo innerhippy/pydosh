@@ -67,7 +67,7 @@ class PlotCanvas(FigureCanvas):
             return 'W'
         elif days <=365:
             return 'M'
-        return 'Y'
+        return '6M'
 
     def _getData(self):
         if self._useAggregate:
@@ -99,7 +99,11 @@ class PlotCanvas(FigureCanvas):
             col = cols.next()
             plot_type = '-' if len(values) > 1 else 'o'
             line, = ax.plot(resampled, col+plot_type)
-            legend.append((line, '{} (avg {})'.format(tag, int(resampled.amount.mean()))))
+            legend.append((line, '{} (mean={}, median={})'.format(
+                tag,
+                int(resampled.amount.mean()),
+                int(resampled.amount.median()),
+            )))
             y_mins.add(min(resampled.amount))
             y_maxs.add(max(resampled.amount))
 
