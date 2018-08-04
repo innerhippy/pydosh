@@ -1,1 +1,1 @@
-from accountDelegate import AccountDelegate
+from .accountDelegate import AccountDelegate

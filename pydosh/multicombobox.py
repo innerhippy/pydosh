@@ -3,8 +3,8 @@
     (published under public license, but not specifically GPL)
 """
 from PyQt5 import QtCore, QtGui, QtWidgets, Qt
-import pydosh_rc
-import utils
+from . import pydosh_rc
+from . import utils
 
 class MultiComboBoxModel(QtGui.QStandardItemModel):
 
@@ -86,7 +86,7 @@ class MultiComboBox(QtWidgets.QComboBox):
         """
 
         with utils.signalsBlocked(self.model()):
-            for row in xrange(self.model().rowCount()):
+            for row in range(self.model().rowCount()):
                 self.setItemData(row, QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
 
         self.__updateCheckedItems()
@@ -166,7 +166,7 @@ def main():
     widget.setLayout(layout)
 
     #tracer.monitor(lineEdit, widget, lineEdit.clearButton)
-    combo.addItems(['item %d' %i for i in xrange(5)])
+    combo.addItems(['item %d' %i for i in range(5)])
     combo.setDefaultText('all')
 
     combo.setItemData(2, QtCore.Qt.Checked, QtCore.Qt.CheckStateRole)

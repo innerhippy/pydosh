@@ -73,7 +73,7 @@ class SettingsDialog(Ui_Settings, QtWidgets.QDialog):
             if not record.value(enum.kAccountType__DateFormat):
                 raise Exception('"Date format cannot be empty (eg "dd/MM/yyyy")')
 
-        except Exception, err:
+        except Exception as err:
             QtWidgets.QMessageBox.critical(self, 'Account failed', str(err), QtWidgets.QMessageBox.Ok)
             # Trash the bad record
             record.clear()
@@ -101,7 +101,7 @@ class SettingsDialog(Ui_Settings, QtWidgets.QDialog):
         rowCount = self.model.rowCount()
         self.model.insertRow(rowCount)
 
-        for column in xrange(1, self.model.columnCount()):
+        for column in range(1, self.model.columnCount()):
             index = self.model.index(rowCount, column)
             self.model.setData(index, None, QtCore.Qt.EditRole)
 

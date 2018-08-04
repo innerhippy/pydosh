@@ -122,8 +122,8 @@ class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
         """
         changesPending = False
         model = self.accountCombo.model()
-        for row in xrange(model.rowCount()):
-            for column in xrange(model.columnCount()):
+        for row in range(model.rowCount()):
+            for column in range(model.columnCount()):
                 if model.isDirty(model.index(row, column)):
                     changesPending = True
                     break

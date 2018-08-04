@@ -2,10 +2,11 @@ import sys
 import logging
 import argparse
 from PyQt5 import QtGui, QtCore, Qt, QtWidgets
-from dialogs import LoginDialog
-from mainWindow import PydoshWindow
-import stylesheet
-import pydosh_rc
+from .dialogs import LoginDialog
+from .mainWindow import PydoshWindow
+import pdb
+from . import stylesheet
+from . import pydosh_rc
 
 
 def main():
@@ -20,6 +21,7 @@ def main():
     QtCore.QCoreApplication.setApplicationName("pydosh")
     QtCore.QCoreApplication.setOrganizationName("innerhippy")
     QtCore.QCoreApplication.setOrganizationDomain("innerhippy.com")
+    pdb.set_trace()
 
     stylesheet.setStylesheet()
 
@@ -45,7 +47,7 @@ def main():
             window = PydoshWindow()
             window.show()
             status = app.exec_()
-        except Exception, exc:
+        except Exception as exc:
             QtWidgets.QMessageBox.critical(
                 None,
                 'Error',

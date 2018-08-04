@@ -1,8 +1,8 @@
 from PyQt5 import QtCore, QtWidgets
 
-from pydosh.ui_login import Ui_Login
-from pydosh import utils
-from pydosh.database import db, DatabaseNotInitialisedException, ConnectionException
+from ..ui_login import Ui_Login
+from .. import utils
+from ..database import db, DatabaseNotInitialisedException, ConnectionException
 
 class LoginDialog(Ui_Login, QtWidgets.QDialog):
     def __init__(self, parent=None):
@@ -39,13 +39,13 @@ class LoginDialog(Ui_Login, QtWidgets.QDialog):
                     QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No) == QtWidgets.QMessageBox.Yes:
                 try:
                     db.initialise()
-                except ConnectionException, err:
+                except ConnectionException as err:
                     QtWidgets.QMessageBox.critical(self, 'Database ', str(err))
                 else:
                     QtWidgets.QMessageBox.information(self, 'Database', 'Database initialised successfully')
             else:
                 return
-        except ConnectionException, err:
+        except ConnectionException as err:
             QtWidgets.QMessageBox.warning(self, 'Database', 'Failed to connect: %s' % str(err))
         else:
             self.accept()

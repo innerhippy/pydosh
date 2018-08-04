@@ -420,7 +420,7 @@ class RecordProxyModel(QtCore.QSortFilterProxyModel):
             try:
                 if not re.search(self._description, description, re.IGNORECASE):
                   return False
-            except Exception, exc:
+            except Exception as exc:
                 pass
 
         if self._amountFilter:

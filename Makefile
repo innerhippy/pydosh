@@ -1,6 +1,7 @@
+PYTHON := python3
 UI_TARGETS=$(patsubst %.ui,pydosh/ui_%.py,$(notdir $(wildcard ui/*.ui)))
 ALL_TARGETS=$(UI_TARGETS) pydosh/pydosh_rc.py
-VERSION=$(shell python -c 'from pydosh import __version__; print __version__')
+VERSION=$(shell $(PYTHON) -c 'from pydosh import __version__; print __version__')
 
 all: $(ALL_TARGETS)
 
@@ -17,12 +18,12 @@ clean:
 		pydosh*.dmg
 
 $(UI_TARGETS): pydosh/ui_%.py: ui/%.ui
-	pyuic5 $< -o $@
+	pyuic5 --from-imports $< -o $@
 
 deb: clean all
-	env PYTHONPATH=$(shell pwd) python setup.py --command-packages=stdeb.command sdist_dsc bdist_deb
+	env PYTHONPATH=$(shell pwd) $(PYTHON) setup.py --command-packages=stdeb.command sdist_dsc bdist_deb
 
 dmg: clean all
-	python setup.py py2app
+	$(PYTHON) setup.py py2app
 	hdiutil create -srcfolder dist/pydosh.app pydosh-$(VERSION).dmg
 

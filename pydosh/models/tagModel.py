@@ -24,7 +24,7 @@ class TagModel(QtSql.QSqlTableModel):
         self.setFilter(','.join([str(rec) for rec in recordIds or [0]]))
 
     def clearSelection(self):
-        for row in xrange(self.rowCount()):
+        for row in range(self.rowCount()):
             index = self.index(row, enum.kTags_TagName)
             self.setData(index, QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
 

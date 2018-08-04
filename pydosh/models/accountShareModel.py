@@ -38,8 +38,8 @@ class AccountShareModel(QtSql.QSqlTableModel):
         self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount()-1, self.columnCount()-1))
 
     def hasChangesPending(self):
-        for row in xrange(self.shareModel.rowCount()):
-            for column in xrange(self.shareModel.columnCount()):
+        for row in range(self.shareModel.rowCount()):
+            for column in range(self.shareModel.columnCount()):
                 if self.shareModel.isDirty(self.shareModel.index(row, column)):
                     return True
         return False
@@ -54,7 +54,7 @@ class AccountShareModel(QtSql.QSqlTableModel):
         if role == QtCore.Qt.CheckStateRole:
             sharedWith = [
                 self.shareModel.index(row, enum.kAccountShare_UserId).data()
-                    for row in xrange(self.shareModel.rowCount())
+                    for row in range(self.shareModel.rowCount())
             ]
             if self.index(item.row(), enum.kUsers_UserName).data() in sharedWith:
                 return QtCore.Qt.Checked

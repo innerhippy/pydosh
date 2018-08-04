@@ -299,7 +299,7 @@ class CsvRecordItem(TreeItem):
             if not self._debit and not self._credit:
                 raise DecoderError('No credit or debit found')
 
-        except DecoderError, exc:
+        except DecoderError as exc:
             self._error = str(exc)
 
         finally:

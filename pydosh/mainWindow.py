@@ -4,16 +4,16 @@ import operator
 import logging
 import re
 
-from pydosh import __version__
-from database import db
-from ui_pydosh import Ui_pydosh
-import currency
-import utils
-import models
-import dialogs
-import stylesheet
-import enum
-import pydosh_rc
+from . import __version__
+from .database import db
+from .ui_pydosh import Ui_pydosh
+from . import currency
+from . import utils
+from . import models
+from . import dialogs
+from . import stylesheet
+from . import enum
+from . import pydosh_rc
 
 import pdb
 QtCore.pyqtRemoveInputHook()
@@ -281,7 +281,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
             endDate = QtCore.QDate()
 
             # Find the min/max dates for the last import from the proxy model
-            for row in xrange(proxyModel.rowCount()):
+            for row in range(proxyModel.rowCount()):
                 dateForRow = proxyModel.index(row, enum.kRecords_Date).data(QtCore.Qt.UserRole)
                 if not endDate.isValid() or dateForRow > endDate:
                     endDate = dateForRow
@@ -612,7 +612,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         outTotal = 0.0
 
         model = self.tableView.model()
-        for row in xrange(model.rowCount()):
+        for row in range(model.rowCount()):
             amount = model.index(row, enum.kRecords_Amount).data(QtCore.Qt.UserRole)
             if amount > 0.0:
                 inTotal += amount
@@ -643,7 +643,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         recordIds = []
         model = self.tableView.model()
 
-        for i in xrange(model.rowCount()):
+        for i in range(model.rowCount()):
             recordIds.append(model.index(i, enum.kRecords_RecordId).data())
 
         self.tagView.model().sourceModel().setRecordFilter(recordIds)
@@ -684,7 +684,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         if not indexes:
             indexes = [
                 model.index(row, enum.kRecords_RecordId)
-                    for row in xrange(model.rowCount())
+                    for row in range(model.rowCount())
             ]
 
         data = {}
@@ -742,7 +742,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         selectedRecordIds = set(self.selectedRecordIds())
         model = self.tagView.model()
 
-        for row in xrange(model.rowCount()):
+        for row in range(model.rowCount()):
             tagId = model.index(row, enum.kTags_TagId).data()
             tagName = model.index(row, enum.kTags_TagName).data()
             tagRecordIds = model.index(row, enum.kTags_RecordIds).data()

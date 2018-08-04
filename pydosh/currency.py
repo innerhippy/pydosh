@@ -54,7 +54,7 @@ def defaultCurrencyCode():
 def toCurrencyStr(value, currencyCode=None):
     try:
         locale.setlocale(locale.LC_ALL, _locales.currencyMap[currencyCode or defaultCurrencyCode()])
-        return locale.currency(value, symbol=True, grouping=True).decode('utf-8')
+        return locale.currency(value, symbol=True, grouping=True)
     except (locale.Error, KeyError):
         warnings.warn('Failed to convert currency: current $LANG=%r' % os.getenv('LANG', ''))
         return formatCurrency(value)

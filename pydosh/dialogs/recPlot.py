@@ -1,5 +1,4 @@
 from PyQt5 import QtCore, QtWidgets
-import logging
 import itertools
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -9,7 +8,7 @@ try:
 except ImportError:
     pass
 
-from pydosh.ui_recPlot import Ui_RecPlot
+from ..ui_recPlot import Ui_RecPlot
 
 
 class RecPlot(Ui_RecPlot, QtWidgets.QDialog):

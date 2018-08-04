@@ -7,7 +7,7 @@ def flattenArgs(items):
         Eg (1, [2, 3], ["a", "b", [10]]) -> (1, 2, 3, "a", "b", 10)
     """
     for item in items:
-        if isinstance(item, collections.Iterable) and not isinstance(item, basestring):
+        if isinstance(item, collections.Iterable) and not isinstance(item, str):
             for sub in flattenArgs(item):
                 yield sub
         else:

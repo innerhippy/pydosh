@@ -1,5 +1,5 @@
 from PyQt5 import QtGui, QtCore, QtWidgets
-import pydosh_rc
+from . import pydosh_rc
 
 class SearchLineEdit(QtWidgets.QLineEdit):
     controlKeyPressed = QtCore.pyqtSignal(int)

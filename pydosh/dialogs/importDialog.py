@@ -83,7 +83,7 @@ class ImportDialog(Ui_Import, QtWidgets.QDialog):
         self.selectAllButton.setEnabled(bool(model.numRecordsToImport()))
         self.__setCounters()
 
-        for column in xrange(model.columnCount()):
+        for column in range(model.columnCount()):
             self.view.resizeColumnToContents(column)
 
     def __importCancelPressed(self):
@@ -171,7 +171,7 @@ class ImportDialog(Ui_Import, QtWidgets.QDialog):
             self.__dataSaved = False
             model.reset()
 
-        except Exception, exc:
+        except Exception as exc:
             QtWidgets.QMessageBox.critical(self, 'Import Error', str(exc), QtWidgets.QMessageBox.Ok)
 
         finally:
