@@ -39,7 +39,7 @@ def formatCurrency(value):
 def currencyCodes():
     """ Returns a list of known all currency codes
     """
-    return _locales.currencyMap.keys()
+    return list(_locales.currencyMap.keys())
 
 def defaultCurrencyCode():
     """ Returns the local currency code (3 chars)

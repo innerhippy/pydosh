@@ -27,9 +27,9 @@ def setStylesheet(name=None):
 
     styleSheetFile = QtCore.QFile(':/style/%s' % name)
     styleSheetFile.open(QtCore.QIODevice.ReadOnly)
-    styleSheet = styleSheetFile.readAll()
-
-    Qt.QApplication.instance().setStyleSheet(str(styleSheet))
+    styleSheet = bytes(styleSheetFile.readAll()).decode('utf-8')
+    Qt.QApplication.instance().setStyleSheet(styleSheet)
+    styleSheetFile.close()
     settings.setValue('options/stylesheet', name)
 
 def isDark():

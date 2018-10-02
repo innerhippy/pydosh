@@ -155,7 +155,7 @@ class CsvRecordItem(TreeItem):
         self._error = None
         self._formatted = False
         self._rawData = rawData
-        self._fields = self._csvReader([rawData]).next()
+        self._fields = next(csv.reader([self._rawData]))
         self.reset()
 
     def reset(self):
@@ -189,16 +189,6 @@ class CsvRecordItem(TreeItem):
 
     def canImport(self):
         return self.isValid() and not self._imported and not self._duplicate
-
-    def _csvReader(self, data):
-        # csv.py doesn't do Unicode; encode temporarily as UTF-8:
-        for row in csv.reader(self._encoder(data), dialect=csv.excel):
-            # decode UTF-8 back to Unicode, cell by cell:
-            yield [unicode(cell, 'utf-8') for cell in row]
-
-    def _encoder(self, data):
-        for line in data:
-            yield line.encode('utf-8')
 
     @property
     def _statusAsText(self):
@@ -366,7 +356,7 @@ class ImportModel(QtCore.QAbstractItemModel):
         self._root.setDuplicateRecords()
 
         self._numColumns = self._root.maxColumns()
-        self._headers = range(self._numColumns)
+        self._headers = list(range(self._numColumns))
 
     def reset(self):
         self._checksums = self._checksumsSaved[:]
@@ -393,7 +383,7 @@ class ImportModel(QtCore.QAbstractItemModel):
         with utils.showWaitCursor():
             if accountData is None:
                 self._root.reset()
-                self._headers = range(self._root.maxColumns())
+                self._headers = list(range(self._root.maxColumns()))
             else:
                 dateField, descriptionField, creditField, debitField, currencySign, dateFormat = accountData
                 self._root.formatItem(dateField, descriptionField, creditField, debitField, currencySign, dateFormat)

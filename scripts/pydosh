@@ -1,2 +1,2 @@
 #!/bin/bash
-/usr/bin/env python -m pydosh.main "$@"
+/usr/bin/env python3 -m pydosh.main "$@"

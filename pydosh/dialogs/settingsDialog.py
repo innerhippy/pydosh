@@ -1,10 +1,10 @@
 from PyQt5 import QtCore, QtSql, QtWidgets
 
-from pydosh.ui_settings import Ui_Settings
-from pydosh import enum
+from ..ui_settings import Ui_Settings
+from .. import enum
 
-from pydosh.delegates import AccountDelegate
-from pydosh.models import AccountEditModel
+from ..delegates import AccountDelegate
+from ..models import AccountEditModel
 
 
 class SettingsDialog(Ui_Settings, QtWidgets.QDialog):

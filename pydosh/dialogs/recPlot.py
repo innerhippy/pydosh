@@ -56,7 +56,7 @@ class PlotCanvas(FigureCanvas):
         return pd.DataFrame(trend, df.index)
 
     def guessFrequency(self):
-        dates = list(itertools.chain.from_iterable(self._data.itervalues()))
+        dates = list(itertools.chain.from_iterable(self._data.values()))
         min_date,_= min(dates, key=lambda x: x[0])
         max_date,_= max(dates, key=lambda x: x[0])
         days = (max_date - min_date).total_seconds()/(60*60*24)
@@ -71,7 +71,7 @@ class PlotCanvas(FigureCanvas):
     def _getData(self):
         if self._useAggregate:
             return {
-                'Aggregate': list(itertools.chain.from_iterable(self._data.itervalues()))
+                'Aggregate': list(itertools.chain.from_iterable(self._data.values()))
             }
         else:
             return self._data
@@ -90,12 +90,12 @@ class PlotCanvas(FigureCanvas):
         if not data:
             return
 
-        for tag, values in data.iteritems():
+        for tag, values in data.items():
             df = pd.DataFrame(sorted(values), columns=['date', 'amount'])
             df.date = pd.to_datetime(df.date)
             df = df.set_index('date')
             resampled = df.resample(freq, how='sum').interpolate()
-            col = cols.next()
+            col = next(cols)
             plot_type = '-' if len(values) > 1 else 'o'
             line, = ax.plot(resampled, col+plot_type)
             legend.append((line, '{} (mean={}, median={})'.format(
