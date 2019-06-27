@@ -15,7 +15,6 @@ from . import stylesheet
 from . import enum
 from . import pydosh_rc
 
-import pdb
 QtCore.pyqtRemoveInputHook()
 
 _log = logging.getLogger('pydosh.mainWindow')
@@ -150,12 +149,12 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         tagModel.tagsChanged.connect(self.tagModelChanged)
         tagModel.selectionChanged.connect(recordProxyModel.setTagFilter)
         selectionModel = self.tagView.selectionModel()
-        selectionModel.selectionChanged.connect(self.enableTagButtons)
+        selectionModel.selectionChanged.connect(self.tagSelectionChanged)
         self.startDateEdit.dateChanged.connect(recordProxyModel.setStartDate)
         self.endDateEdit.dateChanged.connect(self.endDateChanged)
         self.endDateEdit.dateChanged.connect(recordProxyModel.setEndDate)
         self.accountCombo.selectionChanged.connect(self.accountSelectionChanged)
-        self.tagsCombo.currentIndexChanged.connect(self.tagSelectionChanged)
+        self.tagsCombo.currentIndexChanged.connect(self.tagFilterChanged)
         self.checkedCombo.currentIndexChanged.connect(self.checkedSelectionChanged)
         self.inoutCombo.currentIndexChanged.connect(self.inOutSelectionChanged)
         self.descEdit.editingFinshed.connect(recordProxyModel.setDescriptionFilter)
@@ -171,7 +170,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         accountIds = [self.accountCombo.itemData(self.accountCombo.findText(item)) for item in items]
         self.tableView.model().setAccountFilter(accountIds)
 
-    def tagSelectionChanged(self, index):
+    def tagFilterChanged(self, index):
         """ Basic tag filter (has tags or not)
         """
         state = self.tagsCombo.itemData(index, QtCore.Qt.UserRole)
@@ -373,9 +372,13 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
 
         return recordIds
 
-    def enableTagButtons(self):
-        enable = len(self.tagView.selectionModel().selectedRows()) > 0
-        self.removeTagButton.setEnabled(enable)
+    def tagSelectionChanged(self):
+        """ Tag selection has changed
+        """
+        selectedRows = self.tagView.selectionModel().selectedRows()
+
+        # Only enable remove button if something is selected
+        self.removeTagButton.setEnabled(len(selectedRows) > 0)
 
     def controlKeyPressed(self, key):
         """ Control key has been pressed
@@ -808,6 +811,21 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
             matches = self.tableView.model().match(currentIndex, QtCore.Qt.DisplayRole, text)
             if matches:
                 self.tableView.scrollTo(matches[0], QtWidgets.QAbstractItemView.EnsureVisible)
+
+    def keyPressEvent(self, event):
+        """ Enter key assigns tags to selected records
+        """
+        if event.key() in (QtCore.Qt.Key_Enter, QtCore.Qt.Key_Return):
+
+            proxyModel = self.tagView.model()
+            sourceModel = self.tagView.model().sourceModel()
+
+            for index in self.tagView.selectionModel().selectedRows():
+                tagId = proxyModel.index(index.row(), enum.kTags_TagId).data()
+                sourceModel.addRecordTags(tagId, self.selectedRecordIds())
+
+        super(PydoshWindow, self).keyPressEvent(event)
+
 
 class TagListWidget(QtWidgets.QListWidget):
     """ Simple extension to QListWidget to allow persistence of editor
