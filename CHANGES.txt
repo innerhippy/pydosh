@@ -37,3 +37,6 @@ v1.8, June 5 2013
 v1.9, June 22 2013
   - import records handle unicode (for currency signs)
   - better error messages for bad csv records
+
+v6.0, July 27 2019
+  - Python 3
