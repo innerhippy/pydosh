@@ -2,11 +2,9 @@ from PyQt5 import QtCore, QtWidgets
 import itertools
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-try:
-    import pandas as pd
-    import numpy as np
-except ImportError:
-    pass
+
+import pandas as pd
+import numpy as np
 
 from ..ui_recPlot import Ui_RecPlot
 
@@ -94,7 +92,7 @@ class PlotCanvas(FigureCanvas):
             df = pd.DataFrame(sorted(values), columns=['date', 'amount'])
             df.date = pd.to_datetime(df.date)
             df = df.set_index('date')
-            resampled = df.resample(freq, how='sum').interpolate()
+            resampled = df.resample(freq).sum().interpolate()
             col = next(cols)
             plot_type = '-' if len(values) > 1 else 'o'
             line, = ax.plot(resampled, col+plot_type)
@@ -106,7 +104,8 @@ class PlotCanvas(FigureCanvas):
             y_mins.add(min(resampled.amount))
             y_maxs.add(max(resampled.amount))
 
-            ax.plot(self._trend(resampled), '%s:' % col)
+            if len(resampled) > 1:
+                ax.plot(self._trend(resampled), '%s:' % col)
 
         y_min = min(y_mins) if min(y_mins) < 0 else 0
         y_max = max(y_maxs) * 1.1

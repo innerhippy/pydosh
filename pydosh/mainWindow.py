@@ -648,7 +648,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
 
         for i in range(model.rowCount()):
             recordIds.append(model.index(i, enum.kRecords_RecordId).data())
-
+        _log.debug("tag filter using %d records", len(recordIds))
         self.tagView.model().sourceModel().setRecordFilter(recordIds)
         self.tagView.resizeColumnsToContents()
         self.displayRecordCount()
@@ -699,12 +699,13 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
                 amount = model.index(index.row(), enum.kRecords_Amount).data(QtCore.Qt.UserRole)
                 tagData.append((date.toPyDate(), amount * -1.0))
 
-        plt = dialogs.RecPlot(
-            data,
-            dark=stylesheet.isDark(),
-            parent=self
-        )
-        plt.show()
+        if data:
+            plt = dialogs.RecPlot(
+                data,
+                dark=stylesheet.isDark(),
+                parent=self
+            )
+            plt.show()
 
     def removeTagClicked(self):
         """ Delete a tag - ask for confirmation if tag is currently assigned to records

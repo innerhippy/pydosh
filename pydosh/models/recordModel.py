@@ -1,9 +1,11 @@
 import re
+import logging
 from PyQt5 import QtCore, QtGui, QtSql
 
 from pydosh import enum, currency, utils
 from pydosh.database import db
 
+_log = logging.getLogger('pydosh.recordModel')
 
 class RecordModel(QtSql.QSqlTableModel):
     """ QSqlTableModel to represent the records table
@@ -44,7 +46,7 @@ class RecordModel(QtSql.QSqlTableModel):
         query = """
         SELECT r.recordid,
                r.checked,
-               array_to_string(array_agg(t.tagname ORDER BY t.tagname), ','),
+               array_to_string(array_agg(t.tagname ORDER BY t.tagname), '##'),
                r.checkdate,
                r.date,
                r.accountid,
@@ -145,9 +147,9 @@ class RecordModel(QtSql.QSqlTableModel):
 
         elif role == QtCore.Qt.UserRole:
             if item.column() == enum.kRecords_Tags:
-                # Tags as comma separated string (from database)
+                # Tags as "##" separated string (from database)
                 tags = super(RecordModel, self).data(item, QtCore.Qt.DisplayRole)
-                return tags.split(',') if tags else []
+                return tags.split('##') if tags else []
 
             elif item.column() == enum.kRecords_Amount:
                 # signed float
@@ -330,6 +332,7 @@ class RecordProxyModel(QtCore.QSortFilterProxyModel):
             self.invalidateFilter()
 
     def setTagFilter(self, tags):
+        _log.debug("setTagFilter %r", tags)
         if tags != self._tagFilter:
             self._tagFilter = tags[:]
             self.invalidateFilter()
