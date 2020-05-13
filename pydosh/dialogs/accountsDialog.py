@@ -187,14 +187,14 @@ class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
 
     @utils.showWaitCursorDecorator
     def revertChanges(self):
-        self.accountCombo.model().reset()
+        self.accountCombo.model().revert()
         self.accountCombo.model().select()
-        self.accountShareView.model().reset()
+        self.accountShareView.model().revert()
         self._allowAccountShareEdit = True
         self.setButtonsEnabled()
 
     @utils.showWaitCursorDecorator
-    def saveSettings(self):
+    def saveSettings(self, clicked):
         """ Save changes to database.
             Set _changesMade to True to ensure main window models are refreshed
             to pick up changes

@@ -360,6 +360,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         enable = len(self._getWriteableSelectedModelIndexes()) > 0
         self.toggleCheckButton.setEnabled(enable)
         self.deleteButton.setEnabled(enable)
+        _log.debug("recordSelectionChanged")
 
     def selectedRecordIds(self):
         """ Returns a list of all currently selected recordIds
@@ -648,7 +649,9 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
 
         for i in range(model.rowCount()):
             recordIds.append(model.index(i, enum.kRecords_RecordId).data())
+
         _log.debug("tag filter using %d records", len(recordIds))
+
         self.tagView.model().sourceModel().setRecordFilter(recordIds)
         self.tagView.resizeColumnsToContents()
         self.displayRecordCount()
@@ -813,6 +816,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
             if matches:
                 self.tableView.scrollTo(matches[0], QtWidgets.QAbstractItemView.EnsureVisible)
 
+    @utils.showWaitCursorDecorator
     def keyPressEvent(self, event):
         """ Enter key assigns tags to selected records
         """
@@ -824,6 +828,17 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
             for index in self.tagView.selectionModel().selectedRows():
                 tagId = proxyModel.index(index.row(), enum.kTags_TagId).data()
                 sourceModel.addRecordTags(tagId, self.selectedRecordIds())
+
+            recordsRemaining = self.tableView.model().rowCount()
+            _log.debug('{} rows after tag selection'.format(recordsRemaining))
+            if not recordsRemaining:
+                self.descEdit.clear()
+                self.amountEdit.clear()
+
+        elif event.key() == QtCore.Qt.Key_Escape:
+            self.descEdit.clear()
+            self.amountEdit.clear()
+
 
         super(PydoshWindow, self).keyPressEvent(event)
 
