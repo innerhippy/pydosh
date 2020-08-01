@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>347</width>
+    <width>351</width>
     <height>292</height>
    </rect>
   </property>
@@ -53,13 +53,6 @@
       <item row="1" column="1">
        <widget class="QComboBox" name="accountType"/>
       </item>
-      <item row="4" column="0">
-       <widget class="QLabel" name="label_5">
-        <property name="text">
-         <string>Shared with</string>
-        </property>
-       </widget>
-      </item>
       <item row="0" column="1">
        <widget class="QComboBox" name="accountCombo"/>
       </item>
@@ -69,9 +62,6 @@
          <string>Account</string>
         </property>
        </widget>
-      </item>
-      <item row="4" column="1">
-       <widget class="QListView" name="accountShareView"/>
       </item>
      </layout>
     </widget>
@@ -155,7 +145,6 @@ p, li { white-space: pre-wrap; }
   <tabstop>removeAccountButton</tabstop>
   <tabstop>saveButton</tabstop>
   <tabstop>addAccountButton</tabstop>
-  <tabstop>accountShareView</tabstop>
   <tabstop>revertButton</tabstop>
  </tabstops>
  <resources>

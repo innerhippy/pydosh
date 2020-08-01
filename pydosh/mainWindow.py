@@ -461,12 +461,9 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         query = QtSql.QSqlQuery("""
             SELECT DISTINCT a.id, a.name
                        FROM records r
-                  LEFT JOIN accounts a
+                 INNER JOIN accounts a
                          ON a.id=r.accountid
-                  LEFT JOIN accountshare acs
-                         ON acs.accountid = r.accountid
-                      WHERE (a.userid=%(userid)s
-                         OR acs.userid=%(userid)s)
+                      WHERE a.userid=%(userid)s
                    ORDER BY a.name
             """ % {'userid': db.userId}
         )
@@ -484,12 +481,9 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         query = QtSql.QSqlQuery("""
             SELECT MIN(r.date), MAX(r.date), MAX(r.insertdate)
               FROM records r
-         LEFT JOIN accounts a
+        INNER JOIN accounts a
                 ON a.id=r.accountid
-         LEFT JOIN accountshare acs
-                ON acs.accountid = r.accountid
-             WHERE (a.userid=%(userid)s
-                OR acs.userid=%(userid)s)
+             WHERE a.userid=%(userid)s
         """ % {'userid': db.userId})
 
         if query.lastError().isValid():
@@ -625,6 +619,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
 
         self.inTotalLabel.setText(currency.toCurrencyStr(inTotal))
         self.outTotalLabel.setText(currency.toCurrencyStr(outTotal))
+        self.netTotalLabel.setText(currency.toCurrencyStr(inTotal - outTotal))
         self.recordCountLabel.setText(
             '%d / %d' % (
                 model.rowCount(),

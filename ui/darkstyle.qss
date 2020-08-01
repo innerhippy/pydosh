@@ -828,7 +828,7 @@ QTableView#tagView
 	background-color: transparent;
 }
 
-QLabel#inTotalLabel, QLabel#outTotalLabel, QLabel#recordCountLabel
+QLabel#inTotalLabel, QLabel#outTotalLabel, QLabel#netTotalLabel, QLabel#recordCountLabel
 {
 	font: bold;
 }

@@ -60,8 +60,6 @@ class RecordModel(QtSql.QSqlTableModel):
           FROM records r
      LEFT JOIN accounts a
             ON a.id=r.accountid
-     LEFT JOIN accountshare acs
-            ON acs.accountid=r.accountid
      LEFT JOIN recordtags rt
             ON rt.recordid=r.recordid
      LEFT JOIN tags t
@@ -70,8 +68,7 @@ class RecordModel(QtSql.QSqlTableModel):
             ON r2.recordid=r.recordid
     INNER JOIN accounts a2
             ON a2.id=r2.accountid
-         WHERE (a.userid = %(userid)s
-            OR acs.userid = %(userid)s)
+         WHERE a.userid = %(userid)s
       GROUP BY r.recordid, a.name, a2.userid
       ORDER BY r.date, r.recordid
     """ % {'userid': db.userId}
@@ -304,12 +301,14 @@ class RecordProxyModel(QtCore.QSortFilterProxyModel):
         self._insertDate = insertDate
         self.invalidateFilter()
 
-    def setStartDate(self, startDate):
+    def setStartDate(self, date):
+        _log.debug("setStartDate {}".format(date))
         self._insertDate = None
-        self._startDate = startDate
+        self._startDate = date
         self.invalidateFilter()
 
     def setEndDate(self, date):
+        _log.debug("setStartEnd {}".format(date))
         self._insertDate = None
         self._endDate = date
         self.invalidateFilter()

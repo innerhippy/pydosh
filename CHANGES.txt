@@ -40,3 +40,6 @@ v1.9, June 22 2013
 
 v6.0, July 27 2019
   - Python 3
+
+v7.0, July 2 2020
+  - Removed account share

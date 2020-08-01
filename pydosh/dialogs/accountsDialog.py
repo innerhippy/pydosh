@@ -3,7 +3,6 @@ from PyQt5 import QtCore, QtSql, QtWidgets
 from pydosh.ui_accounts import Ui_Accounts
 from pydosh import enum, utils
 from pydosh.database import db
-from pydosh.models import AccountShareModel
 
 class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
     def __init__(self, parent=None):
@@ -16,17 +15,9 @@ class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
         self.saveButton.setEnabled(False)
         self.revertButton.setEnabled(False)
         self._changesMade = False
-        self._allowAccountShareEdit = True
         self._accountRecordCount = None
         self.addAccountButton.clicked.connect(self.addNewAccount)
         self.removeAccountButton.clicked.connect(self.removeAccount)
-
-        # Account shares, filter is set in switchAccounts
-        self.accountShareView.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
-        model = AccountShareModel(self)
-        self.accountShareView.setModel(model)
-        model.dataChanged.connect(self.setButtonsEnabled)
-        self.accountShareView.setModelColumn(enum.kUsers_UserName)
 
         # Account Types dropdown (read-only)
         model = QtSql.QSqlTableModel(self)
@@ -67,7 +58,6 @@ class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
 
     def addNewAccount(self):
         """ Add new account
-            Disable account share until save has been committed
         """
         self.revertChanges()
         model = self.accountCombo.model()
@@ -76,10 +66,6 @@ class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
         index = model.index(row, enum.kAccounts_UserId)
         model.setData(index, db.userId)
         self.accountCombo.setCurrentIndex(row)
-
-        # Disable edits to account share until we've commited. We need the ID's...
-        self._allowAccountShareEdit = False
-        self.setButtonsEnabled()
 
         # Set focus on the account name
         self.accountCombo.setFocus(QtCore.Qt.OtherFocusReason)
@@ -106,11 +92,7 @@ class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
         realAccountName = model.index(index, enum.kAccounts_AccountTypeId).data()
         self.accountType.setCurrentIndex(self.accountType.findText(realAccountName))
 
-        # Set the filter on accountshare table
         accountId = model.index(index, enum.kAccounts_Id).data()
-        self.accountShareView.model().changedAccount(accountId)
-        self._allowAccountShareEdit = True
-
         query = QtSql.QSqlQuery('SELECT count(*) FROM records WHERE accountid=%s' % accountId)
         query.next()
         self._accountRecordCount = query.value(0)
@@ -128,7 +110,6 @@ class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
                     changesPending = True
                     break
 
-        changesPending = changesPending or self.accountShareView.model().hasChangesPending()
         self.revertButton.setEnabled(changesPending)
 
         if changesPending:
@@ -139,8 +120,6 @@ class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
             )
 
         self.saveButton.setEnabled(changesPending)
-        self.accountShareView.setEnabled(self._allowAccountShareEdit)
-
         self.removeAccountButton.setEnabled(self._accountRecordCount == 0)
 
     def sortCodeChanged(self, text):
@@ -189,8 +168,6 @@ class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
     def revertChanges(self):
         self.accountCombo.model().revert()
         self.accountCombo.model().select()
-        self.accountShareView.model().revert()
-        self._allowAccountShareEdit = True
         self.setButtonsEnabled()
 
     @utils.showWaitCursorDecorator
@@ -200,7 +177,6 @@ class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
             to pick up changes
         """
         self._changesMade = True
-        self.accountShareView.model().submitAll()
         text = self.accountCombo.currentText()
 
         if not self.accountCombo.model().submitAll():
@@ -210,6 +186,5 @@ class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
 
         index = self.accountCombo.findText(text)
         self.accountCombo.setCurrentIndex(index)
-        self._allowAccountShareEdit = True
         self.setButtonsEnabled()
 
