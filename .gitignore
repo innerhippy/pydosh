@@ -27,3 +27,5 @@ pydosh/*_rc.py
 
 # PyCharrm
 /.idea/
+.eggs
+.vscode/

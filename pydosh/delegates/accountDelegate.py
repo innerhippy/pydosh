@@ -1,5 +1,5 @@
 from PyQt5 import QtGui, QtCore, QtWidgets
-from pydosh import enum
+from pydosh import enums
 
 class AccountDelegate(QtWidgets.QItemDelegate):
     def __init__(self, parent=None):
@@ -10,16 +10,16 @@ class AccountDelegate(QtWidgets.QItemDelegate):
         pattern = None
 
         if index.column() in (
-                enum.kAccountType__DateField,
-                enum.kAccountType__DescriptionField,
-                enum.kAccountType__CreditField,
-                enum.kAccountType__DebitField):
+                enums.kAccountType__DateField,
+                enums.kAccountType__DescriptionField,
+                enums.kAccountType__CreditField,
+                enums.kAccountType__DebitField):
             pattern = QtCore.QRegExp('[0-9]+')
 
-        elif index.column() == enum.kAccountType__DateFormat:
+        elif index.column() == enums.kAccountType__DateFormat:
             pattern = QtCore.QRegExp('[dMy/- ]+')
 
-        elif index.column() == enum.kAccountType__CurrencySign:
+        elif index.column() == enums.kAccountType__CurrencySign:
             pattern = QtCore.QRegExp('-1|1')
 
         if pattern:

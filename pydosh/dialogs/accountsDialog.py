@@ -1,7 +1,7 @@
 from PyQt5 import QtCore, QtSql, QtWidgets
 
 from pydosh.ui_accounts import Ui_Accounts
-from pydosh import enum, utils
+from pydosh import enums, utils
 from pydosh.database import db
 
 class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
@@ -23,23 +23,23 @@ class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
         model = QtSql.QSqlTableModel(self)
         model.setTable('accounttypes')
         self.accountType.setModel(model)
-        self.accountType.setModelColumn(enum.kAccountType__AccountName)
+        self.accountType.setModelColumn(enums.kAccountType__AccountName)
         model.select()
 
         # Accounts model
         model = QtSql.QSqlRelationalTableModel(self)
         model.setTable('accounts')
         model.setFilter('userid=%s' % db.userId)
-        model.setSort(enum.kAccounts_Name, QtCore.Qt.AscendingOrder)
+        model.setSort(enums.kAccounts_Name, QtCore.Qt.AscendingOrder)
         model.setRelation(
-            enum.kAccounts_AccountTypeId,
+            enums.kAccounts_AccountTypeId,
             QtSql.QSqlRelation('accounttypes', 'accounttypeid', 'accountname')
         )
         model.setEditStrategy(QtSql.QSqlTableModel.OnManualSubmit)
 
         self.accountCombo.currentIndexChanged.connect(self.switchAccount)
         self.accountCombo.setModel(model)
-        self.accountCombo.setModelColumn(enum.kAccounts_Name)
+        self.accountCombo.setModelColumn(enums.kAccounts_Name)
         self.accountCombo.setEditable(True)
 
         self.accountCombo.editTextChanged.connect(self.accountNameChanged)
@@ -63,7 +63,7 @@ class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
         model = self.accountCombo.model()
         row = model.rowCount()
         model.insertRow(row)
-        index = model.index(row, enum.kAccounts_UserId)
+        index = model.index(row, enums.kAccounts_UserId)
         model.setData(index, db.userId)
         self.accountCombo.setCurrentIndex(row)
 
@@ -87,12 +87,12 @@ class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
             return
 
         model = self.accountCombo.model()
-        self.sortCode.setText(model.index(index, enum.kAccounts_SortCode).data())
-        self.accountNo.setText(model.index(index, enum.kAccounts_AccountNo).data())
-        realAccountName = model.index(index, enum.kAccounts_AccountTypeId).data()
+        self.sortCode.setText(model.index(index, enums.kAccounts_SortCode).data())
+        self.accountNo.setText(model.index(index, enums.kAccounts_AccountNo).data())
+        realAccountName = model.index(index, enums.kAccounts_AccountTypeId).data()
         self.accountType.setCurrentIndex(self.accountType.findText(realAccountName))
 
-        accountId = model.index(index, enum.kAccounts_Id).data()
+        accountId = model.index(index, enums.kAccounts_Id).data()
         query = QtSql.QSqlQuery('SELECT count(*) FROM records WHERE accountid=%s' % accountId)
         query.next()
         self._accountRecordCount = query.value(0)
@@ -127,7 +127,7 @@ class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
         """
         model = self.accountCombo.model()
         currentIndex = self.accountCombo.currentIndex()
-        index = model.index(currentIndex, enum.kAccounts_SortCode)
+        index = model.index(currentIndex, enums.kAccounts_SortCode)
         if index.data() != text:
             model.setData(index, text.strip())
         self.setButtonsEnabled()
@@ -137,7 +137,7 @@ class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
         """
         model = self.accountCombo.model()
         currentIndex = self.accountCombo.currentIndex()
-        index = model.index(currentIndex, enum.kAccounts_AccountNo)
+        index = model.index(currentIndex, enums.kAccounts_AccountNo)
         if index.data() != text:
             model.setData(index, text.strip())
         self.setButtonsEnabled()
@@ -147,7 +147,7 @@ class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
         """
         model = self.accountCombo.model()
         currentIndex = self.accountCombo.currentIndex()
-        index = model.index(currentIndex, enum.kAccounts_Name)
+        index = model.index(currentIndex, enums.kAccounts_Name)
         if index.data() != text:
             model.setData(index, text.strip())
         self.setButtonsEnabled()
@@ -156,10 +156,10 @@ class AccountsDialog(Ui_Accounts, QtWidgets.QDialog):
         """ Set a new account type on the account
         """
         newAccountTypeId = self.accountType.model().index(
-            idx, enum.kAccountType__AccountTypeId).data()
+            idx, enums.kAccountType__AccountTypeId).data()
         model = self.accountCombo.model()
         currentIndex = self.accountCombo.currentIndex()
-        index = model.index(currentIndex, enum.kAccounts_AccountTypeId)
+        index = model.index(currentIndex, enums.kAccounts_AccountTypeId)
         if self.accountType.currentText() != index.data():
             model.setData(index, newAccountTypeId)
         self.setButtonsEnabled()

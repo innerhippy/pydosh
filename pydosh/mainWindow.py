@@ -12,7 +12,7 @@ from . import utils
 from . import models
 from . import dialogs
 from . import stylesheet
-from . import enum
+from . import enums
 from . import pydosh_rc
 
 QtCore.pyqtRemoveInputHook()
@@ -36,22 +36,22 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
 
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
-        self.checkedCombo.addItem('all', enum.kCheckedStatus_All)
-        self.checkedCombo.addItem('checked', enum.kCheckedStatus_Checked)
-        self.checkedCombo.addItem('unchecked', enum.kCheckedStatus_UnChecked)
+        self.checkedCombo.addItem('all', enums.kCheckedStatus_All)
+        self.checkedCombo.addItem('checked', enums.kCheckedStatus_Checked)
+        self.checkedCombo.addItem('unchecked', enums.kCheckedStatus_UnChecked)
 
-        self.inoutCombo.addItem('all', enum.kInOutStatus_All)
-        self.inoutCombo.addItem('in', enum.kInOutStatus_In)
-        self.inoutCombo.addItem('out', enum.kInOutStatus_Out)
+        self.inoutCombo.addItem('all', enums.kInOutStatus_All)
+        self.inoutCombo.addItem('in', enums.kInOutStatus_In)
+        self.inoutCombo.addItem('out', enums.kInOutStatus_Out)
 
-        self.tagsCombo.addItem('all', enum.kTagCombo_All)
-        self.tagsCombo.addItem('with tags', enum.kTagCombo_With)
-        self.tagsCombo.addItem('without tags', enum.kTagCombo_Without)
+        self.tagsCombo.addItem('all', enums.kTagCombo_All)
+        self.tagsCombo.addItem('with tags', enums.kTagCombo_With)
+        self.tagsCombo.addItem('without tags', enums.kTagCombo_Without)
 
-        self.dateCombo.addItem('All', userData=enum.kDate_All)
-        self.dateCombo.addItem('Last 12 months', userData=enum.kDate_PreviousYear)
-        self.dateCombo.addItem('Last month', userData=enum.kDate_PreviousMonth)
-        self.dateCombo.addItem('Last import', userData=enum.kdate_LastImport)
+        self.dateCombo.addItem('All', userData=enums.kDate_All)
+        self.dateCombo.addItem('Last 12 months', userData=enums.kDate_PreviousYear)
+        self.dateCombo.addItem('Last month', userData=enums.kDate_PreviousMonth)
+        self.dateCombo.addItem('Last import', userData=enums.kdate_LastImport)
 
         self.toggleCheckButton.setEnabled(False)
         self.deleteButton.setEnabled(False)
@@ -88,33 +88,33 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
 
         # Set up record view
         self.tableView.verticalHeader().hide()
-        self.tableView.setColumnHidden(enum.kRecords_RecordId, True)
-        self.tableView.setColumnHidden(enum.kRecords_AccountId, True)
-        self.tableView.setColumnHidden(enum.kRecords_CheckDate, True)
-        self.tableView.setColumnHidden(enum.kRecords_UserId, True)
-        self.tableView.setColumnHidden(enum.kRecords_RawData, True)
-        self.tableView.setColumnHidden(enum.kRecords_InsertDate, True)
-        self.tableView.setColumnHidden(enum.kRecords_Currency, True)
+        self.tableView.setColumnHidden(enums.kRecords_RecordId, True)
+        self.tableView.setColumnHidden(enums.kRecords_AccountId, True)
+        self.tableView.setColumnHidden(enums.kRecords_CheckDate, True)
+        self.tableView.setColumnHidden(enums.kRecords_UserId, True)
+        self.tableView.setColumnHidden(enums.kRecords_RawData, True)
+        self.tableView.setColumnHidden(enums.kRecords_InsertDate, True)
+        self.tableView.setColumnHidden(enums.kRecords_Currency, True)
         self.tableView.setSortingEnabled(True)
         self.tableView.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.tableView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.tableView.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         self.tableView.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.tableView.horizontalHeader().setSectionResizeMode(enum.kRecords_Description, QtWidgets.QHeaderView.Stretch)
+        self.tableView.horizontalHeader().setSectionResizeMode(enums.kRecords_Description, QtWidgets.QHeaderView.Stretch)
         self.tableView.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
 
         # Set up tag model
         tagModel = models.TagModel(self)
         tagProxyModel = models.TagProxyModel(self)
         tagProxyModel.setSourceModel(tagModel)
-        tagProxyModel.sort(enum.kTags_Amount_out, QtCore.Qt.AscendingOrder)
+        tagProxyModel.sort(enums.kTags_Amount_out, QtCore.Qt.AscendingOrder)
         tagProxyModel.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
         # Set up tag view
         self.tagView.setModel(tagProxyModel)
         self.tagView.verticalHeader().hide()
-        self.tagView.setColumnHidden(enum.kTags_TagId, True)
-        self.tagView.setColumnHidden(enum.kTags_RecordIds, True)
+        self.tagView.setColumnHidden(enums.kTags_TagId, True)
+        self.tagView.setColumnHidden(enums.kTags_RecordIds, True)
         self.tagView.setSortingEnabled(True)
         self.tagView.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.tagView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
@@ -174,9 +174,9 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         """ Basic tag filter (has tags or not)
         """
         state = self.tagsCombo.itemData(index, QtCore.Qt.UserRole)
-        if state == enum.kTagCombo_With:
+        if state == enums.kTagCombo_With:
             value = True
-        elif state == enum.kTagCombo_Without:
+        elif state == enums.kTagCombo_Without:
             value = False
         else:
             value = None
@@ -186,9 +186,9 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         """ Set filter for checked records
         """
         state = self.checkedCombo.itemData(index, QtCore.Qt.UserRole)
-        if state == enum.kCheckedStatus_Checked:
+        if state == enums.kCheckedStatus_Checked:
             value = True
-        elif state == enum.kCheckedStatus_UnChecked:
+        elif state == enums.kCheckedStatus_UnChecked:
             value = False
         else:
             value = None
@@ -198,9 +198,9 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         """ Set filter for in/out amount
         """
         state = self.inoutCombo.itemData(index, QtCore.Qt.UserRole)
-        if state == enum.kInOutStatus_In:
+        if state == enums.kInOutStatus_In:
             value = True
-        elif state == enum.kInOutStatus_Out:
+        elif state == enums.kInOutStatus_Out:
             value = False
         else:
             value = None
@@ -237,7 +237,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         """ End date has changed - if date mode is "previous" month,
             then update start date accordingly
         """
-        if self.dateCombo.currentIndex() == enum.kDate_PreviousMonth:
+        if self.dateCombo.currentIndex() == enums.kDate_PreviousMonth:
             self.startDateEdit.setDate(self.endDateEdit.date().addMonths(-1))
 
     @utils.showWaitCursorDecorator
@@ -249,28 +249,28 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
 
         proxyModel = self.tableView.model()
 
-        if index == enum.kDate_All:
+        if index == enums.kDate_All:
             self.startDateEdit.setEnabled(True)
             self.endDateEdit.setEnabled(True)
 
             self.startDateEdit.setDate(self.startDateEdit.minimumDate())
             self.endDateEdit.setDate(self.endDateEdit.maximumDate())
 
-        elif index == enum.kDate_PreviousMonth:
+        elif index == enums.kDate_PreviousMonth:
             self.endDateEdit.setEnabled(True)
             self.startDateEdit.setEnabled(False)
 
             self.endDateEdit.setDate(self.endDateEdit.maximumDate())
             self.startDateEdit.setDate(self.endDateEdit.date().addMonths(-1))
 
-        elif index == enum.kDate_PreviousYear:
+        elif index == enums.kDate_PreviousYear:
             self.startDateEdit.setEnabled(True)
             self.endDateEdit.setEnabled(True)
 
             self.endDateEdit.setDate(self.endDateEdit.maximumDate())
             self.startDateEdit.setDate(self.endDateEdit.date().addYears(-1))
 
-        elif index == enum.kdate_LastImport:
+        elif index == enums.kdate_LastImport:
             self.startDateEdit.setEnabled(False)
             self.endDateEdit.setEnabled(False)
 
@@ -281,7 +281,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
 
             # Find the min/max dates for the last import from the proxy model
             for row in range(proxyModel.rowCount()):
-                dateForRow = proxyModel.index(row, enum.kRecords_Date).data(QtCore.Qt.UserRole)
+                dateForRow = proxyModel.index(row, enums.kRecords_Date).data(QtCore.Qt.UserRole)
                 if not endDate.isValid() or dateForRow > endDate:
                     endDate = dateForRow
                 if not startDate.isValid() or dateForRow < startDate:
@@ -369,7 +369,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         recordIds = []
 
         for index in self.tableView.selectionModel().selectedRows():
-            recordIds.append(proxyModel.index(index.row(), enum.kRecords_RecordId).data())
+            recordIds.append(proxyModel.index(index.row(), enums.kRecords_RecordId).data())
 
         return recordIds
 
@@ -441,7 +441,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
             proxyModel = self.tableView.model()
 
             for recordId in selectedRecords:
-                currentIndex = proxyModel.sourceModel().index(0, enum.kRecords_RecordId)
+                currentIndex = proxyModel.sourceModel().index(0, enums.kRecords_RecordId)
                 match = proxyModel.sourceModel().match(currentIndex, QtCore.Qt.DisplayRole, recordId, 1, QtCore.Qt.MatchExactly)
                 if match:
                     self.tableView.selectRow(proxyModel.mapFromSource(match[0]).row())
@@ -536,22 +536,22 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
             self.tagView.model().sourceModel().clearSelection()
             self.tableView.model().clearFilters()
 
-            self.dateCombo.setCurrentIndex(enum.kDate_PreviousYear)
+            self.dateCombo.setCurrentIndex(enums.kDate_PreviousYear)
 
             # Signals blocked so need to reset filter manually
             self.setDateRange()
             self.tableView.model().setStartDate(self.startDateEdit.date())
             self.tableView.model().setEndDate(self.endDateEdit.date())
 
-            self.checkedCombo.setCurrentIndex(enum.kCheckedStatus_All)
-            self.tagsCombo.setCurrentIndex(enum.kCheckedStatus_All)
-            self.inoutCombo.setCurrentIndex(enum.kInOutStatus_All)
+            self.checkedCombo.setCurrentIndex(enums.kCheckedStatus_All)
+            self.tagsCombo.setCurrentIndex(enums.kCheckedStatus_All)
+            self.inoutCombo.setCurrentIndex(enums.kInOutStatus_All)
             self.accountCombo.clearAll()
             self.amountEdit.clear()
             self.descEdit.clear()
 
-            self.tableView.sortByColumn(enum.kRecords_Date, QtCore.Qt.AscendingOrder)
-            self.tagView.sortByColumn(enum.kTags_TagName, QtCore.Qt.AscendingOrder)
+            self.tableView.sortByColumn(enums.kRecords_Date, QtCore.Qt.AscendingOrder)
+            self.tagView.sortByColumn(enums.kTags_TagName, QtCore.Qt.AscendingOrder)
 
         self.tableView.model().sourceModel().select()
 
@@ -611,7 +611,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
 
         model = self.tableView.model()
         for row in range(model.rowCount()):
-            amount = model.index(row, enum.kRecords_Amount).data(QtCore.Qt.UserRole)
+            amount = model.index(row, enums.kRecords_Amount).data(QtCore.Qt.UserRole)
             if amount > 0.0:
                 inTotal += amount
             else:
@@ -643,7 +643,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         model = self.tableView.model()
 
         for i in range(model.rowCount()):
-            recordIds.append(model.index(i, enum.kRecords_RecordId).data())
+            recordIds.append(model.index(i, enums.kRecords_RecordId).data())
 
         _log.debug("tag filter using %d records", len(recordIds))
 
@@ -662,7 +662,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
 
         proxyModel = self.tagView.model()
         match = proxyModel.match(
-            proxyModel.index(0, enum.kTags_TagName),
+            proxyModel.index(0, enums.kTags_TagName),
             QtCore.Qt.DisplayRole,
             tagName,
             1,
@@ -684,17 +684,17 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         # If no selection, then get everything
         if not indexes:
             indexes = [
-                model.index(row, enum.kRecords_RecordId)
+                model.index(row, enums.kRecords_RecordId)
                     for row in range(model.rowCount())
             ]
 
         data = {}
         for index in indexes:
-            tags = model.index(index.row(), enum.kRecords_Tags).data(QtCore.Qt.UserRole)
+            tags = model.index(index.row(), enums.kRecords_Tags).data(QtCore.Qt.UserRole)
             for tag in tags or ['No tag']:
                 tagData = data.setdefault(tag, [])
-                date = model.index(index.row(), enum.kRecords_Date).data(QtCore.Qt.UserRole)
-                amount = model.index(index.row(), enum.kRecords_Amount).data(QtCore.Qt.UserRole)
+                date = model.index(index.row(), enums.kRecords_Date).data(QtCore.Qt.UserRole)
+                amount = model.index(index.row(), enums.kRecords_Amount).data(QtCore.Qt.UserRole)
                 tagData.append((date.toPyDate(), amount * -1.0))
 
         if data:
@@ -715,8 +715,8 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
 
         for index in self.tagView.selectionModel().selectedRows():
             indexes.append(proxyModel.mapToSource(index))
-            tagName = proxyModel.index(index.row(), enum.kTags_TagName).data()
-            recs = len(proxyModel.index(index.row(), enum.kTags_RecordIds).data())
+            tagName = proxyModel.index(index.row(), enums.kTags_TagName).data()
+            recs = len(proxyModel.index(index.row(), enums.kTags_RecordIds).data())
             if recs:
                 assigned.append((tagName, recs))
 
@@ -745,9 +745,9 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         model = self.tagView.model()
 
         for row in range(model.rowCount()):
-            tagId = model.index(row, enum.kTags_TagId).data()
-            tagName = model.index(row, enum.kTags_TagName).data()
-            tagRecordIds = model.index(row, enum.kTags_RecordIds).data()
+            tagId = model.index(row, enums.kTags_TagId).data()
+            tagName = model.index(row, enums.kTags_TagName).data()
+            tagRecordIds = model.index(row, enums.kTags_RecordIds).data()
 
             item = QtWidgets.QListWidgetItem(tagName)
             item.setData(QtCore.Qt.UserRole, tagId)
@@ -806,7 +806,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
         self.tableView.model().sourceModel().highlightText(text)
 
         if text:
-            currentIndex = self.tableView.model().index(0, enum.kRecords_Description)
+            currentIndex = self.tableView.model().index(0, enums.kRecords_Description)
             matches = self.tableView.model().match(currentIndex, QtCore.Qt.DisplayRole, text)
             if matches:
                 self.tableView.scrollTo(matches[0], QtWidgets.QAbstractItemView.EnsureVisible)
@@ -821,7 +821,7 @@ class PydoshWindow(Ui_pydosh, QtWidgets.QMainWindow):
             sourceModel = self.tagView.model().sourceModel()
 
             for index in self.tagView.selectionModel().selectedRows():
-                tagId = proxyModel.index(index.row(), enum.kTags_TagId).data()
+                tagId = proxyModel.index(index.row(), enums.kTags_TagId).data()
                 sourceModel.addRecordTags(tagId, self.selectedRecordIds())
 
             recordsRemaining = self.tableView.model().rowCount()

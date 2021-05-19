@@ -6,7 +6,7 @@ import codecs
 
 from PyQt5 import QtCore, QtGui, QtSql
 
-from pydosh import utils, enum
+from pydosh import utils, enums
 from pydosh.database import db
 
 class DecoderError(Exception):
@@ -227,7 +227,7 @@ class CsvRecordItem(TreeItem):
     def _dataFuncProcessed(self, column, role):
 
         if role == QtCore.Qt.ForegroundRole:
-            if column == enum.kImport_Status:
+            if column == enums.kImport_Status:
                 if not self.isValid():
                     return QtGui.QColor(255, 0, 0)
                 elif self._imported:
@@ -237,15 +237,15 @@ class CsvRecordItem(TreeItem):
                 return QtGui.QColor(0, 255, 0)
 
         elif role == QtCore.Qt.DisplayRole:
-            if column == enum.kImport_Status:
+            if column == enums.kImport_Status:
                 return self._statusAsText
-            elif column == enum.kImport_Date:
+            elif column == enums.kImport_Date:
                 return self._date
-            elif column == enum.kImport_Credit:
+            elif column == enums.kImport_Credit:
                 return '%.02f' % self._credit if self._credit else None
-            elif column == enum.kImport_Debit:
+            elif column == enums.kImport_Debit:
                 return '%.02f' % abs(self._debit) if self._debit else None
-            elif column == enum.kImport_Description:
+            elif column == enums.kImport_Description:
                 return self._desc
 
         elif role == QtCore.Qt.ToolTipRole:
@@ -304,7 +304,7 @@ class CsvRecordItem(TreeItem):
         """
 
         # Sanitise field
-        field = re.sub('[^\d.-]', '', field)
+        field = re.sub(r'[^\d.-]', '', field)
 
         try:
             return float(field)

@@ -1,7 +1,7 @@
 PYTHON := python3
 UI_TARGETS=$(patsubst %.ui,pydosh/ui_%.py,$(notdir $(wildcard ui/*.ui)))
 ALL_TARGETS=$(UI_TARGETS) pydosh/pydosh_rc.py
-VERSION=$(shell $(PYTHON) -c 'from pydosh import __version__; print __version__')
+VERSION=$(shell $(PYTHON) -c 'from pydosh import __version__; print (__version__)')
 
 all: $(ALL_TARGETS)
 
@@ -11,6 +11,7 @@ pydosh/pydosh_rc.py: ui/pydosh.qrc ui/*.qss sql/*.sql
 clean:
 	@find tests pydosh \( -name "*.pyc" -o -name "ui_*.py" -o -name "*_rc.py" \) -delete
 	@rm -rf \
+		.eggs/ \
 		dist/ \
 		pydosh.egg-info/ \
 		deb_dist/ \
@@ -26,4 +27,7 @@ deb: clean all
 dmg: clean all
 	$(PYTHON) setup.py py2app
 	hdiutil create -srcfolder dist/pydosh.app pydosh-$(VERSION).dmg
+
+test:
+	python3 -m pytest tests/
 

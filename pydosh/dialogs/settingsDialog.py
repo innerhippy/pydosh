@@ -1,7 +1,7 @@
 from PyQt5 import QtCore, QtSql, QtWidgets
 
 from ..ui_settings import Ui_Settings
-from .. import enum
+from .. import enums
 
 from ..delegates import AccountDelegate
 from ..models import AccountEditModel
@@ -27,11 +27,11 @@ class SettingsDialog(Ui_Settings, QtWidgets.QDialog):
         model.select()
 
         self.view.setModel(model)
-        self.view.setColumnHidden(enum.kAccountType__AccountTypeId, True)
+        self.view.setColumnHidden(enums.kAccountType__AccountTypeId, True)
         self.view.verticalHeader().hide()
         self.view.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.view.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        self.view.sortByColumn(enum.kAccountType__AccountName, QtCore.Qt.AscendingOrder)
+        self.view.sortByColumn(enums.kAccountType__AccountName, QtCore.Qt.AscendingOrder)
         self.view.resizeColumnsToContents()
         self.view.horizontalHeader().setStretchLastSection(True)
         self.view.setItemDelegate(AccountDelegate(self))
@@ -47,30 +47,30 @@ class SettingsDialog(Ui_Settings, QtWidgets.QDialog):
 
     def validateNewAccount(self, record):
         try:
-            if not record.value(enum.kAccountType__AccountName):
+            if not record.value(enums.kAccountType__AccountName):
                 raise Exception('Account name cannot be empty')
 
-            value = int(record.value(enum.kAccountType__DateField))
+            value = int(record.value(enums.kAccountType__DateField))
             if value < 0:
                 raise Exception('Date field must be set (index of date field)')
 
-            value = int(record.value(enum.kAccountType__CreditField))
+            value = int(record.value(enums.kAccountType__CreditField))
             if value < 0:
                 raise Exception('Credit field must be set (index of credit field)')
 
-            value  = int(record.value(enum.kAccountType__DebitField))
+            value  = int(record.value(enums.kAccountType__DebitField))
             if value < 0:
                 raise Exception('Debit field must be set (index of debit field)')
 
-            value = int(record.value(enum.kAccountType__DescriptionField))
+            value = int(record.value(enums.kAccountType__DescriptionField))
             if value < 0:
                 raise Exception('Description field must be set (index of description field)')
 
-            value = int(record.value(enum.kAccountType__CurrencySign))
+            value = int(record.value(enums.kAccountType__CurrencySign))
             if value not in (1, -1):
                 raise Exception('Currency sign value must be 1 or -1')
 
-            if not record.value(enum.kAccountType__DateFormat):
+            if not record.value(enums.kAccountType__DateFormat):
                 raise Exception('"Date format cannot be empty (eg "dd/MM/yyyy")')
 
         except Exception as err:
@@ -105,14 +105,14 @@ class SettingsDialog(Ui_Settings, QtWidgets.QDialog):
             index = self.model.index(rowCount, column)
             self.model.setData(index, None, QtCore.Qt.EditRole)
 
-        index = self.model.index(rowCount, enum.kAccountType__AccountName)
+        index = self.model.index(rowCount, enums.kAccountType__AccountName)
         self.view.setCurrentIndex(index)
         self.view.edit(index)
 
     def deleteAccount(self):
         for index in self.view.selectionModel().selectedRows():
 
-            accountTypeId = self.model.index(index.row(), enum.kAccountType__AccountTypeId).data()
+            accountTypeId = self.model.index(index.row(), enums.kAccountType__AccountTypeId).data()
 
             query = QtSql.QSqlQuery('SELECT COUNT(*) FROM records WHERE accounttypeid=%s' % accountTypeId)
             query.next()

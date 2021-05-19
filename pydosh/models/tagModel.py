@@ -1,6 +1,6 @@
 from PyQt5 import QtCore, QtSql
 
-from pydosh import enum, currency
+from pydosh import enums, currency
 from pydosh.database import db
 
 
@@ -25,13 +25,13 @@ class TagModel(QtSql.QSqlTableModel):
 
     def clearSelection(self):
         for row in range(self.rowCount()):
-            index = self.index(row, enum.kTags_TagName)
+            index = self.index(row, enums.kTags_TagName)
             self.setData(index, QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
 
     def setData(self, index, value, role=QtCore.Qt.EditRole):
         """ Handle checkstate role changes
         """
-        if index.column() == enum.kTags_TagName:
+        if index.column() == enums.kTags_TagName:
             if role == QtCore.Qt.CheckStateRole:
                 tagName = index.data()
 
@@ -59,21 +59,21 @@ class TagModel(QtSql.QSqlTableModel):
     def data(self, item, role=QtCore.Qt.DisplayRole):
 
         if role == QtCore.Qt.DisplayRole:
-            if item.column() == enum.kTags_RecordIds:
+            if item.column() == enums.kTags_RecordIds:
                 tags = set([int(i) for i in super(TagModel, self).data(item).split(',') if i])
                 return tags
 
-            elif item.column() in (enum.kTags_Amount_in, enum.kTags_Amount_out):
+            elif item.column() in (enums.kTags_Amount_in, enums.kTags_Amount_out):
                 amount = super(TagModel, self).data(item)
                 return currency.formatCurrency(amount) if amount else None
 
-        elif role == QtCore.Qt.CheckStateRole and item.column() == enum.kTags_TagName:
+        elif role == QtCore.Qt.CheckStateRole and item.column() == enums.kTags_TagName:
             if item.data() in self.__selectedTagNames:
                 return QtCore.Qt.Checked
             else:
                 return QtCore.Qt.Unchecked
 
-        elif role == QtCore.Qt.UserRole and item.column() in (enum.kTags_Amount_in, enum.kTags_Amount_out):
+        elif role == QtCore.Qt.UserRole and item.column() in (enums.kTags_Amount_in, enums.kTags_Amount_out):
             return super(TagModel, self).data(item)
 
         return super(TagModel, self).data(item, role)
@@ -81,11 +81,11 @@ class TagModel(QtSql.QSqlTableModel):
     def flags(self, index):
         flags = super(TagModel, self).flags(index)
 
-        if index.column() == enum.kTags_TagName:
+        if index.column() == enums.kTags_TagName:
             flags |= QtCore.Qt.ItemIsUserCheckable
 
         # Only allow tag name to be editable
-        if index.column() != enum.kTags_TagName:
+        if index.column() != enums.kTags_TagName:
             flags ^= QtCore.Qt.ItemIsEditable
 
         return flags
@@ -116,11 +116,11 @@ class TagModel(QtSql.QSqlTableModel):
 
     def headerData (self, section, orientation, role):
         if role == QtCore.Qt.DisplayRole:
-            if section == enum.kTags_TagName:
+            if section == enums.kTags_TagName:
                 return "tag"
-            elif section == enum.kTags_Amount_in:
+            elif section == enums.kTags_Amount_in:
                 return "in"
-            elif section == enum.kTags_Amount_out:
+            elif section == enums.kTags_Amount_out:
                 return "out"
         return None
 
@@ -146,7 +146,7 @@ class TagModel(QtSql.QSqlTableModel):
 
     def removeTags(self, indexes):
         for row in [QtCore.QPersistentModelIndex(index).row() for index in indexes]:
-            self.setData(self.index(row, enum.kTags_TagName), QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
+            self.setData(self.index(row, enums.kTags_TagName), QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
             self.removeRow(row, QtCore.QModelIndex())
 
         self.select()
@@ -157,10 +157,10 @@ class TagModel(QtSql.QSqlTableModel):
             return False
 
         # Remove records that already have this tag
-        currentIndex = self.index(0, enum.kTags_TagId)
+        currentIndex = self.index(0, enums.kTags_TagId)
         match = self.match(currentIndex, QtCore.Qt.DisplayRole, tagId, 1, QtCore.Qt.MatchExactly)
         if match:
-            existingRecordsForTag = self.index(match[0].row(), enum.kTags_RecordIds).data()
+            existingRecordsForTag = self.index(match[0].row(), enums.kTags_RecordIds).data()
             recordIds = set(recordIds) - existingRecordsForTag
 
         query = QtSql.QSqlQuery()
@@ -204,7 +204,7 @@ class TagProxyModel(QtCore.QSortFilterProxyModel):
     def lessThan(self, left, right):
         """ Define the comparison to ensure column data is sorted correctly
         """
-        if left.column() in (enum.kTags_Amount_in, enum.kTags_Amount_out):
+        if left.column() in (enums.kTags_Amount_in, enums.kTags_Amount_out):
             return left.data(QtCore.Qt.UserRole) > right.data(QtCore.Qt.UserRole)
 
         return super(TagProxyModel, self).lessThan(left, right)
@@ -216,5 +216,5 @@ class TagProxyModel(QtCore.QSortFilterProxyModel):
     def filterAcceptsRow(self, sourceRow, parent):
         """ Filters row to display
         """
-        currentTag = self.sourceModel().index(sourceRow, enum.kTags_TagName, parent).data().lower()
+        currentTag = self.sourceModel().index(sourceRow, enums.kTags_TagName, parent).data().lower()
         return self._filter.lower() in currentTag

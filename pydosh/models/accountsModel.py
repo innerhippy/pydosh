@@ -1,6 +1,6 @@
 from PyQt5 import QtCore, QtGui, QtSql
 
-from pydosh import enum
+from pydosh import enums
 
 
 class AccountEditModel(QtSql.QSqlTableModel):
@@ -26,19 +26,19 @@ class AccountEditModel(QtSql.QSqlTableModel):
     def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
 
         if role == QtCore.Qt.DisplayRole:
-            if section == enum.kAccountType__AccountName:
+            if section == enums.kAccountType__AccountName:
                 return 'Account Name'
-            elif section == enum.kAccountType__DateField:
+            elif section == enums.kAccountType__DateField:
                 return 'Date'
-            elif section == enum.kAccountType__DescriptionField:
+            elif section == enums.kAccountType__DescriptionField:
                 return 'Description'
-            elif section == enum.kAccountType__CreditField:
+            elif section == enums.kAccountType__CreditField:
                 return 'Credit'
-            elif section == enum.kAccountType__DebitField:
+            elif section == enums.kAccountType__DebitField:
                 return 'Debit'
-            elif section == enum.kAccountType__CurrencySign:
+            elif section == enums.kAccountType__CurrencySign:
                 return 'Currency Sign'
-            elif section == enum.kAccountType__DateFormat:
+            elif section == enums.kAccountType__DateFormat:
                 return 'Date Format'
 
         return None

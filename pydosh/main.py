@@ -2,14 +2,15 @@ import sys
 import logging
 import argparse
 from PyQt5 import QtGui, QtCore, Qt, QtWidgets
-from .dialogs import LoginDialog
-from .mainWindow import PydoshWindow
-from . import stylesheet
-from . import pydosh_rc
+import pdb
+pdb.set_trace()
+from pydosh.dialogs import LoginDialog
+from pydosh.mainWindow import PydoshWindow
+from pydosh import stylesheet
+from pydosh import pydosh_rc
 
 
 def main():
-
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--debug', action='store_true', help='Debug')
     args = parser.parse_args()

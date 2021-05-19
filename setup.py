@@ -3,7 +3,7 @@ from setuptools import setup
 from pydosh import __version__
 
 def readme():
-    with open('README.rst') as f:
+    with open('README.md') as f:
         return f.read()
 
 if sys.platform == 'darwin':
@@ -14,6 +14,7 @@ if sys.platform == 'darwin':
         options = dict(
             py2app = dict(
                 argv_emulation=True,
+                site_packages=True,
                 excludes=[
                     'PyQt5.QtDesigner',
                     'PyQt5.QtDeclarative',
@@ -39,7 +40,7 @@ elif sys.platform == 'win32':
 else: # Unix
     extra_options = dict(
         scripts=['scripts/pydosh'],
-            data_files=[
+        data_files=[
             ('share/applications', ['pydosh.desktop']),
             ('share/pixmaps', ['icons/pydosh.png', 'icons/pydosh.xpm']),
         ],
@@ -56,4 +57,10 @@ setup(name='pydosh',
     packages=['pydosh', 'pydosh.dialogs', 'pydosh.models', 'pydosh.delegates'],
     zip_safe=False,
     test_suite='tests',
-    **extra_options)
+    install_requires=[
+        'matplotlib',
+        'numpy',
+        'pandas',
+    ],
+    **extra_options
+)
