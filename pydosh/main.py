@@ -2,8 +2,6 @@ import sys
 import logging
 import argparse
 from PyQt5 import QtGui, QtCore, Qt, QtWidgets
-import pdb
-pdb.set_trace()
 from pydosh.dialogs import LoginDialog
 from pydosh.mainWindow import PydoshWindow
 from pydosh import stylesheet

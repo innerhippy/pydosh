@@ -1,2 +1,2 @@
-from .main import main
+from pydosh.main import main
 main()

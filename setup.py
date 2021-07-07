@@ -9,7 +9,8 @@ def readme():
 if sys.platform == 'darwin':
     extra_options = dict(
         setup_requires=['py2app'],
-        app=['pydosh/main.py'],
+#        app=['pydosh/main.py'],
+        entry_points={'console_scripts': 'pydosh = pydosh:main'},
         data_files=['pydosh'],
         options = dict(
             py2app = dict(
@@ -58,9 +59,11 @@ setup(name='pydosh',
     zip_safe=False,
     test_suite='tests',
     install_requires=[
+        'PyQt5',
         'matplotlib',
         'numpy',
         'pandas',
     ],
+    include_package_data=True,
     **extra_options
 )

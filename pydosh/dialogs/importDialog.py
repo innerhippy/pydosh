@@ -149,7 +149,7 @@ class ImportDialog(Ui_Import, QtWidgets.QDialog):
 
             # Wrap the import in a transaction
             with db.transaction():
-                for num, index in enumserate(indexes, 1):
+                for num, index in enumerate(indexes, 1):
                     model.saveRecord(accountId, currencyCode, index)
                     self.view.scrollTo(index, QtWidgets.QAbstractItemView.EnsureVisible)
                     self.__setCounters()
