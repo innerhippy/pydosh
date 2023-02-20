@@ -1,4 +1,8 @@
-import collections
+try:
+    from collections.abc import Iterable
+except ImportError:
+    from collections import Iterable
+
 from contextlib  import contextmanager
 from PyQt5 import QtCore, Qt
 
@@ -7,7 +11,7 @@ def flattenArgs(items):
         Eg (1, [2, 3], ["a", "b", [10]]) -> (1, 2, 3, "a", "b", 10)
     """
     for item in items:
-        if isinstance(item, collections.Iterable) and not isinstance(item, str):
+        if isinstance(item, Iterable) and not isinstance(item, str):
             for sub in flattenArgs(item):
                 yield sub
         else:
