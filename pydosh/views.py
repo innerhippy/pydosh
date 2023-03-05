@@ -16,4 +16,4 @@ class TagTableView(QtWidgets.QTableView):
             height += self.rowHeight(row)
 
         height += self.horizontalHeader().height() + self.autoScrollMargin() * 1.5 + 2
-        return QtCore.QSize(width, height)
+        return QtCore.QSize(int(width), int(height))

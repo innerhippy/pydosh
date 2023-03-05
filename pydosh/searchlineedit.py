@@ -60,8 +60,9 @@ class SearchLineEdit(QtWidgets.QLineEdit):
     def resizeEvent(self, event):
         sz = self.clearButton.sizeHint()
         frameWidth = self.style().pixelMetric(QtWidgets.QStyle.PM_DefaultFrameWidth)
-        self.clearButton.move(self.rect().right() - frameWidth - sz.width(),
-            (self.rect().bottom() + 1 - sz.height())/2)
+        x = self.rect().right() - frameWidth - sz.width()
+        y = (self.rect().bottom() + 1 - sz.height())/2
+        self.clearButton.move(int(x), int(y))
 
     def updateCloseButton(self, text):
         self.clearButton.setVisible(bool(text))
@@ -71,6 +72,8 @@ class SearchLineEdit(QtWidgets.QLineEdit):
         if not self.text() and not self.hasFocus():
             pixmap = QtGui.QPixmap(":/icons/search.png").scaledToHeight(15, QtCore.Qt.SmoothTransformation)
             rect = QtCore.QRect(QtCore.QPoint(0, 0), pixmap.size())
-            rect.moveCenter(QtCore.QPoint(pixmap.width()/2 +4, self.rect().center().y()))
+            x = pixmap.width()/2 +4
+            y = self.rect().center().y()
+            rect.moveCenter(QtCore.QPoint(int(x), int(y)))
             painter = QtGui.QPainter(self)
             painter.drawPixmap(rect, pixmap)
